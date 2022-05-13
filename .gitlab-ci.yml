@@ -1,0 +1,11 @@
+variables:
+  GIT_CLONE_PATH: $CI_BUILDS_DIR/bastion/bastion
+
+
+hprod:
+  stage: build
+  tags:
+    - hprod
+  script:
+    - echo "Starting build"
+    - $CI_BUILDS_DIR/bastion/sonar_analysis.sh

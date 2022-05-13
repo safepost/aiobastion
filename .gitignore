@@ -1,0 +1,14 @@
+/venv/
+/bastion_safepost.egg-info/
+/build/
+/dist/
+/.pypirc
+/bastion/__main__.py
+/local/
+**/*.pyc
+/bastion/templates.py
+/htmlcov
+.coverage
+coverage.xml
+.vscode/settings.json
+repo.conf
