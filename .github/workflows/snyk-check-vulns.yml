@@ -11,4 +11,4 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
         with:
-          args: --debug --command=python3
+          args: --debug --command=python3 --package-manager=pip
