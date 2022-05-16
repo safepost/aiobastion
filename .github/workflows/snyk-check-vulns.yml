@@ -11,5 +11,6 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
         with:
-          PROJECT_PATH: bastion
-          REQUIREMENT_PATH: bastion/requirements.txt
+          args: --file=bastion/requirements.txt
+#          PROJECT_PATH: bastion
+#          REQUIREMENT_PATH: bastion/requirements.txt
