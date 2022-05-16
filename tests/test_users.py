@@ -1,14 +1,14 @@
 import secrets
 from unittest import IsolatedAsyncioTestCase
-import bastion
+import aiobastion
 import random
 import tests
-from bastion import CyberarkAPIException, CyberarkException, BastionException
+from aiobastion import CyberarkAPIException, CyberarkException, BastionException
 
 
 class TestUsers(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.vault = bastion.EPV(tests.CONFIG)
+        self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
         self.api_user = "bastion_test_usr"
         self.test_safe = "sample-it-dept"

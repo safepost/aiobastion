@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import warnings
 
 from .abstract import Bastion
 from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile

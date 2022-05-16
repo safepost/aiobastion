@@ -1,14 +1,14 @@
 import random
 from unittest import IsolatedAsyncioTestCase
-import bastion
+import aiobastion
 import tests
-from bastion.exceptions import CyberarkAPIException, CyberarkException, BastionException
-from bastion.accountgroup import PrivilegedAccountGroup
+from aiobastion.exceptions import CyberarkAPIException, CyberarkException, BastionException
+from aiobastion.accountgroup import PrivilegedAccountGroup
 
 
 class TestAccountGroup(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.vault = bastion.EPV(tests.CONFIG)
+        self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
 
         self.test_safe = "sample-it-dept"

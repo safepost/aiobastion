@@ -3,13 +3,13 @@ import random
 import shutil
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase
-import bastion
-from bastion.exceptions import BastionException
+import aiobastion
+from aiobastion.exceptions import BastionException
 import tests
 
 class TestApplication(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.vault = bastion.EPV(tests.CONFIG)
+        self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
 
     async def get_random_platform(self, n=1):
