@@ -12,5 +12,5 @@ jobs:
 
         with:
           args:
-          - --debug
-          - command=python3
+            - --debug
+            - command=python3
