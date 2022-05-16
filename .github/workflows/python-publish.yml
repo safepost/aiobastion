@@ -8,11 +8,11 @@
 
 name: Upload Python Package
 
-#on:
-#  release:
-#    types: [published]
+on:
+  release:
+    types: [published]
 
-on: push
+#on: push
 
 permissions:
   contents: read
