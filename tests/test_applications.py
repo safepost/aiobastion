@@ -1,11 +1,11 @@
 from unittest import IsolatedAsyncioTestCase
-import bastion
-from bastion.exceptions import BastionException
+import aiobastion
+from aiobastion.exceptions import BastionException
 import tests
 
 class TestApplication(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.vault = bastion.EPV(tests.CONFIG)
+        self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
 
         self.app_name = "TestApp"

@@ -2,12 +2,12 @@ import asyncio
 import sys
 import unittest
 from unittest import TestCase, IsolatedAsyncioTestCase
-import bastion
+import aiobastion
 import tests
 
 class TestEPV(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.vault = bastion.EPV(tests.CONFIG)
+        self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
 
     async def test_logoff(self):
@@ -18,7 +18,7 @@ class TestEPV(IsolatedAsyncioTestCase):
     async def test_login_aim(self):
         await self.vault.logoff()
         self.assertFalse(await self.vault.check_token())
-        self.vault = bastion.EPV('../../confs/config_aim_hprod_bsa.yml')
+        self.vault = aiobastion.EPV('../../confs/config_aim_hprod_bsa.yml')
         await self.vault.login()
         self.assertTrue(await self.vault.check_token())
         await self.vault.close_session()

@@ -2,10 +2,10 @@ import random
 import secrets
 import unittest
 from unittest import TestCase, IsolatedAsyncioTestCase
-import bastion
+import aiobastion
 import tests
-from bastion.exceptions import CyberarkAPIException, CyberarkException, BastionException
-from bastion.accounts import PrivilegedAccount
+from aiobastion.exceptions import CyberarkAPIException, CyberarkException, BastionException
+from aiobastion.accounts import PrivilegedAccount
 
 privileged = PrivilegedAccount("test_account", "platform", "testSafe", address="176.171.20.224", id="78_222")
 create_me = PrivilegedAccount("test_account", "UnixSSH", "sample-it-dept", address="176.171.220.224", userName="admin")
@@ -17,7 +17,7 @@ create_me3 = PrivilegedAccount("test_account3", "UnixSSH", "sample-it-dept", add
 
 class TestAccount(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.vault = bastion.EPV(tests.CONFIG)
+        self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
 
         self.test_safe = "sample-it-dept"

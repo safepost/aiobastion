@@ -1,5 +1,4 @@
 import asyncio
-import warnings
 from .abstract import Bastion
 from .exceptions import BastionException
 

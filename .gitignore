@@ -3,10 +3,10 @@
 /build/
 /dist/
 /.pypirc
-/bastion/__main__.py
+/aiobastion/__main__.py
 /local/
 **/*.pyc
-/bastion/templates.py
+/aiobastion/templates.py
 /htmlcov
 .coverage
 coverage.xml
