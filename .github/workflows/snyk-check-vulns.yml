@@ -9,6 +9,7 @@ jobs:
         uses: snyk/actions/python-3.8@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        working-directory: ./aiobastion
 
-        with:
-          args: --debug --command=python3 --package-manager=pip --file=aiobastion/requirements.txt
+#        with:
+#          args: --debug --command=python3 --package-manager=pip --file=aiobastion/requirements.txt
