@@ -3,13 +3,16 @@ on: push
 jobs:
   security:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./aiobastion
     steps:
       - uses: actions/checkout@master
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/python-3.8@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        working-directory: ./aiobastion
+
 
 #        with:
 #          args: --debug --command=python3 --package-manager=pip --file=aiobastion/requirements.txt
