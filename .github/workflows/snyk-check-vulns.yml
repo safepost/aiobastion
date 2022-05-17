@@ -13,4 +13,4 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --file=aiobastion/requirements.txt
+          args: --file=aiobastion/requirements.txt --debug
