@@ -3,7 +3,7 @@ import copy
 
 from .exceptions import *
 import logging
-from .abstract import Bastion, PrivilegedAccount
+from .abstract import Vault, PrivilegedAccount
 
 
 def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_name=True) -> PrivilegedAccount:
@@ -20,7 +20,7 @@ def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_n
 
 
 class Utilities:
-    def __init__(self, epv: Bastion):
+    def __init__(self, epv: Vault):
         self.epv = epv
 
     async def cpm_change_failed_accounts(self, address, username_filter: list = None):
@@ -261,7 +261,7 @@ class Utilities:
         """
         accounts = await self.epv.account.search_account_by(address=address, username=username)
         if len(accounts) != 1:
-            raise BastionException(f"More than one address was found with {address} and {username}")
+            raise AiobastionException(f"More than one address was found with {address} and {username}")
         else:
             account = accounts[0]
         new_account = clone_privileged_account(account, replace, update_name)

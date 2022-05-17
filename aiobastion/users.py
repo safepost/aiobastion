@@ -1,10 +1,10 @@
 import asyncio
-from .abstract import Bastion
-from .exceptions import BastionException
+from .abstract import Vault
+from .exceptions import AiobastionException
 
 
 class User:
-    def __init__(self, epv: Bastion):
+    def __init__(self, epv: Vault):
         self.epv = epv
 
     async def get_logged_on_user_details(self):
@@ -55,7 +55,7 @@ class User:
         for r in ret:
             if r['username'] == username:
                 return r['id']
-        raise BastionException(f"No such user found : {username}")
+        raise AiobastionException(f"No such user found : {username}")
 
     async def exists(self, username: str):
         if self.epv.user_list is None:
@@ -73,7 +73,7 @@ class User:
         """
         if user_id is None:
             if username == "":
-                raise BastionException("You must provide username or user_id")
+                raise AiobastionException("You must provide username or user_id")
             user_id = await self.get_id(username)
         url = f"api/Users/{user_id}"
         return await self.epv.handle_request("get", url)
@@ -137,7 +137,7 @@ class User:
 
 
 class Group:
-    def __init__(self, epv: Bastion):
+    def __init__(self, epv: Vault):
         self.epv = epv
 
     async def list(self, pattern: str = None, group_type: str = None):
@@ -158,7 +158,7 @@ class Group:
         for r in ret:
             if r['groupName'] == group_name:
                 return r['id']
-        raise BastionException(f"No such user found : {group_name}")
+        raise AiobastionException(f"No such user found : {group_name}")
 
     async def add(self, name: str, description="", location='\\'):
         """
@@ -202,7 +202,7 @@ class Group:
         for r in ret:
             if r['groupName'] == group_name:
                 return r['members']
-        raise BastionException(f"No such user found : {group_name}")
+        raise AiobastionException(f"No such user found : {group_name}")
 
     async def add_member(self, groupId: str, username: str, type="Vault", domain=None):
         """

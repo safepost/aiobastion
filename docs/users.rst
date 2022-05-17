@@ -1,7 +1,7 @@
 User manipulation
 ======================
-Functions
---------------
+User related functions
+---------------------------
 get_logged_on_user_details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:function:: get_logged_on_user_details():
@@ -11,10 +11,11 @@ get_logged_on_user_details
 
     :return: dict with user information
 
-list
-~~~~~~~~
+list (users)
+~~~~~~~~~~~~~~~~
 .. py:function:: list(pattern: str = None, user_type: str = None, details=False)
     :async:
+    :noindex:
 
     Returns a list of users matching criteria
 
@@ -34,20 +35,22 @@ get_id
     :param username: the username of the user
     :return: the ID (int)
 
-exists
-~~~~~~~~
+exists (user)
+~~~~~~~~~~~~~~~~
 .. py:function:: exists(username: str)
     :async:
+    :noindex:
 
     Return whether or not a user exists
 
     :param safename: name of the user
     :return: Boolean
 
-details
-~~~~~~~~~~~~~~
+details (user)
+~~~~~~~~~~~~~~~~~~
 .. py:function:: details(username: str = "", user_id=None)
     :async:
+    :noindex:
 
     Get user details
 
@@ -110,13 +113,14 @@ del_all_ssh_keys
 
 Group manipulation
 ========================
-Functions
---------------
+Group related functions
+---------------------------
 
-list
-~~~~~~~~
+list (groups)
+~~~~~~~~~~~~~~~~
 .. py:function:: list(pattern: str = None, group_type: str = None)
     :async:
+    :noindex:
 
     Returns a list of groups matching criteria
 
@@ -124,20 +128,22 @@ list
     :param group_type: group type
     :return: A list of groups
 
-get_id
-~~~~~~~~~~~~
+get_id (group)
+~~~~~~~~~~~~~~~~~~
 .. py:function:: get_id(group_name: str)
     :async:
+    :noindex:
 
     Get the unique ID of a group
 
     :param group_name: the username of the user
     :return: the ID (int)
 
-add
-~~~~~~~~
+add (group)
+~~~~~~~~~~~~~~
 .. py:function:: add(name: str)
     :async:
+    :noindex:
 
     Add the group in the Vault
 
@@ -146,18 +152,19 @@ add
     :param location: Location of the group (defaults to \ )
     :return: Boolean
 
-delete
-~~~~~~~~~~~~
+delete (group)
+~~~~~~~~~~~~~~~~
 .. py:function:: delete(group_name: str)
     :async:
+    :noindex:
 
     Delete the group identified by group_name
 
     :param group_name: Name of the group
     :return: Boolean
 
-members
-~~~~~~~~~~~~
+members (of a group)
+~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:function:: members(group_name:str)
     :async:
 
@@ -166,8 +173,8 @@ members
     :param group_name: Name of the group
     :return: List of members
 
-add_member
-~~~~~~~~~~~~~~~~~~
+add_member (in group)
+~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:function:: add_member(groupId: str, username: str, type="Vault", domain=None)
     :async:
 

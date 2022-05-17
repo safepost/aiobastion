@@ -29,6 +29,8 @@ members
 ~~~~~~~~~~
 .. py:function:: members(group)
     :async:
+    :noindex:
+
 
     Returns the list of members (PrivilegedAccount) for a given PrivilegedAccountGroup
 
@@ -39,6 +41,7 @@ add
 ~~~~~~~~~~
 .. py:function:: add(group_name, group_platform, safe_name)
     :async:
+    :noindex:
 
     Creates the Privileged Account Group with parameters in the Vault
 
@@ -61,6 +64,7 @@ add_member
 ~~~~~~~~~~~~
 .. py:function:: add_member(account, group)
     :async:
+    :noindex:
 
     Adds the given Privileged Account to the group
 
@@ -69,7 +73,7 @@ add_member
     :return: Boolean
 
 delete_member
-~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 .. py:function:: delete_member(account, group)
     :async:
 

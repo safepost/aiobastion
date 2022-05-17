@@ -1,5 +1,5 @@
-Welcome to bastion's documentation!
-===================================
+Welcome to aiobastion's documentation!
+=========================================
 
 .. toctree::
    :maxdepth: 2
@@ -12,11 +12,5 @@ Welcome to bastion's documentation!
    platforms
    safe
    users
+   utilities
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

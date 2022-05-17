@@ -33,7 +33,7 @@ class CyberarkAPIException(Exception):
     pass
 
 
-class BastionException(Exception):
+class AiobastionException(Exception):
     """
     This exception is raised when a function does not have correct parameters
     and thus can't call the API.

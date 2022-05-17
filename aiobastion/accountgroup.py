@@ -1,8 +1,8 @@
 import re
 
 from .accounts import PrivilegedAccount
-from .abstract import Bastion
-from .exceptions import BastionException
+from .abstract import Vault
+from .exceptions import AiobastionException
 
 
 class PrivilegedAccountGroup:
@@ -27,7 +27,7 @@ class PrivilegedAccountGroup:
 
 
 class AccountGroup:
-    def __init__(self, epv: Bastion):
+    def __init__(self, epv: Vault):
         self.epv = epv
 
     # Account groups
@@ -49,7 +49,7 @@ class AccountGroup:
             for a in acc:
                 if a.name == account_group.name:
                     return a.id
-            raise BastionException(f"No ID found for group {account_group.name}")
+            raise AiobastionException(f"No ID found for group {account_group.name}")
         else:
             return account_group.id
 
@@ -58,11 +58,11 @@ class AccountGroup:
             if re.match(r'\d+_\d+', account_group) is not None:
                 return account_group
             else:
-                raise BastionException("The account_group_id provided is not correct")
+                raise AiobastionException("The account_group_id provided is not correct")
         if isinstance(account_group, PrivilegedAccountGroup):
             return await self.get_privileged_account_group_id(account_group)
         else:
-            raise BastionException("You must provide a valid PrivilegedAccount to function get_account_id")
+            raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
 
     async def members(self, group):
         group_id = await self.get_group_id(group)
@@ -78,7 +78,7 @@ class AccountGroup:
         :return: group id
         """
         if not await self.epv.safe.exists(safe_name):
-            raise BastionException(f"Safe {safe_name} does not exists")
+            raise AiobastionException(f"Safe {safe_name} does not exists")
         data = {
             "GroupName": group_name,
             "GroupPlatformID": group_platform,
@@ -93,7 +93,7 @@ class AccountGroup:
         @return: group id
         """
         if not await self.epv.safe.exists(account_group.safe):
-            raise BastionException(f"Safe {account_group.safe} does not exists")
+            raise AiobastionException(f"Safe {account_group.safe} does not exists")
         return await self.epv.handle_request("post", "api/AccountGroups", data=account_group.to_json(),
                                              filter_func=lambda x: x['GroupID'])
 
