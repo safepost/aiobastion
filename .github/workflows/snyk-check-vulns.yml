@@ -7,6 +7,10 @@ jobs:
       run:
         working-directory: ./aiobastion
     steps:
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r aiobastion/requirements.txt
       - uses: actions/checkout@master
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/python-3.8@master
