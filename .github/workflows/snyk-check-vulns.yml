@@ -11,11 +11,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          ls
           pip install -r requirements.txt
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/python-3.8@master
+      - uses: snyk/actions/setup@master
+      - name: Snyk monitor
+        run: snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --file=aiobastion/requirements.txt --debug
+
+#      - name: Run Snyk to check for vulnerabilities
+#        uses: snyk/actions/python-3.8@master
+#        env:
+#          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#        with:
+#          args: --file=aiobastion/requirements.txt --debug
