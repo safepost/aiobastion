@@ -2,7 +2,7 @@
 
 pushd %~dp0
 
-REM Command file for Bastion publication
+REM Command file for aiobastion publication
 
 if "%PYTHON%" == "" (
 	set PYTHON=py

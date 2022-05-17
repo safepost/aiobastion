@@ -1,5 +1,5 @@
-from .abstract import Bastion
-from .exceptions import BastionException
+from .abstract import Vault
+from .exceptions import AiobastionException
 
 
 # class AamObject:
@@ -13,7 +13,7 @@ from .exceptions import BastionException
 
 
 class Applications:
-    def __init__(self, epv: Bastion):
+    def __init__(self, epv: Vault):
         self.epv = epv
 
     async def details(self, app_name: str):
@@ -28,9 +28,9 @@ class Applications:
 
         if len(apps) > 1:
             app_names = [x["AppID"] for x in apps]
-            raise BastionException(f"Provided name {app_name} returns more than one application : {app_names}")
+            raise AiobastionException(f"Provided name {app_name} returns more than one application : {app_names}")
         elif len(apps) == 0:
-            raise BastionException(f"No results found for {app_name}")
+            raise AiobastionException(f"No results found for {app_name}")
 
     async def search(self, search: str):
         """

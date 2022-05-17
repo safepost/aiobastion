@@ -4,10 +4,10 @@ import re
 from typing import List, Union, AsyncIterator
 import aiohttp
 
-from .abstract import Bastion
+from .abstract import Vault
 from .config import validate_ip
 from .exceptions import (
-    CyberarkAPIException, CyberarkException, BastionException
+    CyberarkAPIException, CyberarkException, AiobastionException
 )
 
 MAX_CONCURRENT_CALLS = 10
@@ -33,14 +33,14 @@ class PrivilegedAccount:
         if remoteMachinesAccess is not None:
             if not all([k in ["remoteMachines", "accessRestrictedToRemoteMachines"]
                         for k in remoteMachinesAccess.keys()]):
-                raise BastionException("remoteMachinesAccess is not a valid dictionary")
+                raise AiobastionException("remoteMachinesAccess is not a valid dictionary")
         if secretManagement is None:
             secretManagement = {"automaticManagementEnabled": True, "manualManagementReason": ""}
         self.remoteMachinesAccess = remoteMachinesAccess
         self.secretManagement = secretManagement
         self.secretType = secretType
         if secretType not in [None, "password", "key"]:
-            raise BastionException("secretType is not valid")
+            raise AiobastionException("secretType is not valid")
         if platformAccountProperties is None:
             platformAccountProperties = {}
         self.platformAccountProperties = platformAccountProperties
@@ -104,7 +104,7 @@ def _filter_account(account: dict, filters: dict):
 
 
 class Account:
-    def __init__(self, epv: Bastion):
+    def __init__(self, epv: Vault):
         self.epv = epv
 
     async def handle_acc_list(self, api_call, account, *args, **kwargs):
@@ -113,7 +113,7 @@ class Account:
             semaphore = get_sem()
             for a in account:
                 if not isinstance(a, PrivilegedAccount) and not re.match('[0-9]*_[0-9*]', a):
-                    raise BastionException("You must call the function with PrivilegedAccount or list of Privileged "
+                    raise AiobastionException("You must call the function with PrivilegedAccount or list of Privileged "
                                            "Accounts")
 
                 tasks.append(api_call(a, *args, **kwargs))
@@ -126,7 +126,7 @@ class Account:
         elif isinstance(account, PrivilegedAccount) or re.match('[0-9]*_[0-9*]', account):
             return await api_call(account, *args, **kwargs)
         else:
-            raise BastionException("You must call the function with PrivilegedAccount or list of Privileged Accounts"
+            raise AiobastionException("You must call the function with PrivilegedAccount or list of Privileged Accounts"
                                    "(or valid account_id for some functions)")
 
     async def handle_acc_id_list(self, method, url, accounts, data=None):
@@ -179,11 +179,11 @@ class Account:
                 if re.match(r'\d+_\d+', account) is not None:
                     return account
                 else:
-                    raise BastionException("The account_id provided is not correct")
+                    raise AiobastionException("The account_id provided is not correct")
             if isinstance(account, PrivilegedAccount):
                 return await self.get_privileged_account_id(account)
             else:
-                raise BastionException("You must provide a valid PrivilegedAccount to function get_account_id")
+                raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
 
     async def get_account_id(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         if isinstance(account, list):
@@ -226,7 +226,7 @@ class Account:
 
     async def unlink_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], extra_password_index: int):
         if extra_password_index not in [1, 2, 3]:
-            raise BastionException("ExtraPasswordIndex must be between 1 and 3")
+            raise AiobastionException("ExtraPasswordIndex must be between 1 and 3")
 
         return await self.handle_acc_id_list(
             "delete",
@@ -244,7 +244,7 @@ class Account:
         :return: True if success, exception otherwise
         """
         if extra_password_index not in [1, 2, 3]:
-            raise BastionException("ExtraPasswordIndex must be between 1 and 3")
+            raise AiobastionException("ExtraPasswordIndex must be between 1 and 3")
         account_id = await self.get_account_id(account)
         if self.epv.versiontuple(await self.epv.get_version()) > self.epv.versiontuple("12.1.1"):
             data = {
@@ -545,7 +545,7 @@ class Account:
                 if group_name.lower() == group.name.lower():
                     group_id = group.id
         if group_id == 0:
-            raise BastionException("Group name was incorrect of not found")
+            raise AiobastionException("Group name was incorrect of not found")
 
         async def api_call(acc):
             url = f"API/AccountGroups/{group_id}/Members"

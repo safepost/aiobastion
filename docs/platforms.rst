@@ -1,7 +1,7 @@
 Platforms manipulation
 ============================
-Functions
-------------
+Platform related functions
+------------------------------
 
 get_target_platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -236,7 +236,6 @@ del_target_plaform
 
     :param pfid: Target Platform ID (eg 38)
     :return: Boolean
-    """
 
 export_platform
 ~~~~~~~~~~~~~~~~~~~~
@@ -248,7 +247,6 @@ export_platform
     :param pfid: The platform ID (eg "Oracle")
     :param outdir: An existing directory on filesystem
     :return: Populate the dir with the files, and returns True
-    """
 
 export_all_platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -259,7 +257,6 @@ export_all_platforms
 
     :param outdir: An existing directory on filesystem
     :return: Populate the dir with the files, and returns True
-    """
 
 get_target_platform_unique_id
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

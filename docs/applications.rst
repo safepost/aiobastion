@@ -3,8 +3,8 @@ Application
 
 This section documents the function linked to application.
 
-Functions
------------
+Application related functions
+--------------------------------
 details
 ~~~~~~~~~~
 .. py:function:: details(app_name)
@@ -18,10 +18,10 @@ details
 Example return :
 .. code-block::
 
-{'AccessPermittedFrom': 0, 'AccessPermittedTo': 24, 'AllowExtendedAuthenticationRestrictions': False, 'AppID': 'TestApp', 'BusinessOwnerEmail': '', 'BusinessOwnerFName': '', 'BusinessOwnerLName': '', 'BusinessOwnerPhone': '', 'Description': 'test App for testing bastion package', 'Disabled': False, 'ExpirationDate': None, 'Location': '\\'}
+{'AccessPermittedFrom': 0, 'AccessPermittedTo': 24, 'AllowExtendedAuthenticationRestrictions': False, 'AppID': 'TestApp', 'BusinessOwnerEmail': '', 'BusinessOwnerFName': '', 'BusinessOwnerLName': '', 'BusinessOwnerPhone': '', 'Description': 'test App for testing aiobastion package', 'Disabled': False, 'ExpirationDate': None, 'Location': '\\'}
 
-search
-~~~~~~~~~~
+search (applications)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:function:: search(search)
     :async:
 

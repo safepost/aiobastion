@@ -73,7 +73,7 @@ Once defined, use either context manager to login if you don't need to specify l
 
 .. code-block:: python
 
-    production_vault = bastion.EPV("../path/to/config")
+    production_vault = aiobastion.EPV("../path/to/config")
         async with production_vault as epv:
             # do something, eg:
             print(await epv.safe.list())
@@ -93,7 +93,7 @@ Or if you need to explicitly login you can call the login function
 
 .. code-block:: python
 
-    production_vault = bastion.EPV("../path/to/config")
+    production_vault = aiobastion.EPV("../path/to/config")
     await production_vault.login("Administrator", "Cyberark1", "Cyberark")
 
     production_vault.login(
@@ -117,11 +117,11 @@ A real life example
 
 .. code-block:: python
 
-    import bastion
+    import aiobastion
     import asyncio
 
     async def main():
-        production_vault = bastion.EPV("../confs/config_prod.yml")
+        production_vault = aiobastion.EPV("../confs/config_prod.yml")
         await production_vault.login("Administrator", "Cyberark1", "Cyberark")
         async with production_vault as epv:
             print(await epv.safe.list())
@@ -138,6 +138,7 @@ For security reasons, login and password are not stored in serialized object so 
 However, since your token is valid you can use it.
 
 .. code-block:: python
+
     epv = EPV("configfile")
     json_epv = epv.to_json()
 

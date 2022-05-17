@@ -1,11 +1,12 @@
 Safe manipulation
 ========================
-Functions
-------------
-add_member
-~~~~~~~~~~~~~~~~~~
+Safe related functions
+--------------------------
+add_member (in safe)
+~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:function:: add_member(safe: str, username: str, profile: (str, dict))
     :async:
+    :noindex:
 
     This functions adds the "username" user (or group) to the given safe with a relevant profile
 
@@ -35,8 +36,8 @@ exists
     :param safename: name of the safe
     :return: Boolean
 
-add
-~~~~~~~~
+add (safe)
+~~~~~~~~~~~~~~~~
 .. py:function:: add(safe_name: str, description="", location="", olac=False, days=-1, versions=None, auto_purge=False, cpm=None, add_admins=True)
     :async:
 
@@ -64,10 +65,11 @@ add_defaults_admin
     :return: boolean
 
 
-delete
-~~~~~~~~~~
+delete (safe)
+~~~~~~~~~~~~~~~~
 .. py:function:: delete(safe_name)
     :async:
+    :noindex:
 
     Delete the safe
 

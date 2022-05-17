@@ -6,24 +6,24 @@ from typing import Tuple
 import aiohttp
 from aiohttp import ContentTypeError
 
-from .abstract import Bastion
+from .abstract import Vault
 from .accountgroup import AccountGroup
 from .accounts import Account
 from .applications import Applications
 from .config import Config
-from .exceptions import CyberarkException, GetTokenException, BastionException, CyberarkAPIException
+from .exceptions import CyberarkException, GetTokenException, AiobastionException, CyberarkAPIException
 from .platforms import Platform
 from .safe import Safe
 from .users import User, Group
 from .utilities import Utilities
 
 
-class EPV(Bastion):
+class EPV(Vault):
     def __init__(self, configfile: str = None, serialized: dict = None, token: str = None):
         if configfile is None and serialized is None:
-            raise BastionException("You must provide either configfile or serialized to init EPV")
+            raise AiobastionException("You must provide either configfile or serialized to init EPV")
         if configfile is not None and serialized is not None:
-            raise BastionException("You must provide either configfile or serialized to init EPV, not both")
+            raise AiobastionException("You must provide either configfile or serialized to init EPV, not both")
         if configfile is not None:
             self.config = Config(configfile)
             self.api_host = self.config.PVWA
@@ -127,10 +127,10 @@ class EPV(Bastion):
 
     async def get_aim_secret(self, aim_host, appid, username, cert_file: str, cert_key: str, ca_file):
         if appid is None:
-            raise BastionException("Missing mandatory parameter : AppID")
+            raise AiobastionException("Missing mandatory parameter : AppID")
 
         if cert_file is None and cert_key is None:
-            raise BastionException("Provide cert_file and cert_key arguments in order to connect")
+            raise AiobastionException("Provide cert_file and cert_key arguments in order to connect")
 
         try:
 
@@ -174,7 +174,7 @@ class EPV(Bastion):
 
         if username is None:
             if self.config.username is None:
-                raise BastionException("Username must be provided on login call or in configuration file")
+                raise AiobastionException("Username must be provided on login call or in configuration file")
             username = self.config.username
         if password is None:
             if self.config.password is None:
@@ -185,10 +185,10 @@ class EPV(Bastion):
                                                              self.config.AIM_Cert, self.config.AIM_Key,
                                                              self.config.AIM_CA)
                     else:
-                        raise BastionException(
+                        raise AiobastionException(
                             "Missing AIM information to perform AIM authentication, see documentation")
                 else:
-                    raise BastionException("Password must be provided on login call or in configuration file")
+                    raise AiobastionException("Password must be provided on login call or in configuration file")
             else:
                 password = self.config.password
 

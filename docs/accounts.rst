@@ -1,12 +1,12 @@
 Account manipulation
-=====================
+==========================
 
 In the following table, Account design a PrivilegedAccount object described below.
 
 .. csv-table:: Section overview
-    :header: "Section,", "Description"
+    :header: "Section", "Description"
 
-    :ref:`Finding Accounts` , Search and find accounts in the vault
+    :ref:`Updating accounts` , Search and find accounts in the vault
     :ref:`Creating accounts` , Create accounts
     :ref:`Account manipulation` , get, update, delete and move accounts
     :ref:`Password Actions` , Change, reconcile, verify, set or get passwords
@@ -47,7 +47,7 @@ Calling functions
 | If an exception is raised for an item, the exception will be returned as a member of the list (and not raised directly).
 
 Finding Accounts
-----------------
+------------------
 
 search_account_by
 ~~~~~~~~~~~~~~~~~~~~
@@ -141,8 +141,9 @@ add_account_to_safe
     :raise bastion.CyberarkAPIException: If there is something wrong
 
 
-Account manipulation
+Updating accounts
 -----------------------
+
 get_account
 ~~~~~~~~~~~~~~~~
 

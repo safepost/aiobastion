@@ -42,7 +42,7 @@ class Account(ABC):
         pass
 
 
-class Bastion(ABC):
+class Vault(ABC):
     config: Config
     request_params: dict
     cpm: str

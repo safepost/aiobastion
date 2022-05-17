@@ -25,7 +25,7 @@ Example 1: Find all red accounts in a particular safe and verify them
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code-block:: python
 
-    production = bastion.EPV("path/to/config.yml")
+    production = aiobastion.EPV("path/to/config.yml")
     async with production as vault:
         # Returns a list of all accounts in the safe
         safe_account = await vault.account.search_account_by(safe="dba-admin-safe")
@@ -41,7 +41,7 @@ Example 2 : Link all account named "root" to a Logon account "admin"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code-block:: python
 
-    production = bastion.EPV("path/to/config.yml")
+    production = aiobastion.EPV("path/to/config.yml")
     async with production as vault:
         # Returns a list of all root accounts in the safe
         root_accounts = await vault.account.search_account_by(safe="linux-safe", username="root")
@@ -63,8 +63,9 @@ Example 2 : Link all account named "root" to a Logon account "admin"
 
 This can be optimized by creating a list of tasks "link_logon_account" and gather it in the end.
 
+
 Tips
-______
+----------
 
 When working with accounts you will sometimes loop on hostnames and want to find associated accounts.
 In this case, the best approach is to first dump all the safe in a list and then find your accounts in the returned list.
@@ -74,9 +75,10 @@ If you make one search by account, you will lower the performances by far.
 In addition, when you have to perform several tasks, first create a list of tasks, then run it.
 
 Do this :
+
 .. code-block:: python
 
-    production = bastion.EPV("path/to/config.yml")
+    production = aiobastion.EPV("path/to/config.yml")
     async with production as vault:
         # Dump all safe in a list of account
         admin_accounts = await vault.account.search_account_by(safe="Admins-Accounts-Safe")
@@ -98,7 +100,7 @@ Don't do this :
 
 .. code-block:: python
 
-    production = bastion.EPV("path/to/config.yml")
+    production = aiobastion.EPV("path/to/config.yml")
     async with production as vault:
         # Dump all safe in a list of account
         admin_accounts = await vault.account.search_account_by(safe="Admins-Accounts-Safe")

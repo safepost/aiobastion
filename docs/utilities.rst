@@ -19,7 +19,7 @@ cpm_change_failed_accounts
 
 cpm_change
 ~~~~~~~~~~~~~~~~~~~
-.. py:function:: cpm_change_failed_accounts(address, username_filter)
+.. py:function:: cpm_change(address, username_filter)
     :async:
 
     CPM Change for all accounts associated with an address, with a possible filter on username.
@@ -49,10 +49,11 @@ reconcile_failed_accounts
     :param address: exact value of field Address in EPV
     :param username_filter: Put a list of username in filter to reconcile only those accounts (default all accounts)
 
-reconcile
-~~~~~~~~~~~~~~~~~~~
+reconcile (with filter)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:function:: reconcile(address, username_filter)
     :async:
+    :noindex:
 
    Reconcile all accounts associated with an address, with a possible filter on username.
 
@@ -85,7 +86,7 @@ migrate_platform
 
 
 Account manipulation
-------------------------
+make------------------------
 
 delete_accounts
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,7 +134,7 @@ gather_with_concurrency
     Gather a list of coroutines with concurrency
 
     :param n: Number of max corountines launched at the same time (semaphore)
-    :param tasks: task1, task2, ..., tasksn (if you have a list then prefix it with *)
+    :param tasks: task1, task2, ..., tasksn (if you have a list then prefix it with \*)
     :param return_exceptions: if set to True, exceptions are returned as regular results, instead of being raised
     :return: List of results in the same order as the tasks
 

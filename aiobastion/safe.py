@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from .abstract import Bastion
+from .abstract import Vault
 from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile
 from .exceptions import (
-    CyberarkAPIException, CyberarkException, BastionException
+    CyberarkAPIException, CyberarkException, AiobastionException
 )
 
 
 class Safe:
-    def __init__(self, epv: Bastion):
+    def __init__(self, epv: Vault):
         self.epv = epv
 
     async def add_member(self, safe: str, username: str, profile: (str, dict)):
@@ -154,7 +154,7 @@ class Safe:
                             'accessWithoutConfirmation', 'createFolders', 'deleteFolders', 'moveAccountsAndFolders',
                             'requestsAuthorizationLevel1', 'requestsAuthorizationLevel2']
             if filter_perm not in valid_filter:
-                raise BastionException(f"filter_perm {filter_perm} is not one of : {valid_filter} ")
+                raise AiobastionException(f"filter_perm {filter_perm} is not one of : {valid_filter} ")
 
         #url = f"WebServices/PIMServices.svc/Safes/{safe_name}/Members"
         url = f"api/Safes/{safe_name}/Members"
