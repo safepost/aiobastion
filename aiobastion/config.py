@@ -114,17 +114,24 @@ PROV_PERMISSIONS.update({
         "AddAccounts": True,
         "UpdateAccountContent": True,
         "UpdateAccountProperties": True,
-        "InitiateCPMAccountManagementOperations": False,
+        "InitiateCPMAccountManagementOperations": True,
         "RenameAccounts": True,
         "DeleteAccounts": True,
-        "ManageSafe": True,
-        "ManageSafeMembers": True,
-        "ViewSafeMembers": True,
+        "ManageSafe": False,
+        "ManageSafeMembers": False,
+        "ViewSafeMembers": False,
         "AccessWithoutConfirmation": True,
         "CreateFolders": True,
         "DeleteFolders": True,
         "MoveAccountsAndFolders": True
     })
+
+MANAGER_PERMISSIONS = dict(PROV_PERMISSIONS)
+MANAGER_PERMISSIONS.update({
+    "ManageSafe": True,
+    "ManageSafeMembers": True,
+    "ViewSafeMembers": True,
+})
 
 # all to true
 ADMIN_PERMISSIONS = {perm: True for perm in DEFAULT_PERMISSIONS}
@@ -150,7 +157,6 @@ AUDIT_PERMISSIONS["ViewSafeMembers"] = True
 POWER_PERMISSIONS = dict(DEFAULT_PERMISSIONS)
 POWER_PERMISSIONS.update({k: v for k, v in SHOW_PERMISSIONS.items() if v})
 POWER_PERMISSIONS.update({k: v for k, v in AUDIT_PERMISSIONS.items() if v})
-
 
 CPM_PERMISSIONS = {
         "UseAccounts": True,
@@ -246,6 +252,8 @@ def permissions(profile: str) -> dict:
         return POWER_PERMISSIONS
     if "cpm" in profile.lower():
         return CPM_PERMISSIONS
+    if "manager" in profile.lower():
+        return MANAGER_PERMISSIONS
     else:
         # nothing !
         return DEFAULT_PERMISSIONS

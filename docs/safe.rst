@@ -141,6 +141,7 @@ Profiles
     use, Minimal profile to perform a connect
     show, Connect + show password
     audit, Audit rights on safe
-    prov, Add or delete objects on safe and manage members
+    prov, Add or delete objects on safe
+    manager, Add or delete objects on safe and view + manage members
     power, connect + show + audit
     cpm, rights for a CPM users

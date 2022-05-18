@@ -17,11 +17,11 @@ class Safe:
 
         :param safe: The safe name
         :param username: the username or a group name
-        :param profile: must be one of "admin", "use", "show", "audit", "prov", "power" or "cpm"
+        :param profile: must be one of "admin", "use", "show", "audit", "prov", "manager", "power" or "cpm"
         :return: boolean
         """
         if isinstance(profile, str):
-            assert profile.lower() in ["admin", "use", "show", "audit", "prov", "power", "cpm"]
+            assert profile.lower() in ["admin", "use", "show", "audit", "prov", "power", "cpm", "manager"]
             perm = permissions(profile)
         else:
             # ensure there is at least one right for the safe username
