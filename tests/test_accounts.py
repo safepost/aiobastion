@@ -4,7 +4,7 @@ import unittest
 from unittest import TestCase, IsolatedAsyncioTestCase
 import aiobastion
 import tests
-from aiobastion.exceptions import CyberarkAPIException, CyberarkException, BastionException
+from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
 from aiobastion.accounts import PrivilegedAccount
 
 privileged = PrivilegedAccount("test_account", "platform", "testSafe", address="176.171.20.224", id="78_222")
@@ -78,7 +78,7 @@ class TestAccount(IsolatedAsyncioTestCase):
             # We're done, now delete accounts
             await self.vault.account.delete(self.acc_id)
         else:
-            print(create_me_filter)
+            print(str(create_me_filter))
             await self.vault.account.delete(create_me_filter)
             self.fail("Conditions to perform the test were not met, but now hopefully we're good")
 

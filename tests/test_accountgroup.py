@@ -2,7 +2,7 @@ import random
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import tests
-from aiobastion.exceptions import CyberarkAPIException, CyberarkException, BastionException
+from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
 from aiobastion.accountgroup import PrivilegedAccountGroup
 
 
@@ -45,7 +45,7 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         group_id = await self.vault.accountgroup.get_group_id(group)
         self.assertRegex(group_id, r'\d+_\d+')
 
-        with self.assertRaises(BastionException):
+        with self.assertRaises(AiobastionException):
             await self.vault.accountgroup.get_group_id("toto")
 
         group_id2 = await self.vault.accountgroup.get_group_id(group_id)
@@ -56,11 +56,11 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         self.assertEqual(group_id2, group_id)
 
         group.name = "toto"
-        with self.assertRaises(BastionException):
+        with self.assertRaises(AiobastionException):
             await self.vault.accountgroup.get_group_id(group)
 
         group = 22
-        with self.assertRaises(BastionException):
+        with self.assertRaises(AiobastionException):
             await self.vault.accountgroup.get_group_id(group)
 
     async def test_members(self):
@@ -72,7 +72,7 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
 
     async def test_add(self):
         # Unfortunately we can't delete Account Group so the test is only relevant the first time
-        with self.assertRaises(BastionException):
+        with self.assertRaises(AiobastionException):
             await self.vault.accountgroup.add("toto", "titi", "tata")
 
         try:
@@ -91,7 +91,7 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         account_group = PrivilegedAccountGroup("AccountGroupTest", "sample_group", self.test_safe)
         bad_account_group = PrivilegedAccountGroup("bad", "non-existent-group", "non-existent-safe")
 
-        with self.assertRaises(BastionException):
+        with self.assertRaises(AiobastionException):
             await self.vault.accountgroup.add_privileged_account_group(bad_account_group)
 
         try:

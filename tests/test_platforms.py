@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
-from aiobastion.exceptions import BastionException
+from aiobastion.exceptions import AiobastionException
 import tests
 
 class TestApplication(IsolatedAsyncioTestCase):

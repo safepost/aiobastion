@@ -11,13 +11,13 @@ from .exceptions import (
 )
 
 MAX_CONCURRENT_CALLS = 10
-SEMAPHORE = None
-
-def get_sem():
-    global SEMAPHORE
-    if SEMAPHORE is None:
-        SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    return SEMAPHORE
+# SEMAPHORE = None
+#
+# def get_sem():
+#     global SEMAPHORE
+#     if SEMAPHORE is None:
+#         SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
+#     return SEMAPHORE
 
 
 class PrivilegedAccount:
@@ -110,7 +110,7 @@ class Account:
     async def handle_acc_list(self, api_call, account, *args, **kwargs):
         if isinstance(account, list):
             tasks = []
-            semaphore = get_sem()
+            semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
             for a in account:
                 if not isinstance(a, PrivilegedAccount) and not re.match('[0-9]*_[0-9*]', a):
                     raise AiobastionException("You must call the function with PrivilegedAccount or list of Privileged "
@@ -173,8 +173,10 @@ class Account:
         else:
             return account.id
 
-    async def get_single_account_id(self, account):
-        async with get_sem():
+    async def get_single_account_id(self, account, sema=None):
+        if sema is None:
+            sema = asyncio.Semaphore(10)
+        async with sema:
             if type(account) is str:
                 if re.match(r'\d+_\d+', account) is not None:
                     return account
@@ -187,7 +189,8 @@ class Account:
 
     async def get_account_id(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         if isinstance(account, list):
-            tasks = [self.get_single_account_id(a) for a in account]
+            sema = asyncio.Semaphore(10)
+            tasks = [self.get_single_account_id(a, sema) for a in account]
             return await asyncio.gather(*tasks, return_exceptions=False)
         else:
             return await self.get_single_account_id(account)

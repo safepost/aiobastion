@@ -89,9 +89,9 @@ class EPV(Vault):
                         raise CyberarkException("Password expired !")
                     else:
                         try:
-                            raise CyberarkException(req.text())
-                        except Exception:
-                            raise CyberarkException("Unknown error, HTTP " + str(req.status))
+                            raise CyberarkException(await req.text())
+                        except Exception as err:
+                            raise CyberarkException(f"Unknown error, HTTP {str(req.status)}, ERR : {str(err)}")
 
                 tok = await req.text()
                 return tok.replace('"', '')
