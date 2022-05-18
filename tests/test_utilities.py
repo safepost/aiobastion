@@ -3,7 +3,7 @@ import secrets
 import unittest
 from unittest import TestCase, IsolatedAsyncioTestCase
 import aiobastion
-from aiobastion.exceptions import CyberarkAPIException, CyberarkException, BastionException
+from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
 from aiobastion.accounts import PrivilegedAccount
 import tests
 

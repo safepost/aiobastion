@@ -3,7 +3,7 @@ from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import random
 import tests
-from aiobastion import CyberarkAPIException, CyberarkException, BastionException
+from aiobastion import CyberarkAPIException, CyberarkException, AiobastionException
 
 
 class TestUsers(IsolatedAsyncioTestCase):
@@ -39,7 +39,7 @@ class TestUsers(IsolatedAsyncioTestCase):
         req = await self.vault.user.get_id(self.api_user)
         self.assertIsInstance(req, int)
 
-        with self.assertRaises(BastionException):
+        with self.assertRaises(AiobastionException):
             await self.vault.user.get_id("vdsv,pnovdope,vb")
 
     async def test_exists(self):
@@ -99,7 +99,7 @@ class TestUsers(IsolatedAsyncioTestCase):
         req = await self.vault.group.get_id("Vault Admins")
         self.assertIsInstance(req, int)
 
-        with self.assertRaises(BastionException):
+        with self.assertRaises(AiobastionException):
             req = await self.vault.group.get_id("Les Poneys")
 
     async def test_add_group(self):

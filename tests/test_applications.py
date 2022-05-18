@@ -1,6 +1,6 @@
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
-from aiobastion.exceptions import BastionException
+from aiobastion.exceptions import AiobastionException
 import tests
 
 class TestApplication(IsolatedAsyncioTestCase):
@@ -30,7 +30,7 @@ class TestApplication(IsolatedAsyncioTestCase):
         try:
             app = await self.vault.application.details("TestAp")
         except Exception as err:
-            self.assertIsInstance(err, BastionException)
+            self.assertIsInstance(err, AiobastionException)
 
     async def test_search(self):
         apps = await self.vault.application.search("App")

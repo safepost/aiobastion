@@ -2,7 +2,7 @@ from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import random
 import tests
-from aiobastion import CyberarkAPIException, CyberarkException, BastionException
+from aiobastion import CyberarkAPIException, CyberarkException, AiobastionException
 
 
 class TestSafe(IsolatedAsyncioTestCase):
@@ -92,7 +92,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         members = await self.vault.safe.list_members(self.test_safe)
         self.assertIn(self.api_user, members)
 
-        with self.assertRaises(BastionException):
+        with self.assertRaises(AiobastionException):
             members = await self.vault.safe.list_members(self.test_safe, filter_perm="tutu")
 
         members = await self.vault.safe.list_members(self.test_safe, filter_perm="listAccounts")
