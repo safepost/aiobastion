@@ -109,8 +109,8 @@ class EPV(Vault):
             async with session.post(url, headers=head, **self.request_params) as req:
                 if req.status != 200:
                     raise CyberarkException("Error disconnecting to PVWA with code : %s" % str(req.status))
+        await self.close_session()
         self.__token = None
-        self.session = None
         return True
 
     async def check_token(self) -> bool or None:
