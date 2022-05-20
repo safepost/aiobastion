@@ -9,7 +9,7 @@ class Config:
             document = yaml.safe_load(config)
 
         try:
-            if document["Connection"] is None:
+            if "Connection" not in document or document["Connection"] is None:
                 self.username = None
                 self.password = None
                 self.authtype = "Cyberark"
