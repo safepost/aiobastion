@@ -178,15 +178,18 @@ class Utilities:
         Delete all accounts associated to an address
         :param safe_pattern_filter: Safe pattern you want to IGNORE
         :param address: address file category exact match
+        :return: A list of deleted accounts
         """
         del_acc = await self.epv.account.search_account_by(address=address)
+        results = []
         for acc in del_acc:
             if safe_pattern_filter != "" and safe_pattern_filter in acc.safeName:
                 logging.info(f"EPV;User filter matched;{acc.userName};{acc.address}")
                 continue
-            await self.epv.account.deletev1(acc)
-            logging.info(f"EPV;DELETE;{acc.userName};{acc.address}")
-
+            # logging.info(f"EPV;DELETE;{acc.userName};{acc.address}")
+            if await self.epv.account.delete(acc):
+                results.append(acc.name)
+        return results
 
     async def stack_tasks(self, list_of_address: list, function, **args):
         task_list = []
