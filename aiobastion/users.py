@@ -220,5 +220,5 @@ class Group:
         }
         if domain is not None:
             data['domainName'] = domain
-        return await self.epv.handle_request("post", f'api/UserGroups/{groupId})/Members', data=data)
+        return await self.epv.handle_request("post", f'api/UserGroups/{groupId}/Members', data=data)
 
