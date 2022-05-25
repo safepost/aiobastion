@@ -9,10 +9,10 @@ See examples of usage in the [documentation](https://aiobastion.readthedocs.io/e
 ## Getting started
 [Define a config file](https://aiobastion.readthedocs.io/en/latest/login.html#define-a-configuration-file), and start using functions to avoid spending hours in annoying tasks in the PVWA :
 
-[Accounts manipulation](https://aiobastion.readthedocs.io/en/latest/accounts.html)
-[Safe manipulation](https://aiobastion.readthedocs.io/en/latest/safe.html)
-[User manipulation](https://aiobastion.readthedocs.io/en/latest/users.html)
-See below for more
+* [Accounts manipulation](https://aiobastion.readthedocs.io/en/latest/accounts.html)
+* [Safe manipulation](https://aiobastion.readthedocs.io/en/latest/safe.html)
+* [User manipulation](https://aiobastion.readthedocs.io/en/latest/users.html)
+* Check the documentation for more
 
 
 ## Documentation
