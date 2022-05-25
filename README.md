@@ -4,12 +4,16 @@
 It helps you to manage your Cyberark implementation faster and in an intuitive way.
 
 ## Examples
-See examples of usage in the documentation
+See examples of usage in the [documentation](https://aiobastion.readthedocs.io/en/latest/index.html)
 
 ## Getting started
-Define a config file, and start using functions to avoid spending hours in annoying tasks in the PVWA.
+[Define a config file](https://aiobastion.readthedocs.io/en/latest/login.html#define-a-configuration-file), and start using functions to avoid spending hours in annoying tasks in the PVWA :
 
-See the documentation
+[Accounts manipulation](https://aiobastion.readthedocs.io/en/latest/accounts.html)
+[Safe manipulation](https://aiobastion.readthedocs.io/en/latest/safe.html)
+[User manipulation](https://aiobastion.readthedocs.io/en/latest/users.html)
+See below for more
+
 
 ## Documentation
-The documentation is not yet hosted.
+The documention is hosted on readthedocs : https://aiobastion.readthedocs.io/en/latest/index.html
