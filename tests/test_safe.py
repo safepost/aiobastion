@@ -13,6 +13,10 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.test_safe = "sample-it-dept"
         self.test_usr = "bastion_std_usr"
 
+    async def asyncTearDown(self):
+        await self.vault.close_session()
+
+
     async def get_random_account(self, n=1):
         accounts = await self.vault.account.search_account_by(
             safe=self.test_safe

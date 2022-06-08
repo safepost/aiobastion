@@ -43,6 +43,11 @@ class Config:
                     self.timeout = int(document["PVWA"]["timeout"])
                 else:
                     self.timeout = 30
+                if "MaxTasks" in document["PVWA"].keys():
+                    self.max_concurrent_tasks = int(document["PVWA"]["MaxTasks"])
+                else:
+                    self.max_concurrent_tasks = 10
+
             if "AIM" in document:
                 self.AIM = True
                 if "Host" in document["AIM"].keys():

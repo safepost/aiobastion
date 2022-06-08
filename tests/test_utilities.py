@@ -1,3 +1,4 @@
+import asyncio
 import random
 import secrets
 import unittest
@@ -6,6 +7,7 @@ import aiobastion
 from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
 from aiobastion.accounts import PrivilegedAccount
 import tests
+import time
 
 class TestUtilities(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -32,3 +34,19 @@ class TestUtilities(IsolatedAsyncioTestCase):
         account = await self.get_random_account()
 
         await self.vault.utils.clone_address(account.address, {"address": "new_add", "IPCible": "127"})
+
+    async def test_semaphore(self):
+
+        for i in (1, 10, 20, 30, 40, 50):
+            tasklist = []
+            start = time.time()
+            # await self.vault.account.search_account_by(safe=self.test_safe)
+
+            for _ in range(0, i):
+                tasklist.append(self.vault.account.search_account_by(safe=self.test_safe))
+
+            await asyncio.gather(*tasklist)
+            end = time.time()
+
+            print(f"Took {end - start} for {i} requests")
+

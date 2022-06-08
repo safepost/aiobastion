@@ -11,6 +11,9 @@ class TestApplication(IsolatedAsyncioTestCase):
         self.app_name = "TestApp"
         self.app_name2 = "TestApp2"
 
+    async def asyncTearDown(self):
+        await self.vault.close_session()
+
     async def test_del_all_authentication(self):
         # Cleanup all authentications
         auths = await self.vault.application.get_authentication(self.app_name)

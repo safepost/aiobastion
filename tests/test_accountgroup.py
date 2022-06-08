@@ -13,6 +13,10 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
 
         self.test_safe = "sample-it-dept"
 
+    async def asyncTearDown(self):
+        await self.vault.close_session()
+
+
     async def get_random_account_group(self, n=1):
         groups = await self.vault.accountgroup.list_by_safe(self.test_safe)
         if n == 1:

@@ -12,6 +12,10 @@ class TestApplication(IsolatedAsyncioTestCase):
         self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
 
+    async def asyncTearDown(self):
+        await self.vault.close_session()
+
+
     async def get_random_platform(self, n=1):
         platforms = await self.vault.platform.get_target_platforms()
         if n == 1:
