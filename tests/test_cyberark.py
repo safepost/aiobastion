@@ -9,6 +9,10 @@ class TestEPV(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
+        # await self.vault.get_session()
+
+    async def asyncTearDown(self):
+        await self.vault.close_session()
 
     async def test_logoff(self):
         await self.vault.logoff()

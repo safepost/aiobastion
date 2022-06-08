@@ -22,6 +22,10 @@ class TestAccount(IsolatedAsyncioTestCase):
 
         self.test_safe = "sample-it-dept"
 
+    async def asyncTearDown(self):
+        await self.vault.close_session()
+        # await self.vault.logoff()
+
     async def get_random_account(self, n=1):
         accounts = await self.vault.account.search_account_by(
             safe=self.test_safe
@@ -42,10 +46,6 @@ class TestAccount(IsolatedAsyncioTestCase):
             return random.choice(accounts)
         else:
             return random.choices(accounts, k=n)
-
-    async def asyncTearDown(self):
-        await self.vault.close_session()
-        # await self.vault.logoff()
 
     async def test_add_account_to_safe(self):
         already_exists = await self.vault.account.search_account_by(

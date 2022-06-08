@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import json
 import ssl
 from typing import Tuple
@@ -53,7 +54,10 @@ class EPV(Vault):
         # self.session = requests.Session()
 
         self.user_list = None
+
+        # Session management
         self.session = None
+        self.__sema = None
 
         # utilities
         self.account = Account(self)
@@ -91,6 +95,8 @@ class EPV(Vault):
                         try:
                             raise CyberarkException(await req.text())
                         except Exception as err:
+                            await self.close_session()
+                            # Old session reused ?
                             raise CyberarkException(f"Unknown error, HTTP {str(req.status)}, ERR : {str(err)}")
 
                 tok = await req.text()
@@ -216,11 +222,18 @@ class EPV(Vault):
                     'Authorization': self.__token}
             self.session = aiohttp.ClientSession(headers=head)
 
+        if self.__sema is None:
+            self.__sema = asyncio.Semaphore(self.config.max_concurrent_tasks)
+
         return self.session
 
     async def close_session(self):
-        await self.session.close()
+        try:
+            await self.session.close()
+        except (CyberarkException, AttributeError):
+            pass
         self.session = None
+        self.__sema = None
 
     def get_url(self, url) -> Tuple[str, dict]:
         addr = 'https://' + self.api_host + '/PasswordVault/' + url
@@ -269,45 +282,47 @@ class EPV(Vault):
         # try:
 
         session = self.get_session()
-        async with session.request(method, url, json=data, params=params, **self.request_params) as req:
-            if req.status in (200, 201, 204):
-                try:
-                    if len(await req.read()) == 0:
-                        return True
-                    else:
-                        return filter_func(await req.json())
-                    # return filter_func(await req.json())
-                except ContentTypeError:
-                    response = await req.text()
+        # async with __sema
+        async with self.__sema:
+            async with session.request(method, url, json=data, params=params, **self.request_params) as req:
+                if req.status in (200, 201, 204):
                     try:
-                        return json.loads(response)
-                    except ContentTypeError:
-                        # if response.startswith('"') and response.endswith('"'):
-                        #     # remove double quotes from string
-                        #     return response[1:-1]
-                        if len(response) > 0:
-                            return response
-                        else:
+                        if len(await req.read()) == 0:
                             return True
-                    except:
-                        raise
-            else:
-                if req.status == 404:
-                    raise CyberarkException(f"404 error with URL {url}")
-                try:
-                    content = await req.json(content_type=None)
-                except (KeyError, ValueError, ContentTypeError):
-                    raise CyberarkException(f"Error with Cyberark status code {str(req.status)}")
+                        else:
+                            return filter_func(await req.json())
+                        # return filter_func(await req.json())
+                    except ContentTypeError:
+                        response = await req.text()
+                        try:
+                            return json.loads(response)
+                        except ContentTypeError:
+                            # if response.startswith('"') and response.endswith('"'):
+                            #     # remove double quotes from string
+                            #     return response[1:-1]
+                            if len(response) > 0:
+                                return response
+                            else:
+                                return True
+                        except:
+                            raise
+                else:
+                    if req.status == 404:
+                        raise CyberarkException(f"404 error with URL {url}")
+                    try:
+                        content = await req.json(content_type=None)
+                    except (KeyError, ValueError, ContentTypeError):
+                        raise CyberarkException(f"Error with Cyberark status code {str(req.status)}")
 
-                if "Details" in content:
-                    details = content["Details"]
-                else:
-                    details = ""
-                    # TODO gérer l'erreur HTTP 401, CAWS00001E : La connexion au Vault a été interrompue.
-                    # => signifie qu'il n'y a pas eu de login()
-                if "ErrorCode" in content and "ErrorMessage" in content:
-                    raise CyberarkAPIException(req.status, content["ErrorCode"], content["ErrorMessage"], details)
-                else:
-                    raise CyberarkAPIException(req.status, "NO_ERR_CODE", content)
-        # except Exception as err:
-        #     raise CyberarkException(err)
+                    if "Details" in content:
+                        details = content["Details"]
+                    else:
+                        details = ""
+                        # TODO gérer l'erreur HTTP 401, CAWS00001E : La connexion au Vault a été interrompue.
+                        # => signifie qu'il n'y a pas eu de login()
+                    if "ErrorCode" in content and "ErrorMessage" in content:
+                        raise CyberarkAPIException(req.status, content["ErrorCode"], content["ErrorMessage"], details)
+                    else:
+                        raise CyberarkAPIException(req.status, "NO_ERR_CODE", content)
+            # except Exception as err:
+            #     raise CyberarkException(err)

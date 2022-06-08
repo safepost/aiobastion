@@ -14,6 +14,10 @@ class TestUsers(IsolatedAsyncioTestCase):
         self.test_safe = "sample-it-dept"
         self.test_usr = "bastion_std_usr"
 
+    async def asyncTearDown(self):
+        await self.vault.close_session()
+
+
     async def get_random_account(self, n=1):
         accounts = await self.vault.account.search_account_by(
             safe=self.test_safe
@@ -104,6 +108,12 @@ class TestUsers(IsolatedAsyncioTestCase):
 
     async def test_add_group(self):
         new_group_name = "new_group_test"
+
+        try:
+            await self.vault.group.delete(new_group_name)
+        except CyberarkAPIException:
+            pass
+
         await self.vault.group.add(new_group_name, "New awesome group")
         req = await self.vault.group.list()
         self.assertIn(new_group_name, req)
