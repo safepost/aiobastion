@@ -342,3 +342,15 @@ Display the number of accounts by platform
 
         for p,r in zip(pfs,res):
             print(f"{p};{len(r)}")
+
+Export then delete a platform
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    async with prod as epv:
+
+        pf_name = "PLATFORM_NAME"
+        await epv.platform.export_platform(pf_name, "../../../saved_platforms/")
+        pf_uid = await epv.platform.get_target_platform_unique_id(pf_name)
+        await epv.platform.del_target_plaform(pf_uid)
