@@ -37,6 +37,12 @@ add_authentication
 
     Add one or more authentication methods to a given app_id with a named param
 
+    Example subject :
+
+.. code-block::
+    subject="CN=adminserver.acme.corp, OU=ADMINS, O=ACME, L=Paris, S=ILE-DE-FRANCE, C=CORP",
+
+
     :param app_name: the name of the application
     :param path: path to authenticated
     :param hash_string: hash of script / binary

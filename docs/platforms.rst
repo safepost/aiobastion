@@ -323,3 +323,22 @@ import_connection_component
 
     :param zipfile: Contains the connection component info (or generated with cyberark tool)
     :return: True
+
+Platform utilities functions
+--------------------------------
+Display the number of accounts by platform
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+        async with prod as epv:
+
+        pfs = [h['Name'] for h in await epv.platform.get_target_platforms()]
+        tasks = []
+        for p in pfs:
+            tasks.append(epv.account.search_account_by(platform=p))
+
+        res = await asyncio.gather(*tasks)
+
+        for p,r in zip(pfs,res):
+            print(f"{p};{r}")

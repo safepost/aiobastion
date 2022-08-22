@@ -116,6 +116,7 @@ clone_account
     :async:
 
     Find all accounts associated with an address, then clone it with new parameters.
+    The parameters are case sensitive (eg userName, safeName), not found parameters are ignored.
 
     :param address: Address of account to clone
     :param username: Username of account to clone
