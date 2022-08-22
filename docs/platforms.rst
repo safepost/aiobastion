@@ -341,4 +341,4 @@ Display the number of accounts by platform
         res = await asyncio.gather(*tasks)
 
         for p,r in zip(pfs,res):
-            print(f"{p};{r}")
+            print(f"{p};{len(r)}")
