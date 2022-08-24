@@ -27,8 +27,7 @@ class EPV(Vault):
             raise AiobastionException("You must provide either configfile or serialized to init EPV, not both")
         if configfile is not None:
             self.config = Config(configfile)
-            self.api_host = self.config.PVWA
-            # self.request_params = {"timeout": self.config.timeout, "verify": self.config.CA}
+
             if self.config.PVWA_CA is not False:
                 self.request_params = {"timeout": self.config.timeout,
                                        "ssl": ssl.create_default_context(cafile=self.config.PVWA_CA)}
@@ -38,6 +37,7 @@ class EPV(Vault):
             self.api_host = self.config.PVWA
             self.cpm = self.config.CPM
             self.retention = self.config.retention
+            self.max_concurrent_tasks = self.config.max_concurrent_tasks
             self.__token = token
 
         if serialized is not None:
@@ -49,6 +49,7 @@ class EPV(Vault):
             self.api_host = serialized['api_host']
             self.cpm = serialized['cpm']
             self.retention = serialized['retention']
+            self.max_concurrent_tasks = serialized['max_concurrent_tasks']
             self.__token = serialized['token']
 
         # self.session = requests.Session()
@@ -223,7 +224,7 @@ class EPV(Vault):
             self.session = aiohttp.ClientSession(headers=head)
 
         if self.__sema is None:
-            self.__sema = asyncio.Semaphore(self.config.max_concurrent_tasks)
+            self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
 
         return self.session
 
@@ -252,6 +253,7 @@ class EPV(Vault):
             "verify": self.config.PVWA_CA,
             "cpm": self.config.CPM,
             "retention": self.config.retention,
+            "max_concurrent_tasks": self.config.max_concurrent_tasks,
             "token": self.__token,
         }
         return serialized
@@ -296,7 +298,7 @@ class EPV(Vault):
                         response = await req.text()
                         try:
                             return json.loads(response)
-                        except ContentTypeError:
+                        except (ContentTypeError, json.decoder.JSONDecodeError):
                             # if response.startswith('"') and response.endswith('"'):
                             #     # remove double quotes from string
                             #     return response[1:-1]

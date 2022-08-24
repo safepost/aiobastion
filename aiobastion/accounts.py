@@ -492,6 +492,36 @@ class Account:
         # account_id = await self.get_account_id(address)
         # return await self.epv.handle_request("post", f"API/Accounts/{account_id}/Password/Retrieve")
 
+# a tester + documenter
+    async def get_ssh_key(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
+        """
+        Retrieve the SSH Key of an address
+        :param account: Privileged Account or address id
+        :return: Account password value
+        """
+
+        return await self.handle_acc_id_list(
+            "post",
+            lambda account_id: f"API/Accounts/{account_id}/Secret/Retrieve",
+            await self.get_account_id(account)
+        )
+
+# a tester
+    async def get_secret(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
+        if isinstance(account, list):
+            tasks = []
+            for a in account:
+                if a.secretType == "key":
+                    tasks.append(self.get_ssh_key(a))
+                else:
+                    tasks.append(self.get_password(a))
+            return await asyncio.gather(*tasks)
+        else:
+            if a.secretType == "key":
+                return await self.get_ssh_key(account)
+            else:
+                return await self.get_password(account)
+
     async def set_password(self, account, password):
         """
         Set the password for the given address in the vault
@@ -619,3 +649,4 @@ class Account:
             return new_account_id
 
         return await self.handle_acc_list(_move, account)
+

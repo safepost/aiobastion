@@ -86,7 +86,7 @@ migrate_platform
 
 
 Account manipulation
-make------------------------
+------------------------
 
 delete_accounts
 ~~~~~~~~~~~~~~~~~~~~~~~~
