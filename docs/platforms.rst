@@ -354,3 +354,17 @@ Export then delete a platform
         await epv.platform.export_platform(pf_name, "../../../saved_platforms/")
         pf_uid = await epv.platform.get_target_platform_unique_id(pf_name)
         await epv.platform.del_target_plaform(pf_uid)
+
+Or something like this:
+
+.. code-block:: python
+
+        pf_name = ""
+
+        while pf_name != "exit":
+            pf_name = input("PF name: ")
+            await epv.platform.export_platform(pf_name, "../../../saved_platforms/")
+            pf_uid = await epv.platform.get_target_platform_unique_id(pf_name)
+            await epv.platform.del_target_plaform(pf_uid)
+            print(f"{pf_name} successfully deleted !")
+

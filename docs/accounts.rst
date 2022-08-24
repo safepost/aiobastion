@@ -502,3 +502,36 @@ get_cpm_status
 
     :param account: PrivilegedAccount, list of Privileged Accounts or account_id or list
     :return: Boolean saying if the account is CPM managed
+
+Account utilities functions
+--------------------------------
+Move accounts from a Vault to another Vault
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Let's say "hosts" is a list of address, this will move all accounts from prod to new_prod
+
+.. code-block:: python
+
+    async with prod as prod:
+        res = await asyncio.gather(*[prod.account.search_account_by(address=q) for q in hosts])
+        merged = list(itertools.chain.from_iterable(res))
+
+        for i, r in enumerate(merged):
+            if r.secretType != "key":
+                merged[i].secret = await prod.account.get_password(r)
+            else:
+                merged[i].secret = await prod.account.get_ssh_key(r)
+
+        async with new_prod as new_prod:
+            for r in merged:
+                try:
+                    await new_prod.account.add_account_to_safe(r)
+                    logging.info(f"{r.name} added to safe {r.safeName}")
+                    await prod.account.delete(r)
+                    logging.info(f"{r.name} deleted from prod")
+                except CyberarkAPIException as err:
+                    if err.http_status == 409:
+                        await prod.account.delete(r)
+                        print(f"{r.name} already exists and then was deleted from prod")
+                    else:
+                        raise
