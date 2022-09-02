@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import itertools
 import re
 from typing import List, Union, AsyncIterator
 import aiohttp
@@ -166,8 +167,7 @@ class Account:
             acc = await self.search_account_by(username=account.userName, safe=account.safeName,
                                                keywords=account.address)
             if len(acc) != 1:
-                raise CyberarkException(
-                    "More than one address (or no address) found here (same username in same safe with same address")
+                return [a.id for a in acc]
             else:
                 return acc[0].id
         else:
@@ -191,7 +191,7 @@ class Account:
         if isinstance(account, list):
             sema = asyncio.Semaphore(10)
             tasks = [self.get_single_account_id(a, sema) for a in account]
-            return await asyncio.gather(*tasks, return_exceptions=False)
+            return itertools.chain.from_iterable(await asyncio.gather(*tasks, return_exceptions=False))
         else:
             return await self.get_single_account_id(account)
 
