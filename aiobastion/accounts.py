@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import asyncio
-import itertools
 import re
 from typing import List, Union, AsyncIterator
 import aiohttp
 
 from .abstract import Vault
-from .config import validate_ip
+from .config import validate_ip, flatten
 from .exceptions import (
     CyberarkAPIException, CyberarkException, AiobastionException
 )
@@ -187,7 +186,7 @@ class Account:
     async def get_account_id(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         if isinstance(account, list):
             tasks = [self.get_single_account_id(a) for a in account]
-            return list(itertools.chain.from_iterable(await asyncio.gather(*tasks, return_exceptions=False)))
+            return flatten(await asyncio.gather(*tasks, return_exceptions=False))
         else:
             return await self.get_single_account_id(account)
 
