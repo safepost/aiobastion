@@ -173,25 +173,21 @@ class Account:
         else:
             return account.id
 
-    async def get_single_account_id(self, account, sema=None):
-        if sema is None:
-            sema = asyncio.Semaphore(10)
-        async with sema:
-            if type(account) is str:
-                if re.match(r'\d+_\d+', account) is not None:
-                    return account
-                else:
-                    raise AiobastionException("The account_id provided is not correct")
-            if isinstance(account, PrivilegedAccount):
-                return await self.get_privileged_account_id(account)
+    async def get_single_account_id(self, account):
+        if type(account) is str:
+            if re.match(r'\d+_\d+', account) is not None:
+                return account
             else:
-                raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
+                raise AiobastionException("The account_id provided is not correct")
+        if isinstance(account, PrivilegedAccount):
+            return await self.get_privileged_account_id(account)
+        else:
+            raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
 
     async def get_account_id(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         if isinstance(account, list):
-            sema = asyncio.Semaphore(10)
-            tasks = [self.get_single_account_id(a, sema) for a in account]
-            return itertools.chain.from_iterable(await asyncio.gather(*tasks, return_exceptions=False))
+            tasks = [self.get_single_account_id(a) for a in account]
+            return list(itertools.chain.from_iterable(await asyncio.gather(*tasks, return_exceptions=False)))
         else:
             return await self.get_single_account_id(account)
 
@@ -517,7 +513,7 @@ class Account:
                     tasks.append(self.get_password(a))
             return await asyncio.gather(*tasks)
         else:
-            if a.secretType == "key":
+            if account.secretType == "key":
                 return await self.get_ssh_key(account)
             else:
                 return await self.get_password(account)
