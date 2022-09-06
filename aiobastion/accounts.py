@@ -587,7 +587,24 @@ class Account:
         else:
             return activities["GetAccountActivitiesSlashResult"]
 
+    async def last_cpm_error_message(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
+        """
+        Get account(s) activity
+        """
+        activities = await self.activity(account)
 
+        def single_cpm_error(activity):
+            for a in activity:
+                if "CPM" in a["Activity"]:
+                    if "Failure" in a["Reason"]:
+                        reason = a["Reason"].split("Error:")
+                        return reason[1]
+
+        # List of list
+        if any(isinstance(el, list) for el in activities):
+            return [single_cpm_error(_activity) for _activity in activities]
+        else:
+            return single_cpm_error(activities)
 
     async def add_member_to_group(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
                                   group_name: str = "") -> str:
