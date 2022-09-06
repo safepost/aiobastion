@@ -576,11 +576,17 @@ class Account:
         """
         Get account(s) activity
         """
-        return await self.handle_acc_id_list(
+        activities = await self.handle_acc_id_list(
             "get",
             lambda account_id: f"WebServices/PIMServices.svc/Accounts/{account_id}/Activities/",
             await self.get_account_id(account)
         )
+
+        if isinstance(activities, list):
+            return [a["GetAccountActivitiesSlashResult"] for a in activities]
+        else:
+            return activities["GetAccountActivitiesSlashResult"]
+
 
 
     async def add_member_to_group(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
