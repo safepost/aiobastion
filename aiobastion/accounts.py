@@ -127,7 +127,6 @@ class Account:
     async def handle_acc_list(self, api_call, account, *args, **kwargs):
         if isinstance(account, list):
             tasks = []
-            semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
             for a in account:
                 if not isinstance(a, PrivilegedAccount) and not re.match('[0-9]*_[0-9*]', a):
                     raise AiobastionException("You must call the function with PrivilegedAccount or list of Privileged "
@@ -135,11 +134,7 @@ class Account:
 
                 tasks.append(api_call(a, *args, **kwargs))
 
-            async def sem_task(task):
-                async with semaphore:
-                    return await task
-
-            return await asyncio.gather(*(sem_task(task) for task in tasks), return_exceptions=True)
+            return await asyncio.gather(*tasks, return_exceptions=True)
         elif isinstance(account, PrivilegedAccount) or re.match('[0-9]*_[0-9*]', account):
             return await api_call(account, *args, **kwargs)
         else:
