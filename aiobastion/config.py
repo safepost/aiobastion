@@ -241,6 +241,12 @@ def validate_ip(s):
             return False
     return True
 
+def flatten(A):
+    rt = []
+    for i in A:
+        if isinstance(i,list): rt.extend(flatten(i))
+        else: rt.append(i)
+    return rt
 
 def permissions(profile: str) -> dict:
     if "admin" in profile.lower():

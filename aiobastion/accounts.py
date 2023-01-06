@@ -5,12 +5,14 @@ from typing import List, Union, AsyncIterator
 import aiohttp
 
 from .abstract import Vault
-from .config import validate_ip
+from .config import validate_ip, flatten
 from .exceptions import (
     CyberarkAPIException, CyberarkException, AiobastionException
 )
 
 MAX_CONCURRENT_CALLS = 10
+
+
 # SEMAPHORE = None
 #
 # def get_sem():
@@ -73,8 +75,23 @@ class PrivilegedAccount:
         return str(strrepr)
 
     def cpm_status(self):
-        return "automaticManagementEnabled" in self.secretManagement and \
-               self.secretManagement["automaticManagementEnabled"]
+        if "status" in self.secretManagement:
+            # 'success' for 'failure'
+            return self.secretManagement["status"]
+        elif "automaticManagementEnabled" in self.secretManagement and \
+                not self.secretManagement["automaticManagementEnabled"]:
+            return "Deactivated"
+        else:
+            return "No status (yet)"
+
+    def last_modified(self, days=True):
+        import time
+        if "lastModifiedTime" in self.secretManagement:
+            ts = self.secretManagement["lastModifiedTime"]
+            if days:
+                return int((int(time.time()) - ts) / 86400)
+            else:
+                return ts
 
 
 def _filter_account(account: dict, filters: dict):
@@ -110,24 +127,19 @@ class Account:
     async def handle_acc_list(self, api_call, account, *args, **kwargs):
         if isinstance(account, list):
             tasks = []
-            semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
             for a in account:
                 if not isinstance(a, PrivilegedAccount) and not re.match('[0-9]*_[0-9*]', a):
                     raise AiobastionException("You must call the function with PrivilegedAccount or list of Privileged "
-                                           "Accounts")
+                                              "Accounts")
 
                 tasks.append(api_call(a, *args, **kwargs))
 
-            async def sem_task(task):
-                async with semaphore:
-                    return await task
-
-            return await asyncio.gather(*(sem_task(task) for task in tasks), return_exceptions=True)
+            return await asyncio.gather(*tasks, return_exceptions=True)
         elif isinstance(account, PrivilegedAccount) or re.match('[0-9]*_[0-9*]', account):
             return await api_call(account, *args, **kwargs)
         else:
             raise AiobastionException("You must call the function with PrivilegedAccount or list of Privileged Accounts"
-                                   "(or valid account_id for some functions)")
+                                      "(or valid account_id for some functions)")
 
     async def handle_acc_id_list(self, method, url, accounts, data=None):
         """
@@ -138,6 +150,7 @@ class Account:
         :param data: if relevant, a dict that contains data
         :return: the result of the subsequent calls
         """
+
         async def api_call(acc_id):
             return await self.epv.handle_request(method, url(acc_id), data=data)
 
@@ -145,7 +158,8 @@ class Account:
 
     async def add_account_to_safe(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]) -> str:
         async def api_call(acc):
-            return await self.epv.handle_request("post", 'API/Accounts', data=acc.to_json(), filter_func=lambda r: r["id"])
+            return await self.epv.handle_request("post", 'API/Accounts', data=acc.to_json(),
+                                                 filter_func=lambda r: r["id"])
 
         return await self.handle_acc_list(api_call, account)
 
@@ -166,39 +180,36 @@ class Account:
             acc = await self.search_account_by(username=account.userName, safe=account.safeName,
                                                keywords=account.address)
             if len(acc) != 1:
-                raise CyberarkException(
-                    "More than one address (or no address) found here (same username in same safe with same address")
+                return [a.id for a in acc]
             else:
                 return acc[0].id
         else:
             return account.id
 
-    async def get_single_account_id(self, account, sema=None):
-        if sema is None:
-            sema = asyncio.Semaphore(10)
-        async with sema:
-            if type(account) is str:
-                if re.match(r'\d+_\d+', account) is not None:
-                    return account
-                else:
-                    raise AiobastionException("The account_id provided is not correct")
-            if isinstance(account, PrivilegedAccount):
-                return await self.get_privileged_account_id(account)
+    async def get_single_account_id(self, account):
+        if type(account) is str:
+            if re.match(r'\d+_\d+', account) is not None:
+                return account
             else:
-                raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
+                raise AiobastionException("The account_id provided is not correct")
+        if isinstance(account, PrivilegedAccount):
+            return await self.get_privileged_account_id(account)
+        else:
+            raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
 
     async def get_account_id(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         if isinstance(account, list):
-            sema = asyncio.Semaphore(10)
-            tasks = [self.get_single_account_id(a, sema) for a in account]
-            return await asyncio.gather(*tasks, return_exceptions=False)
+            tasks = [self.get_single_account_id(a) for a in account]
+            return flatten(await asyncio.gather(*tasks, return_exceptions=False))
         else:
             return await self.get_single_account_id(account)
 
-    async def link_reconciliation_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], reconcile_account: PrivilegedAccount):
+    async def link_reconciliation_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
+                                          reconcile_account: PrivilegedAccount):
         return await self.link_account(account, reconcile_account, 3)
 
-    async def link_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], logon_account: PrivilegedAccount):
+    async def link_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
+                                 logon_account: PrivilegedAccount):
         return await self.link_account(account, logon_account, 2)
 
     async def link_reconcile_account_by_address(self, acc_username, rec_acc_username, address):
@@ -227,7 +238,8 @@ class Account:
     async def remove_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         return await self.unlink_account(account, 2)
 
-    async def unlink_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], extra_password_index: int):
+    async def unlink_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
+                             extra_password_index: int):
         if extra_password_index not in [1, 2, 3]:
             raise AiobastionException("ExtraPasswordIndex must be between 1 and 3")
 
@@ -271,7 +283,7 @@ class Account:
 
         return await self.handle_acc_id_list(
             "post",
-            lambda a:  f"API/Accounts/{a}/LinkAccount",
+            lambda a: f"API/Accounts/{a}/LinkAccount",
             account_id,
             data
         )
@@ -352,7 +364,6 @@ class Account:
         return [account async for account in
                 self.search_account_iterator(keywords, username, address, safe, platform, **kwargs)]
 
-
     async def search_account_iterator(self, keywords=None, username=None, address=None, safe=None,
                                       platform=None, **kwargs) -> AsyncIterator[PrivilegedAccount]:
         """
@@ -426,7 +437,8 @@ class Account:
 
                 return await req.read()
 
-    async def disable_password_management(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], reason: str = ""):
+    async def disable_password_management(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
+                                          reason: str = ""):
         data = [
             {"op": "replace", "path": "/secretManagement/automaticManagementEnabled", "value": False},
             {"op": "add", "path": "/secretManagement/manualManagementReason", "value": reason}
@@ -492,7 +504,7 @@ class Account:
         # account_id = await self.get_account_id(address)
         # return await self.epv.handle_request("post", f"API/Accounts/{account_id}/Password/Retrieve")
 
-# a tester + documenter
+    # a tester + documenter
     async def get_ssh_key(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         """
         Retrieve the SSH Key of an address
@@ -506,7 +518,7 @@ class Account:
             await self.get_account_id(account)
         )
 
-# a tester
+    # a tester
     async def get_secret(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         if isinstance(account, list):
             tasks = []
@@ -517,7 +529,7 @@ class Account:
                     tasks.append(self.get_password(a))
             return await asyncio.gather(*tasks)
         else:
-            if a.secretType == "key":
+            if account.secretType == "key":
                 return await self.get_ssh_key(account)
             else:
                 return await self.get_password(account)
@@ -560,7 +572,42 @@ class Account:
         else:
             return account.secretManagement
 
-    async def add_member_to_group(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], group_name: str = "") -> str:
+    async def activity(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
+        """
+        Get account(s) activity
+        """
+        activities = await self.handle_acc_id_list(
+            "get",
+            lambda account_id: f"WebServices/PIMServices.svc/Accounts/{account_id}/Activities/",
+            await self.get_account_id(account)
+        )
+
+        if isinstance(activities, list):
+            return [a["GetAccountActivitiesSlashResult"] for a in activities]
+        else:
+            return activities["GetAccountActivitiesSlashResult"]
+
+    async def last_cpm_error_message(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
+        """
+        Get account(s) activity
+        """
+        activities = await self.activity(account)
+
+        def single_cpm_error(activity):
+            for a in activity:
+                if "CPM" in a["Activity"]:
+                    if "Failure" in a["Reason"]:
+                        reason = a["Reason"].split("Error:")
+                        return reason[1]
+
+        # List of list
+        if any(isinstance(el, list) for el in activities):
+            return [single_cpm_error(_activity) for _activity in activities]
+        else:
+            return single_cpm_error(activities)
+
+    async def add_member_to_group(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
+                                  group_name: str = "") -> str:
         """
         Add an address to a group
         :param account: a PrivilegedAccount object
@@ -597,6 +644,7 @@ class Account:
         :type account: PrivilegedAccount, list
         :return: accountID
         """
+
         async def api_call(acc):
             for group in await self.epv.accountgroup.list_by_safe(acc.safeName):
                 groupid = group.id
@@ -613,6 +661,7 @@ class Account:
         returns False if no group was remove, True is a group was deleted
         raise an Exception if a group was found but deletion didn't worked
         """
+
         async def _del_accountgroup(acc):
             groupid = await self.get_account_group(acc)
             if groupid is None:
@@ -649,4 +698,3 @@ class Account:
             return new_account_id
 
         return await self.handle_acc_list(_move, account)
-
