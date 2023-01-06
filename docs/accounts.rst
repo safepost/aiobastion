@@ -446,6 +446,34 @@ get_password
     :return: The password (or list of passwords)
     :raise bastion.CyberarkException: if retrieve failed
 
+get_ssh_key
+~~~~~~~~~~~~~~~~~~
+.. py:function:: get_ssh_key(account)
+    :async:
+
+    :ref:`Support list as argument<Calling functions>`
+
+    Retrieves the ssh key of the account, or the list of accounts.
+
+    :param account: PrivilegedAccount or list(PrivilegedAccount)
+    :return: A string with the ssh key (or list of strings of ssh keys)
+    :raise bastion.CyberarkException: if retrieve failed
+
+get_secret
+~~~~~~~~~~~~~~~~~~
+.. py:function:: get_secret(account)
+    :async:
+
+    :ref:`Support list as argument<Calling functions>`
+
+    Retrieves the password or ssh key of the account, or the list of accounts.
+    You can mix accounts with passwords and ssh keys.
+
+    :param account: PrivilegedAccount or list(PrivilegedAccount)
+    :return: A string with the password or the ssh key (or list of strings of password or ssh keys)
+    :raise bastion.CyberarkException: if retrieve failed
+
+
 set_password
 ~~~~~~~~~~~~~~
 .. py:function:: set_password(account, password)

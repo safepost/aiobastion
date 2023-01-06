@@ -19,7 +19,7 @@ Login with PVWA and specified login and password
     Connection:
       Username: admin_restapi
       Password: sup3rs3cur3
-      AuthType:
+      Authtype:
     LogLevel: INFO
     PVWA:
       Host: "pvwa.acme.fr"

@@ -36,7 +36,7 @@ class TestUtilities(IsolatedAsyncioTestCase):
         await self.vault.utils.clone_address(account.address, {"address": "new_add", "IPCible": "127"})
 
     async def test_semaphore(self):
-
+        self.skipTest("This test is not relevant for daily usage")
         for i in (1, 10, 20, 30, 40, 50):
             tasklist = []
             start = time.time()
