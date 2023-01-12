@@ -111,7 +111,7 @@ class TestUsers(IsolatedAsyncioTestCase):
 
         try:
             await self.vault.group.delete(new_group_name)
-        except CyberarkAPIException:
+        except (CyberarkAPIException,AiobastionException):
             pass
 
         await self.vault.group.add(new_group_name, "New awesome group")

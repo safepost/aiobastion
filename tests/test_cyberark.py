@@ -1,15 +1,14 @@
 import asyncio
-import sys
 import unittest
-from unittest import TestCase, IsolatedAsyncioTestCase
+from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import tests
+
 
 class TestEPV(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
-        # await self.vault.get_session()
 
     async def asyncTearDown(self):
         await self.vault.close_session()
@@ -17,7 +16,10 @@ class TestEPV(IsolatedAsyncioTestCase):
     async def test_logoff(self):
         await self.vault.logoff()
         self.assertFalse(await self.vault.check_token())
-        # self.fail()
+
+    async def test_login(self):
+        await self.vault.login()
+        self.assertTrue(await self.vault.check_token())
 
     async def test_login_aim(self):
         if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
@@ -29,19 +31,25 @@ class TestEPV(IsolatedAsyncioTestCase):
         self.assertTrue(await self.vault.check_token())
         await self.vault.close_session()
 
-
     async def test_check_token(self):
         self.assertTrue(await self.vault.check_token())
 
-    async def test_login(self):
-        self.assertTrue(await self.vault.check_token())
+    async def test_inline_conf(self):
+        self.skipTest("Need harcoded credentials")
+        config = {'api_host': 'stn0x610.hpadmin.sf.intra.laposte.fr'}
 
-    # async def test_login_pvwa_only(self):
-    #     PVWA_CONFIG = '../../confs/config_test_pvwa_only.yml'
-    #     self.vault = aiobastion.EPV(PVWA_CONFIG)
-    #     await self.vault.login(username="admin", password="Cyberark1")
-    #     print(await self.vault.safe.list())
-    #     self.assertTrue(await self.vault.check_token())
+        production_vault = aiobastion.EPV(serialized=config)
+        await production_vault.login("admin", "Cyberark1")
+        async with production_vault as epv:
+            print(await epv.safe.list())
+
+    async def test_login_pvwa_only(self):
+        self.skipTest("Need harcoded credentials")
+        PVWA_CONFIG = '../../confs/config_test_pvwa_only.yml'
+        self.vault = aiobastion.EPV(PVWA_CONFIG)
+        await self.vault.login(username="admin", password="Cyberark1")
+        print(await self.vault.safe.list())
+        self.assertTrue(await self.vault.check_token())
 
     def test_get_url(self):
         addr, head = self.vault.get_url("Accounts")
