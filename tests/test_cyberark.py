@@ -20,9 +20,11 @@ class TestEPV(IsolatedAsyncioTestCase):
         # self.fail()
 
     async def test_login_aim(self):
+        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
+            self.skipTest("AIM_CONFIG is not set in init file")
         await self.vault.logoff()
         self.assertFalse(await self.vault.check_token())
-        self.vault = aiobastion.EPV('../../confs/config_aim_hprod_bsa.yml')
+        self.vault = aiobastion.EPV(tests.AIM_CONFIG)
         await self.vault.login()
         self.assertTrue(await self.vault.check_token())
         await self.vault.close_session()
@@ -33,6 +35,13 @@ class TestEPV(IsolatedAsyncioTestCase):
 
     async def test_login(self):
         self.assertTrue(await self.vault.check_token())
+
+    # async def test_login_pvwa_only(self):
+    #     PVWA_CONFIG = '../../confs/config_test_pvwa_only.yml'
+    #     self.vault = aiobastion.EPV(PVWA_CONFIG)
+    #     await self.vault.login(username="admin", password="Cyberark1")
+    #     print(await self.vault.safe.list())
+    #     self.assertTrue(await self.vault.check_token())
 
     def test_get_url(self):
         addr, head = self.vault.get_url("Accounts")
