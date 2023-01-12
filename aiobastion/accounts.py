@@ -509,7 +509,7 @@ class Account:
         """
         Retrieve the SSH Key of an address
         :param account: Privileged Account or address id
-        :return: Account password value
+        :return: SSH key value
         """
 
         return await self.handle_acc_id_list(
