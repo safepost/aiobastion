@@ -175,7 +175,7 @@ class EPV(Vault):
         except CyberarkException as err:
             raise GetTokenException(err)
 
-    async def login(self, username=None, password=None, auth_type="Cyberark"):
+    async def login(self, username=None, password=None, auth_type=""):
         if await self.check_token():
             return
 
@@ -199,8 +199,11 @@ class EPV(Vault):
             else:
                 password = self.config.password
 
-        if self.config.authtype is not None:
-            auth_type = self.config.authtype
+        if auth_type == "":
+            if self.config.authtype is not None:
+                auth_type = self.config.authtype
+            else:
+                auth_type = "Cyberark"
 
         try:
             self.__token = await self.__login_cyberark(username, password, auth_type)
