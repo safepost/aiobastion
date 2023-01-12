@@ -78,7 +78,7 @@ class TestAccount(IsolatedAsyncioTestCase):
             # We're done, now delete accounts
             await self.vault.account.delete(self.acc_id)
         else:
-            print(str(create_me_filter))
+            # print(str(create_me_filter))
             await self.vault.account.delete(create_me_filter)
             self.fail("Conditions to perform the test were not met, but now hopefully we're good")
 
@@ -238,7 +238,6 @@ class TestAccount(IsolatedAsyncioTestCase):
         self.assertEqual(len(not_found), 0)
 
         ret = await self.vault.account.add_account_to_safe(account)
-        print(ret)
         self.assertEqual(ret, account.id)
 
     async def test_get_cpm_status(self):

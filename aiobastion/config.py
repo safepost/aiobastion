@@ -30,7 +30,7 @@ class Config:
                 if "Authtype" in document["Connection"].keys():
                     self.authtype = document["Connection"]["Authtype"]
                 else:
-                    self.authtype = "Cyberark"
+                    self.authtype = None
 
             if "PVWA" in document:
                 if "Host" in document["PVWA"].keys():

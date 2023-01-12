@@ -35,22 +35,45 @@ class EPV(Vault):
                 self.request_params = {"timeout": self.config.timeout, "ssl": False}
 
             self.api_host = self.config.PVWA
+            self.authtype = self.config.authtype
             self.cpm = self.config.CPM
             self.retention = self.config.retention
             self.max_concurrent_tasks = self.config.max_concurrent_tasks
             self.__token = token
 
         if serialized is not None:
-            if serialized["verify"] is not False:
-                self.request_params = {"timeout": serialized["timeout"],
-                                       "ssl": ssl.create_default_context(cafile=serialized["verify"])}
+            if "Verify" in serialized:
+                if serialized["verify"] is not False:
+                    self.request_params = {"timeout": serialized["timeout"],
+                                           "ssl": ssl.create_default_context(cafile=serialized["verify"])}
+                else:
+                    self.request_params = {"timeout": serialized["timeout"], "ssl": False}
             else:
-                self.request_params = {"timeout": serialized["timeout"], "ssl": False}
+                self.request_params = {"timeout": 10, "ssl": False}
+
             self.api_host = serialized['api_host']
-            self.cpm = serialized['cpm']
-            self.retention = serialized['retention']
-            self.max_concurrent_tasks = serialized['max_concurrent_tasks']
-            self.__token = serialized['token']
+
+            if "authtype" in serialized:
+                self.authtype = serialized["authtype"]
+            else:
+                self.authtype = None
+
+            if "cpm" in serialized:
+                self.cpm = serialized['cpm']
+            else:
+                self.cpm = ""
+            if "retention" in serialized:
+                self.retention = serialized['retention']
+            else:
+                self.retention = 10
+            if "max_concurrent_tasks" in serialized:
+                self.max_concurrent_tasks = serialized['max_concurrent_tasks']
+            else:
+                self.max_concurrent_tasks = 10
+            if "token" in serialized:
+                self.__token = serialized['token']
+            else:
+                self.__token = None
 
         # self.session = requests.Session()
 
@@ -101,8 +124,11 @@ class EPV(Vault):
                             raise CyberarkException(f"Unknown error, HTTP {str(req.status)}, ERR : {str(err)}")
 
                 tok = await req.text()
+                # Closing session because now we are connected and we need to update headers which can be done
+                # only by recreating a new session (or passing the headers on each request)
+                await session.close()
                 return tok.replace('"', '')
-            # req = self.session.post(url, headers=head, data=json.dumps(request_data), **self.request_params)
+
             # Cleaning password after authentication
             self.__password = ""
         except (ConnectionError, TimeoutError):
@@ -124,13 +150,12 @@ class EPV(Vault):
         if self.__token is None:
             return None
         url, head = self.get_url("api/LoginsInfo")
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=head, **self.request_params) as req:
-                # req = self.session.get(url, headers=head, **self.request_params)
-                if req.status != 200:
-                    self.__token = None
-                    return False
-                return True
+        session = self.get_session()
+        async with session.get(url, headers=head, **self.request_params) as req:
+            if req.status != 200:
+                self.__token = None
+                return False
+            return True
 
     async def get_aim_secret(self, aim_host, appid, username, cert_file: str, cert_key: str, ca_file):
         if appid is None:
@@ -200,10 +225,11 @@ class EPV(Vault):
                 password = self.config.password
 
         if auth_type == "":
-            if self.config.authtype is not None:
-                auth_type = self.config.authtype
+            if self.authtype is not None:
+                auth_type = self.authtype
             else:
                 auth_type = "Cyberark"
+
 
         try:
             self.__token = await self.__login_cyberark(username, password, auth_type)
@@ -211,9 +237,7 @@ class EPV(Vault):
                     'Authorization': self.__token}
 
             # update the session
-            await self.session.close()
             self.session = aiohttp.ClientSession(headers=head)
-
         except CyberarkException as err:
             raise GetTokenException(err)
 
@@ -228,7 +252,6 @@ class EPV(Vault):
 
         if self.__sema is None:
             self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
-
         return self.session
 
     async def close_session(self):
@@ -252,6 +275,7 @@ class EPV(Vault):
     def to_json(self):
         serialized = {
             "api_host": self.config.PVWA,
+            "authtype": self.config.authtype,
             "timeout": self.config.timeout,
             "verify": self.config.PVWA_CA,
             "cpm": self.config.CPM,
@@ -284,10 +308,8 @@ class EPV(Vault):
 
         url, head = self.get_url(short_url)
 
-        # try:
-
         session = self.get_session()
-        # async with __sema
+
         async with self.__sema:
             async with session.request(method, url, json=data, params=params, **self.request_params) as req:
                 if req.status in (200, 201, 204):
@@ -302,9 +324,6 @@ class EPV(Vault):
                         try:
                             return json.loads(response)
                         except (ContentTypeError, json.decoder.JSONDecodeError):
-                            # if response.startswith('"') and response.endswith('"'):
-                            #     # remove double quotes from string
-                            #     return response[1:-1]
                             if len(response) > 0:
                                 return response
                             else:
