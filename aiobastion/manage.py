@@ -7,4 +7,6 @@ if __name__ == "__main__":
     pvwa_host = input("Address of PVWA, eg pvwa.acme.fr []: ")
     with open(f"config_{pvwa_host}.yml", "w") as f:
         f.write(f"Label: {label}\n")
+        f.write(f"Connection:\n")
+        f.write(f"")
 
