@@ -33,7 +33,7 @@ jobs:
         uses: snyk/actions/setup@master
 
       - name: Snyk monitor 🛡️
-        run: snyk test --sarif-file-output=snyk.sarif
+        run: snyk code test --sarif-file-output=snyk.sarif
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
