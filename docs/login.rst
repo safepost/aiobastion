@@ -20,7 +20,6 @@ Login with PVWA and specified login and password
       Username: admin_restapi
       Password: sup3rs3cur3
       Authtype:
-    LogLevel: INFO
     PVWA:
       Host: "pvwa.acme.fr"
       CA: "C:/Folder/PVWA_Root_CA.pem"
@@ -45,7 +44,6 @@ Example file for connecting through AIM
     Label: Production Vault
     Connection:
       Username: admin_restapi
-    LogLevel: INFO
     PVWA: "pvwa.acme.fr"
     AIM:
       Host: "aim.acme.fr"
