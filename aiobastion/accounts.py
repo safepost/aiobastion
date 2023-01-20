@@ -491,6 +491,26 @@ class Account:
         )
         # return await self.epv.handle_request("patch", 'API/Accounts/' + account_id, data=data)
 
+    # Doc + Test
+    async def restore_last_cpm_version(self, account: PrivilegedAccount, cpm):
+        versions = await self.get_secret_versions(account)
+        cpm_versions = [v["versionID"] for v in versions if v["modifiedBy"] == cpm]
+        if len(cpm_versions) > 0:
+            good_ver = max(cpm_versions)
+            password_to_set = await self.get_password_version(account,good_ver)
+            return await self.set_password(account,password_to_set)
+        else:
+            raise AiobastionException("There is no CPM version for this account")
+
+    # Doc + test
+    async def get_password_version(self, account: PrivilegedAccount, version: int):
+        data = {"Version": version}
+        account_id = await self.get_account_id(account)
+
+        url = f"API/Accounts/{account_id}/Password/Retrieve"
+
+        return await self.epv.handle_request("post", url, data=data)
+
     async def get_password(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         """
         Retrieve the password of an address
@@ -503,10 +523,8 @@ class Account:
             await self.get_account_id(account)
         )
 
-        # account_id = await self.get_account_id(address)
-        # return await self.epv.handle_request("post", f"API/Accounts/{account_id}/Password/Retrieve")
 
-    # a tester + documenter
+    # Test
     async def get_ssh_key(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         """
         Retrieve the SSH Key of an address
@@ -520,7 +538,25 @@ class Account:
             await self.get_account_id(account)
         )
 
-    # a tester
+    # Doc + test
+    async def get_secret_versions(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
+        """
+        Retrieve the secret versions
+        :param account: Privileged Account or address id
+        :return: Account password value
+        """
+        versions = await self.handle_acc_id_list(
+            "get",
+            lambda account_id: f"API/Accounts/{account_id}/Secret/Versions/",
+            await self.get_account_id(account)
+        )
+
+        if isinstance(versions, list):
+            return [v["Versions"] for v in versions]
+        else:
+            return versions["Versions"]
+
+    # Test
     async def get_secret(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         if isinstance(account, list):
             tasks = []
@@ -541,7 +577,7 @@ class Account:
         Set the password for the given address in the vault
         :param account: Privileged address or account_id
         :param password:
-        :return: Empty string
+        :return: True if success
         """
         return await self.handle_acc_id_list(
             "post",
