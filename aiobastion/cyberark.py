@@ -42,14 +42,14 @@ class EPV(Vault):
             self.__token = token
 
         if serialized is not None:
-            if "Verify" in serialized:
+            if "verify" in serialized:
                 if serialized["verify"] is not False:
                     self.request_params = {"timeout": serialized["timeout"],
                                            "ssl": ssl.create_default_context(cafile=serialized["verify"])}
                 else:
                     self.request_params = {"timeout": serialized["timeout"], "ssl": False}
             else:
-                self.request_params = {"timeout": 10, "ssl": False}
+                self.request_params = {"timeout": 20, "ssl": False}
 
             self.api_host = serialized['api_host']
 

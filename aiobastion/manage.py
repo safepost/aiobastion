@@ -19,7 +19,6 @@ if args.config:
     while authtype.lower() not in ("cyberark", "radius", "ldap", "windows"):
         authtype = input("Authentication (Cyberark, RADIUS, Ldap or Windows) [Cyberark]: " or "Cyberark")
 
-
     # PVWA Part
     pvwa_host = input("Address of PVWA, eg pvwa.acme.fr []: ")
 

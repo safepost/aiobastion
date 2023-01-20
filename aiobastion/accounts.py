@@ -377,7 +377,9 @@ class Account:
         :return: an async iterator of PrivilegedAccounts
         """
 
-        filtered_args = {k: v for k, v in locals().items() if v and k not in ["safe", "self", "keywords"]}
+        filtered_args = {k: v for k, v in locals().items() if v and k not in ["safe", "self", "keywords", "kwargs"]}
+        filtered_args.update(kwargs)
+
         page = 1
         has_next_page = True
 
