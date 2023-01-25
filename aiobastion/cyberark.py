@@ -152,7 +152,7 @@ class EPV(Vault):
         url, head = self.get_url("api/LoginsInfo")
         # For some obscure reason trying to use get_session here don't work and return "Event loop is closed"
         # session = self.get_session()
-        async with aiohttp.ClientSession as session:
+        async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=head, **self.request_params) as req:
                 if req.status != 200:
                     self.__token = None
