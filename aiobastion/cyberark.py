@@ -150,12 +150,14 @@ class EPV(Vault):
         if self.__token is None:
             return None
         url, head = self.get_url("api/LoginsInfo")
-        session = self.get_session()
-        async with session.get(url, headers=head, **self.request_params) as req:
-            if req.status != 200:
-                self.__token = None
-                return False
-            return True
+        # For some obscure reason trying to use get_session here don't work and return "Event loop is closed"
+        # session = self.get_session()
+        async with aiohttp.ClientSession as session:
+            async with session.get(url, headers=head, **self.request_params) as req:
+                if req.status != 200:
+                    self.__token = None
+                    return False
+                return True
 
     async def get_aim_secret(self, aim_host, appid, username, cert_file: str, cert_key: str, ca_file):
         if appid is None:
