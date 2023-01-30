@@ -12,7 +12,8 @@ from .accountgroup import AccountGroup
 from .accounts import Account
 from .applications import Applications
 from .config import Config
-from .exceptions import CyberarkException, GetTokenException, AiobastionException, CyberarkAPIException
+from .exceptions import CyberarkException, GetTokenException, AiobastionException, CyberarkAPIException, \
+    ChallengeResponseException
 from .platforms import Platform
 from .safe import Safe
 from .users import User, Group
@@ -111,17 +112,18 @@ class EPV(Vault):
             session = self.get_session()
             async with session.post(url, json=request_data, **self.request_params) as req:
                 if req.status != 200:
+                    try:
+                        error = await req.text()
+                    except Exception as err:
+                        error = f"Unable to get error message {err}"
                     if req.status == 403:
                         raise CyberarkException("Invalid credentials ! ")
                     elif req.status == 409:
                         raise CyberarkException("Password expired !")
+                    elif req.status == 500 and "ITATS542I" in error:
+                        raise ChallengeResponseException
                     else:
-                        try:
-                            raise CyberarkException(await req.text())
-                        except Exception as err:
-                            await self.close_session()
-                            # Old session reused ?
-                            raise CyberarkException(f"Unknown error, HTTP {str(req.status)}, ERR : {str(err)}")
+                        raise CyberarkException(error)
 
                 tok = await req.text()
                 # Closing session because now we are connected and we need to update headers which can be done
@@ -149,15 +151,20 @@ class EPV(Vault):
     async def check_token(self) -> bool or None:
         if self.__token is None:
             return None
-        url, head = self.get_url("api/LoginsInfo")
-        # For some obscure reason trying to use get_session here don't work and return "Event loop is closed"
+
+        try:
+            await self.handle_request("get", "api/LoginsInfo")
+            return True
+        except CyberarkException:
+            return False
+        # url, head = self.get_url("api/LoginsInfo")
         # session = self.get_session()
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=head, **self.request_params) as req:
-                if req.status != 200:
-                    self.__token = None
-                    return False
-                return True
+        # # async with aiohttp.ClientSession() as session:
+        # async with session.get(url, headers=head, **self.request_params) as req:
+        #     if req.status != 200:
+        #         self.__token = None
+        #         return False
+        #     return True
 
     async def get_aim_secret(self, aim_host, appid, username, cert_file: str, cert_key: str, ca_file):
         if appid is None:
@@ -239,14 +246,21 @@ class EPV(Vault):
                     'Authorization': self.__token}
 
             # update the session
-            self.session = aiohttp.ClientSession(headers=head)
+            # self.session = aiohttp.ClientSession(headers=head)
+        except ChallengeResponseException:
+            # User should enter passcode now
+            raise
+
         except CyberarkException as err:
             raise GetTokenException(err)
 
     def get_session(self):
-        if self.__token is None:
+        if self.__token is None and self.session is None:
             head = {"Content-type": "application/json", "Authorization": "None"}
             self.session = aiohttp.ClientSession(headers=head)
+        elif self.__token is None and self.session is not None:
+            # This should never happen
+            return self.session
         elif self.session is None:
             head = {'Content-type': 'application/json',
                     'Authorization': self.__token}
@@ -335,6 +349,8 @@ class EPV(Vault):
                 else:
                     if req.status == 404:
                         raise CyberarkException(f"404 error with URL {url}")
+                    if req.status == 401:
+                        raise CyberarkException(f"You are not logged, you need to login first")
                     try:
                         content = await req.json(content_type=None)
                     except (KeyError, ValueError, ContentTypeError):
@@ -344,8 +360,6 @@ class EPV(Vault):
                         details = content["Details"]
                     else:
                         details = ""
-                        # TODO gérer l'erreur HTTP 401, CAWS00001E : La connexion au Vault a été interrompue.
-                        # => signifie qu'il n'y a pas eu de login()
                     if "ErrorCode" in content and "ErrorMessage" in content:
                         raise CyberarkAPIException(req.status, content["ErrorCode"], content["ErrorMessage"], details)
                     else:
