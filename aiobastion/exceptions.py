@@ -39,3 +39,10 @@ class AiobastionException(Exception):
     and thus can't call the API.
     """
     pass
+
+
+class ChallengeResponseException(Exception):
+    """
+    this exception is raised on login when the user need to authenticate again with passcode
+    """
+    pass
