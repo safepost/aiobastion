@@ -401,7 +401,11 @@ class Account:
         :param kwargs: whatever file category you want to find
         :return:
         """
-        params = {"search": " ".join(kwargs.values())}
+
+        try:
+            params = {"search": " ".join(kwargs.values())}
+        except TypeError:
+            raise AiobastionException(f"You can't search on a list here ({kwargs.values()}), provide a string instead")
 
         if search is not None:
             params["search"] += f" {search}"
