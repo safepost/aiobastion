@@ -205,12 +205,17 @@ class Safe:
                 "limit": 250
             }
             ret = await self.epv.handle_request("get", "api/Safes", params=params, filter_func=lambda r: r["value"])
+            raised = False
         except CyberarkAPIException as err:
+            raised = True
             ret = await self.epv.handle_request("get", 'WebServices/PIMServices.svc/Safes/',
                                                 filter_func=lambda result: result["GetSafesSlashResult"])
         if details:
             return ret
-        return [x["safeName"] for x in ret]
+        if raised:
+            return [x["SafeName"] for x in ret]
+        else:
+            return [x["safeName"] for x in ret]
 
 
     async def get_permissions(self, safename: str, username: str):
