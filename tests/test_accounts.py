@@ -248,6 +248,9 @@ class TestAccount(IsolatedAsyncioTestCase):
 
     async def test_add_member_to_group(self):
         account = await self.get_random_account()
+        # Deleting group membership in case of the account is already in a group
+        await self.vault.account.del_account_group_membership(account)
+
         ret = await self.vault.account.add_member_to_group(account, "sample_group_name")
         self.assertTrue("AccountId" in ret)
 
