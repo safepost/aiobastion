@@ -242,10 +242,11 @@ class EPV(Vault):
 
         try:
             self.__token = await self.__login_cyberark(username, password, auth_type)
-            head = {'Content-type': 'application/json',
-                    'Authorization': self.__token}
+            # head = {'Content-type': 'application/json',
+            #         'Authorization': self.__token}
 
             # update the session
+            await self.close_session()
             # self.session = aiohttp.ClientSession(headers=head)
         except ChallengeResponseException:
             # User should enter passcode now
@@ -262,6 +263,11 @@ class EPV(Vault):
             # This should never happen
             return self.session
         elif self.session is None:
+            head = {'Content-type': 'application/json',
+                    'Authorization': self.__token}
+            self.session = aiohttp.ClientSession(headers=head)
+        elif self.session.closed:
+            # This should never happen, but it's a security in case of unhandled exceptions
             head = {'Content-type': 'application/json',
                     'Authorization': self.__token}
             self.session = aiohttp.ClientSession(headers=head)
