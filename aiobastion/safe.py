@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from typing import AsyncIterator
 
 from .abstract import Vault
 from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile
@@ -194,28 +195,90 @@ class Safe:
         """
         return username in await self.list_members(safe_name)
 
+    async def search_safe_iterator(self, query=None) -> AsyncIterator:
+        """
+        This function allow to search using one or more parameters and return list of address id
+        :param query: free search
+
+        :return: an async iterator of json representation of safes
+        """
+
+        page = 1
+        has_next_page = True
+
+        while has_next_page:
+            accounts = await self.search_safe_paginate(page=page, search=query)
+            has_next_page = accounts["has_next_page"]
+            page += 1
+            for a in accounts["accounts"]:
+                yield a
+
+    async def search_safe_paginate(self, page: int = 1, size_of_page: int = 100, search: str = None):
+        """
+        Search safes in a paginated way
+        :param search: free search
+        :param page: number of page
+        :param size_of_page: size of pages
+
+        :return:
+        """
+        params = {}
+
+        if search is not None:
+            params["search"] = f"{search}"
+
+        params["limit"] = size_of_page
+        params["offset"] = (page - 1) * size_of_page
+        try:
+            search_results = await self.epv.handle_request("get", "API/Safes", params=params,
+                                                   filter_func=lambda x: x)
+        except CyberarkAPIException as err:
+            if err.err_code == "CAWS00001E":
+                raise AiobastionException("Please don't list safes with a user member of PSMMaster (Cyberark bug)")
+            else:
+                raise
+        safe_list = search_results['value']
+        # check for each address if the content of FC match the search
+        # filtered_account_list = filter(lambda f: _filter_account(f, kwargs), account_list)
+        # # for each filtered address, build the PrivilegedAccount
+        # filtered_acc_list = [PrivilegedAccount(**acc) for acc in filtered_account_list]
+
+        has_next_page = "nextLink" in search_results
+        return {
+            "accounts": safe_list,
+            "has_next_page": has_next_page
+        }
+
+    async def search_safes(self, query=None):
+        return [safe async for safe in self.search_safe_iterator(query)]
+
     async def list(self, details=False):
         """
         List all safes
         :return: A list of safes names
         """
-        # if user is username of PSMMaster this is going to crash with a weird mapping type error...
-        try:
-            params = {
-                "limit": 250
-            }
-            ret = await self.epv.handle_request("get", "api/Safes", params=params, filter_func=lambda r: r["value"])
-            raised = False
-        except CyberarkAPIException as err:
-            raised = True
-            ret = await self.epv.handle_request("get", 'WebServices/PIMServices.svc/Safes/',
-                                                filter_func=lambda result: result["GetSafesSlashResult"])
         if details:
-            return ret
-        if raised:
-            return [x["SafeName"] for x in ret]
+            return await self.search_safes()
         else:
-            return [x["safeName"] for x in ret]
+            return [r["safeName"] for r in await self.search_safes()]
+        # if user is username of PSMMaster this is going to crash with a weird mapping type error...
+        # try:
+        #     params = {
+        #         "limit": 250
+        #     }
+        #     ret = await self.epv.handle_request("get", "api/Safes", params=params, filter_func=lambda r: r["value"])
+        #     raised = False
+        # except CyberarkAPIException as err:
+        #     print("raised !")
+        #     raised = True
+        #     ret = await self.epv.handle_request("get", 'WebServices/PIMServices.svc/Safes/',
+        #                                         filter_func=lambda result: result["GetSafesSlashResult"])
+        # if details:
+        #     return ret
+        # if raised:
+        #     return [x["SafeName"] for x in ret]
+        # else:
+        #     return [x["safeName"] for x in ret]
 
 
     async def get_permissions(self, safename: str, username: str):
