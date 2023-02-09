@@ -195,10 +195,11 @@ class Safe:
         """
         return username in await self.list_members(safe_name)
 
-    async def search_safe_iterator(self, query=None) -> AsyncIterator:
+    async def search_safe_iterator(self, query=None, include_accounts="False") -> AsyncIterator:
         """
         This function allow to search using one or more parameters and return list of address id
         :param query: free search
+        :param include_accounts: include safe's accounts
 
         :return: an async iterator of json representation of safes
         """
@@ -207,18 +208,20 @@ class Safe:
         has_next_page = True
 
         while has_next_page:
-            accounts = await self.search_safe_paginate(page=page, search=query)
+            accounts = await self.search_safe_paginate(page=page, search=query, include_accounts=include_accounts)
             has_next_page = accounts["has_next_page"]
             page += 1
             for a in accounts["accounts"]:
                 yield a
 
-    async def search_safe_paginate(self, page: int = 1, size_of_page: int = 100, search: str = None):
+    async def search_safe_paginate(self, page: int = 1, size_of_page: int = 100, search: str = None,
+                                   include_accounts="False"):
         """
         Search safes in a paginated way
         :param search: free search
         :param page: number of page
         :param size_of_page: size of pages
+        :param include_accounts: include safe's accounts
 
         :return:
         """
@@ -226,6 +229,8 @@ class Safe:
 
         if search is not None:
             params["search"] = f"{search}"
+
+        params["includeAccounts"] = include_accounts
 
         params["limit"] = size_of_page
         params["offset"] = (page - 1) * size_of_page
@@ -249,18 +254,18 @@ class Safe:
             "has_next_page": has_next_page
         }
 
-    async def search_safes(self, query=None):
-        return [safe async for safe in self.search_safe_iterator(query)]
+    async def search(self, query=None, include_accounts="False"):
+        return [safe async for safe in self.search_safe_iterator(query, include_accounts)]
 
     async def list(self, details=False):
         """
-        List all safes
+        List all safes (better use search)
         :return: A list of safes names
         """
         if details:
-            return await self.search_safes()
+            return await self.search()
         else:
-            return [r["safeName"] for r in await self.search_safes()]
+            return [r["safeName"] for r in await self.search()]
         # if user is username of PSMMaster this is going to crash with a weird mapping type error...
         # try:
         #     params = {
