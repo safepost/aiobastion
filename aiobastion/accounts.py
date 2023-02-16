@@ -10,8 +10,9 @@ from .exceptions import (
     CyberarkAPIException, CyberarkException, AiobastionException
 )
 
-MAX_CONCURRENT_CALLS = 10
-
+BASE_FILECATEGORY = ("platformId", "userName", "address", "name")
+SECRET_MANAGEMENT_FILECATEGORY = ("automaticManagementEnabled", "manualManagementReason", "lastModifiedTime",
+                                  "lastReconciledTime", "lastVerifiedTime", "status")
 
 # SEMAPHORE = None
 #
@@ -148,7 +149,10 @@ class Account:
         :param url: lambda function that return the url with an account_id parameter
         :param accounts: list of address id
         :param data: if relevant, a dict that contains data
+        :param return_exception: return exceptions as result, or raise
+
         :return: the result of the subsequent calls
+        :
         """
 
         async def api_call(acc_id):
@@ -487,13 +491,65 @@ class Account:
             ]
         :return: json repr of the address
         """
-        return await self.handle_acc_id_list(
+        # We want to raise exceptions here
+        await self.handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
             data
         )
+
         # return await self.epv.handle_request("patch", 'API/Accounts/' + account_id, data=data)
+    # Doc + Test
+    def detect_fc_path(self, fc):
+        if fc in BASE_FILECATEGORY:
+            return "/"
+        elif fc in SECRET_MANAGEMENT_FILECATEGORY:
+            return "/secretmanagement/"
+        else:
+            return "/platformaccountproperties/"
+
+    async def update_single_fc(self,  account, file_category, new_value, operation="replace"):
+
+        # if we "add" and FC exists it will replace it
+        data = [{"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": operation, "value": new_value}]
+        try:
+            return await self.update_using_list(account, data)
+        except CyberarkAPIException as err:
+            if err.err_code == "PASWS164E" and operation == "replace":
+                # Try to add FC instead of replacing it
+                return await self.update_single_fc(account, file_category, new_value, "add")
+            else:
+                raise
+
+    async def update_file_category(self, account, file_category, new_value):
+        """
+        Update the file category (or list of FC) with the new value (or list of new values)
+        If the FC does not exist, it will create it
+
+        :param account: address, list of accounts, account_id, list of accounts id
+        :param file_category: a file category or a list of file category
+        :param new_value: the new value of the list of new values
+
+        """
+        data = []
+        if isinstance(file_category, list):
+            try:
+                assert isinstance(new_value, list)
+            except AssertionError:
+                raise AiobastionException("If file_category is a list, then new value must be a list aswell")
+            try:
+                assert len(file_category) == len(new_value)
+            except AssertionError:
+                raise AiobastionException("You must provide the same list size for file_category and values")
+            for f,n in zip(file_category, new_value):
+                # Todo : if we have account we can check if Fc is in account
+                data.append({"path": f"{self.detect_fc_path(f)}{f}", "op": "add", "value": n})
+        else:
+            data.append({"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": "add", "value": new_value})
+
+        return self.update_using_list(account, data)
+
 
     # Doc + Test
     async def restore_last_cpm_version(self, account: PrivilegedAccount, cpm):
