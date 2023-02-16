@@ -230,7 +230,7 @@ class Safe:
         if search is not None:
             params["search"] = f"{search}"
 
-        params["includeAccounts"] = include_accounts
+        params["includeAccounts"] = str(include_accounts)
 
         params["limit"] = size_of_page
         params["offset"] = (page - 1) * size_of_page
@@ -243,10 +243,6 @@ class Safe:
             else:
                 raise
         safe_list = search_results['value']
-        # check for each address if the content of FC match the search
-        # filtered_account_list = filter(lambda f: _filter_account(f, kwargs), account_list)
-        # # for each filtered address, build the PrivilegedAccount
-        # filtered_acc_list = [PrivilegedAccount(**acc) for acc in filtered_account_list]
 
         has_next_page = "nextLink" in search_results
         return {
@@ -266,25 +262,9 @@ class Safe:
             return await self.search()
         else:
             return [r["safeName"] for r in await self.search()]
-        # if user is username of PSMMaster this is going to crash with a weird mapping type error...
-        # try:
-        #     params = {
-        #         "limit": 250
-        #     }
-        #     ret = await self.epv.handle_request("get", "api/Safes", params=params, filter_func=lambda r: r["value"])
-        #     raised = False
-        # except CyberarkAPIException as err:
-        #     print("raised !")
-        #     raised = True
-        #     ret = await self.epv.handle_request("get", 'WebServices/PIMServices.svc/Safes/',
-        #                                         filter_func=lambda result: result["GetSafesSlashResult"])
-        # if details:
-        #     return ret
-        # if raised:
-        #     return [x["SafeName"] for x in ret]
-        # else:
-        #     return [x["safeName"] for x in ret]
 
+    async def v1_get_safes(self):
+        return await self.epv.handle_request("get", 'WebServices/PIMServices.svc/Safes/', filter_func=lambda r: r)
 
     async def get_permissions(self, safename: str, username: str):
         """
