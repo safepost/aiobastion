@@ -2,7 +2,7 @@ import re
 
 from .accounts import PrivilegedAccount
 from .abstract import Vault
-from .exceptions import AiobastionException
+from .exceptions import AiobastionException, CyberarkAPIException
 
 
 class PrivilegedAccountGroup:
@@ -111,8 +111,49 @@ class AccountGroup:
         url = f"API/AccountGroups/{group_id}/Members/{account_id}"
         return await self.epv.handle_request("delete", url)
 
-    # This API call does not exists
+    # This API call does not exist
     # async def delete(self, group_id):
     #     if re.match(r'\d+_\d+', group_id) is None:
     #         raise BastionException("The provided Group ID is not valid !")
     #     return await self.epv.handle_request("delete", f"api/AccountGroups/{group_id}")
+
+    # Not tested / documented
+    async def move_all_account_groups(self, src_safe, dst_safe, account_filter):
+        """
+        Move all accounts groups from a safe to another safe
+        Members of the account groups are also moved !
+
+        filter : filter on accounts base file category
+        example : {"platformID": "Unix-SSH"}
+        """
+        account_groups = await self.list_by_safe(src_safe)
+        for ag in account_groups:
+            ag_members = (await self.members(ag))
+            if account_filter is not None:
+                filtered = False
+                for a in ag_members:
+                    for k, v in account_filter.items():
+                        if getattr(a, k) != v:
+                            filtered = True
+                if filtered:
+                    # print("Account group skipped ....")
+                    continue
+                # else:
+                #     print("Account group to be moved !")
+                #     print("Members :")
+                #     print([ag.address for ag in ag_members])
+
+            try:
+                ng = await self.add(ag.name, ag.group_platform, dst_safe)
+                # print(f"Newly created group ID : {ng}")
+            except CyberarkAPIException as err:
+                if err.err_code == "CAWS00001E":
+                    nglist = await self.list_by_safe(dst_safe)
+                    ng = next(ng for ng in nglist if ag.name == ng.name)
+                    # print(f"Warning : AG already exists and detected with ID : {ng}")
+                else:
+                    raise
+            moved_accounts = await self.epv.account.move(ag_members, dst_safe)
+            # print("Account moved !")
+            for agm in moved_accounts:
+                print(await self.add_member(agm, ng))

@@ -133,6 +133,8 @@ class EPV(Vault):
 
             # Cleaning password after authentication
             self.__password = ""
+        except ChallengeResponseException:
+            raise
         except (ConnectionError, TimeoutError):
             raise CyberarkException("Network problem connecting to PVWA")
         except Exception as err:
@@ -355,8 +357,10 @@ class EPV(Vault):
                 else:
                     if req.status == 404:
                         raise CyberarkException(f"404 error with URL {url}")
-                    if req.status == 401:
+                    elif req.status == 401:
                         raise CyberarkException(f"You are not logged, you need to login first")
+                    elif req.status == 405:
+                        raise CyberarkException("Your PVWA version does not support this function")
                     try:
                         content = await req.json(content_type=None)
                     except (KeyError, ValueError, ContentTypeError):
