@@ -215,7 +215,7 @@ class Safe:
                 yield a
 
     async def search_safe_paginate(self, page: int = 1, size_of_page: int = 100, search: str = None,
-                                   include_accounts="False"):
+                                   include_accounts="False", extended_details="False"):
         """
         Search safes in a paginated way
         :param search: free search
@@ -231,6 +231,8 @@ class Safe:
             params["search"] = f"{search}"
 
         params["includeAccounts"] = str(include_accounts)
+        params["extendedDetails"] = str(extended_details)
+
 
         params["limit"] = size_of_page
         params["offset"] = (page - 1) * size_of_page

@@ -140,17 +140,34 @@ class Group:
     def __init__(self, epv: Vault):
         self.epv = epv
 
-    async def list(self, pattern: str = None, group_type: str = None):
+    async def list(self, pattern: str = None, group_type: str = None, details: bool = False,
+                   include_members: bool = False):
         url = f"api/UserGroups"
-        payload = {}
+        params = {}
 
         if group_type is not None:
-            payload["filter"] = f"groupType eq {group_type}"
+            params["filter"] = f"groupType eq {group_type}"
         if pattern is not None:
-            payload["search"] = pattern
+            params["search"] = pattern
+        if include_members:
+            params["includeMembers"] = "True"
 
-        groups = await self.epv.handle_request("get", url, params=payload, filter_func=lambda x: x["value"])
-        return [g["groupName"] for g in groups]
+        groups = await self.epv.handle_request("get", url, params=params, filter_func=lambda x: x["value"])
+        if details or include_members:
+            return groups
+        else:
+            return [g["groupName"] for g in groups]
+
+    async def details(self, group_id, include_members: bool = False):
+        # > v12.2
+        url = f"api/UserGroups/{group_id}"
+        params = {}
+
+        if include_members:
+            params["includeMembers"] = "True"
+
+        return await self.epv.handle_request("get", url, params=params)
+
 
     async def get_id(self, group_name: str):
         url = f"api/UserGroups"

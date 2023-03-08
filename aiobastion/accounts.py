@@ -214,6 +214,7 @@ class Account:
 
     async def link_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
                                  logon_account: PrivilegedAccount):
+        #TODO check the index of logon account at platform level !
         return await self.link_account(account, logon_account, 2)
 
     async def link_reconcile_account_by_address(self, acc_username, rec_acc_username, address):
@@ -562,6 +563,18 @@ class Account:
         else:
             raise AiobastionException("There is no CPM version for this account")
 
+    async def restore_last_cpm_version_by_cpm(self, account: PrivilegedAccount, cpm):
+        versions = await self.get_secret_versions(account)
+        print(versions)
+        cpm_versions = [v["versionID"] for v in versions if v["modifiedBy"] == cpm]
+        if len(cpm_versions) > 0:
+            good_ver = max(cpm_versions)
+            password_to_set = await self.get_password_version(account,good_ver)
+            print(f"{account.address};{password_to_set}")
+            return await self.set_next_password(account,password_to_set)
+        else:
+            raise AiobastionException("There is no CPM version for this account")
+
     # Doc + test
     async def get_password_version(self, account: PrivilegedAccount, version: int):
         data = {"Version": version}
@@ -645,11 +658,20 @@ class Account:
             await self.get_account_id(account),
             {"NewCredentials": password}
         )
-        # account_id = await self.get_account_id(address)
-        # data = {
-        #     "NewCredentials": password
-        # }
-        # return await self.epv.handle_request("post", f"API/Accounts/{account_id}/Password/Update", data=data)
+
+    async def set_next_password(self, account, password):
+        """
+        Set the password for the given address in the vault
+        :param account: Privileged address or account_id
+        :param password:
+        :return: True if success
+        """
+        return await self.handle_acc_id_list(
+            "post",
+            lambda account_id: f"API/Accounts/{account_id}/SetNextPassword",
+            await self.get_account_id(account),
+            {"ChangeImmediately" : True, "NewCredentials": password}
+        )
 
     async def delete(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         # account_id = await self.get_account_id(address),

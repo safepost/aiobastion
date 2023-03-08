@@ -99,12 +99,27 @@ class TestUsers(IsolatedAsyncioTestCase):
         req = await self.vault.group.list(group_type="Vault")
         self.assertIn("Vault Admins", req)
 
+        req = await self.vault.group.list(details=True, include_members=True)
+        for r in req:
+            self.assertIn("groupType", r.keys())
+
+        req = await self.vault.group.list(include_members=True)
+        for r in req:
+            self.assertIn("members", r.keys())
+
+
+    async def test_details_group(self):
+        req = await self.vault.group.get_id("Vault Admins")
+        print(req)
+        print(await self.vault.group.details(req))
+
     async def test_get_id_group(self):
         req = await self.vault.group.get_id("Vault Admins")
         self.assertIsInstance(req, int)
 
         with self.assertRaises(AiobastionException):
             req = await self.vault.group.get_id("Les Poneys")
+
 
     async def test_add_group(self):
         new_group_name = "new_group_test"
