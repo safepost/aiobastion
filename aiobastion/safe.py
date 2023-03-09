@@ -69,7 +69,7 @@ class Safe:
         }
         return await self.epv.handle_request("post", url, data=data)
     
-    async def add_member_legacy(self, safe: str, username: str, profile: (str, dict)):
+    async def add_member_profile(self, safe: str, username: str, profile: (str, dict)):
         """
         This functions adds the "username" user (or group) to the given safe with a relevant profile
 
