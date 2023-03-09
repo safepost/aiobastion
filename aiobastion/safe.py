@@ -12,7 +12,64 @@ class Safe:
     def __init__(self, epv: Vault):
         self.epv = epv
 
-    async def add_member(self, safe: str, username: str, profile: (str, dict)):
+    async def add_member(self, safe: str, username: str,
+                         useAccounts: bool = False,
+                         retrieveAccounts: bool = False,
+                         listAccounts: bool = False,
+                         addAccounts: bool = False,
+                         updateAccountContent: bool = False,
+                         updateAccountProperties: bool = False,
+                         initiateCPMAccountManagementOperations: bool = False,
+                         specifyNextAccountContent: bool = False,
+                         renameAccounts: bool = False,
+                         deleteAccounts: bool = False,
+                         unlockAccounts: bool = False,
+                         manageSafe: bool = False,
+                         manageSafeMembers: bool = False,
+                         backupSafe: bool = False,
+                         viewAuditLog: bool = False,
+                         viewSafeMembers: bool = False,
+                         accessWithoutConfirmation: bool = False,
+                         createFolders: bool = False,
+                         deleteFolders: bool = False,
+                         moveAccountsAndFolders: bool = False,
+                         requestsAuthorizationLevel1: bool = False,
+                         requestsAuthorizationLevel2: bool = False
+                         ):
+        perm = {
+            "useAccounts": useAccounts,
+            "retrieveAccounts": retrieveAccounts,
+            "listAccounts": listAccounts,
+            "addAccounts": addAccounts,
+            "updateAccountContent": updateAccountContent,
+            "updateAccountProperties": updateAccountProperties,
+            "initiateCPMAccountManagementOperations": initiateCPMAccountManagementOperations,
+            "specifyNextAccountContent": specifyNextAccountContent,
+            "renameAccounts": renameAccounts,
+            "deleteAccounts": deleteAccounts,
+            "unlockAccounts": unlockAccounts,
+            "manageSafe": manageSafe,
+            "manageSafeMembers": manageSafeMembers,
+            "backupSafe": backupSafe,
+            "viewAuditLog": viewAuditLog,
+            "viewSafeMembers": viewSafeMembers,
+            "accessWithoutConfirmation": accessWithoutConfirmation,
+            "createFolders": createFolders,
+            "deleteFolders": deleteFolders,
+            "moveAccountsAndFolders": moveAccountsAndFolders,
+            "requestsAuthorizationLevel1": requestsAuthorizationLevel1,
+            "requestsAuthorizationLevel2": requestsAuthorizationLevel2
+        }
+
+        url = f"api/Safes/{safe}/Members"
+
+        data = {
+            'MemberName': username,
+            'Permissions': perm
+        }
+        return await self.epv.handle_request("post", url, data=data)
+    
+    async def add_member_legacy(self, safe: str, username: str, profile: (str, dict)):
         """
         This functions adds the "username" user (or group) to the given safe with a relevant profile
 
