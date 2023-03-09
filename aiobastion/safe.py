@@ -171,7 +171,7 @@ class Safe:
         # Define Safe defaults owners
         for user, profile in {"Vault Admins": "admin", "Administrator": 'admin'}.items():
             try:
-                await self.add_member(safe_name, user, profile)
+                await self.add_member_profile(safe_name, user, profile)
             except CyberarkAPIException as err:
                 if err.http_status == 409:
                     # Already exists
