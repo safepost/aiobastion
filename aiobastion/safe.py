@@ -195,7 +195,7 @@ class Safe:
         """
         return username in await self.list_members(safe_name)
 
-    async def search_safe_iterator(self, query=None, include_accounts="False") -> AsyncIterator:
+    async def search_safe_iterator(self, query=None, include_accounts=False) -> AsyncIterator:
         """
         This function allow to search using one or more parameters and return list of address id
         :param query: free search
@@ -215,15 +215,17 @@ class Safe:
                 yield a
 
     async def search_safe_paginate(self, page: int = 1, size_of_page: int = 100, search: str = None,
-                                   include_accounts="False", extended_details="False"):
+                                   include_accounts=False, extended_details=False):
         """
         Search safes in a paginated way
         :param search: free search
         :param page: number of page
         :param size_of_page: size of pages
         :param include_accounts: include safe's accounts
+        :param extended_details: add more details on the safe (may be very slow)
 
         :return:
+
         """
         params = {}
 
@@ -252,7 +254,7 @@ class Safe:
             "has_next_page": has_next_page
         }
 
-    async def search(self, query=None, include_accounts="False"):
+    async def search(self, query=None, include_accounts=False):
         return [safe async for safe in self.search_safe_iterator(query, include_accounts)]
 
     async def list(self, details=False):
