@@ -2,6 +2,8 @@ import asyncio
 from .abstract import Vault
 from .exceptions import AiobastionException
 
+from typing import List
+
 
 class User:
     def __init__(self, epv: Vault):
@@ -135,6 +137,45 @@ class User:
             coros.append(self.del_ssh_key(username, key))
         await asyncio.gather(*coros)
 
+    async def add(self, username: str, user_type: str = "EPVUser", non_authorized_interfaces: List = None,
+                  location: str = "\\", expiry_date: int = None, enable_user: bool = True,
+                  authentication_method: List = None, password: str = None,
+                  change_password_on_the_next_logon: bool = True, password_never_expires: bool = False,
+                  distinguished_name: str = None, vault_authorization: List = None, business_address: dict = None,
+                  internet: dict = None, phones: dict = None, description: str = None, personal_details: dict = None
+                  ):
+        #
+        # if non_authorized_interfaces is None:
+        #     non_authorized_interfaces = []
+
+        new_user = {
+            "username": username,
+            "userType": user_type,
+            "initialPassword": password,
+            "authenticationMethod": authentication_method,
+            "location": location,
+            "unAuthorizedInterfaces": non_authorized_interfaces,
+            "expiryDate": expiry_date,
+            "vaultAuthorization": vault_authorization,
+            "enableUser": str(enable_user),
+            "changePassOnNextLogon": str(change_password_on_the_next_logon),
+            "passwordNeverExpires": str(password_never_expires),
+            "distinguishedName": distinguished_name,
+            "description": description,
+            "businessAddress": business_address,
+            "internet": internet,
+            "phones": phones,
+            "personalDetails": personal_details
+        }
+
+        new_user_filtered = {k: v for k, v in new_user.items() if v is not None}
+
+        return await self.epv.handle_request("post", f"API/Users/", data=new_user_filtered)
+
+    async def delete(self, username: str):
+        user_id = await self.get_id(username)
+        return await self.epv.handle_request("delete", f"API/Users/{user_id}/")
+
 
 class Group:
     def __init__(self, epv: Vault):
@@ -167,7 +208,6 @@ class Group:
             params["includeMembers"] = "True"
 
         return await self.epv.handle_request("get", url, params=params)
-
 
     async def get_id(self, group_name: str):
         url = f"api/UserGroups"
@@ -238,4 +278,3 @@ class Group:
         if domain is not None:
             data['domainName'] = domain
         return await self.epv.handle_request("post", f'api/UserGroups/{groupId}/Members', data=data)
-

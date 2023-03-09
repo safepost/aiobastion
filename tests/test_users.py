@@ -54,6 +54,26 @@ class TestUsers(IsolatedAsyncioTestCase):
         req = await self.vault.user.details(self.api_user)
         self.assertEqual(req["username"], self.api_user)
 
+    async def test_add_user(self):
+        random_password = secrets.token_urlsafe(18)
+        req = await self.vault.user.add("newAdmin", password=random_password)
+        self.assertIsInstance(req, dict)
+
+    async def test_del_user(self):
+        random_password = secrets.token_urlsafe(18)
+        try:
+            req = await self.vault.user.add("newAdmin", password=random_password)
+        except CyberarkAPIException:
+            # The user already exists
+            pass
+        req = await self.vault.user.delete("newAdmin")
+        self.assertEqual(req, True)
+
+        with self.assertRaises(AiobastionException):
+            await self.vault.user.delete("thisuserdoesnotexists")
+
+# Group Part
+
     async def test_groups(self):
         req = await self.vault.user.groups(self.api_user)
         self.assertIn("Vault Admins", req)
@@ -109,8 +129,9 @@ class TestUsers(IsolatedAsyncioTestCase):
 
 
     async def test_details_group(self):
+        self.skipTest("Not testable in this version")
         req = await self.vault.group.get_id("Vault Admins")
-        print(req)
+
         print(await self.vault.group.details(req))
 
     async def test_get_id_group(self):
