@@ -14,14 +14,6 @@ BASE_FILECATEGORY = ("platformId", "userName", "address", "name")
 SECRET_MANAGEMENT_FILECATEGORY = ("automaticManagementEnabled", "manualManagementReason", "lastModifiedTime",
                                   "lastReconciledTime", "lastVerifiedTime", "status")
 
-# SEMAPHORE = None
-#
-# def get_sem():
-#     global SEMAPHORE
-#     if SEMAPHORE is None:
-#         SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-#     return SEMAPHORE
-
 
 class PrivilegedAccount:
     """Base class to be used with accounts fonctions"""
@@ -544,7 +536,7 @@ class Account:
             except AssertionError:
                 raise AiobastionException("You must provide the same list size for file_category and values")
             for f,n in zip(file_category, new_value):
-                # Todo : if we have account we can check if Fc is in account
+                # we trust user and don't check if FC is defined at platform level
                 data.append({"path": f"{self.detect_fc_path(f)}{f}", "op": "add", "value": n})
         else:
             data.append({"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": "add", "value": new_value})
