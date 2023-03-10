@@ -196,6 +196,9 @@ class EPV(Vault):
                 async with session.get(url, params=data, **req_params) as req:
                     result = await req.json()
 
+            if "ErrorCode" in result:
+                raise CyberarkException(f"AIM Request failed : {result}")
+
             return result["Content"]
 
         except Exception:
