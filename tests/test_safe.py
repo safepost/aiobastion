@@ -121,6 +121,9 @@ class TestSafe(IsolatedAsyncioTestCase):
         ret = await self.vault.safe.list()
         self.assertIn(self.test_safe, ret)
 
+        ret = await self.vault.safe.list(details=True)
+
+
     async def test_search_safe(self):
         ret = await self.vault.safe.search()
         safes_names = [r["safeName"] for r in ret]
@@ -128,5 +131,4 @@ class TestSafe(IsolatedAsyncioTestCase):
 
     async def test_v1_get_safes(self):
         ret = await self.vault.safe.v1_get_safes()
-        print(ret)
         self.assertIn(self.test_safe, self.test_safe)
