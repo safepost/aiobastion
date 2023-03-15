@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.17] - 2023-03-09
 ### Changes
 - add_member function now takes the permissions as argument instead of a profile
+- allowing function "safe.list" to get details for backward comp
+- adding system_health related functions
 
 ### Bugfixes
 - Fixed the type of args for safe search function from string to boolean
