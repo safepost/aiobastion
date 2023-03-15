@@ -16,6 +16,7 @@ from .exceptions import CyberarkException, GetTokenException, AiobastionExceptio
     ChallengeResponseException
 from .platforms import Platform
 from .safe import Safe
+from .system_health import SystemHealth
 from .users import User, Group
 from .utilities import Utilities
 
@@ -92,6 +93,7 @@ class EPV(Vault):
         self.group = Group(self)
         self.application = Applications(self)
         self.accountgroup = AccountGroup(self)
+        self.system_health = SystemHealth(self)
         self.utils = Utilities(self)
 
     # Context manager
