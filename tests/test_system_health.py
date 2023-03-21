@@ -19,5 +19,15 @@ class TestSystemHealth(IsolatedAsyncioTestCase):
         print(summary)
 
     async def test_details(self):
-        pvwa_summary = await self.vault.system_health.details("PVWA")
-        print(pvwa_summary)
+        # PVWA, SessionManagement, CPM, PTA or AIM
+        summary = await self.vault.system_health.details("PVWA")
+        self.assertIsInstance(summary, list)
+
+        summary = await self.vault.system_health.details("SessionManagement")
+        self.assertIsInstance(summary, list)
+
+        summary = await self.vault.system_health.details("CPM")
+        self.assertIsInstance(summary, list)
+
+        summary = await self.vault.system_health.details("AIM")
+        self.assertIsInstance(summary, list)

@@ -484,8 +484,7 @@ class Account:
             ]
         :return: json repr of the address
         """
-        # We want to raise exceptions here
-        await self.handle_acc_id_list(
+        return await self.handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
