@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bugfixes
 - Fixed the type of args for safe search function from string to boolean
+- Changing filecategory now returns the updated account (instead of None)
 
 
 ## [0.0.16] - 2023-03-09
