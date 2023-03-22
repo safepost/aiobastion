@@ -39,11 +39,8 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      - name: Show files ️
-        run: |
-          ls
 
       - name: Upload result to GitHub Code Scanning 📡
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: ./snyk.sarif
+          sarif_file: ./aiobastion/snyk.sarif
