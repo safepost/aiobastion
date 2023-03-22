@@ -1,6 +1,7 @@
 import os
 import argparse
 
+# Not implemented yet
 parser = argparse.ArgumentParser(description='Helper for aiobastion.')
 parser.add_argument('-c', '--config', help="Creates a standard config file to be used with aiobastion", required=True)
 parser.add_argument('-a', '--aimconfig', help="Creates a AIM config file to be used with aiobastion", required=True)
@@ -30,13 +31,13 @@ if args.aimconfig:
 
 
 
-    # defaults part
-
-
-    with open(os.path.join(os.getcwd(), f"./config_{pvwa_host}.yml"), "w") as f:
-        f.write(f"Label: {label}\n")
-        f.write(f"Connection:\n")
-        if len(username) > 0:
-            f.write(f"\tUsername: {username}")
-
+    # # defaults part
+    #
+    #
+    # with open(os.path.join(os.getcwd(), f"./config_{pvwa_host}.yml"), "w") as f:
+    #     f.write(f"Label: {label}\n")
+    #     f.write(f"Connection:\n")
+    #     if len(username) > 0:
+    #         f.write(f"\tUsername: {username}")
+    #
 
