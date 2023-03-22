@@ -556,12 +556,10 @@ class Account:
 
     async def restore_last_cpm_version_by_cpm(self, account: PrivilegedAccount, cpm):
         versions = await self.get_secret_versions(account)
-        print(versions)
         cpm_versions = [v["versionID"] for v in versions if v["modifiedBy"] == cpm]
         if len(cpm_versions) > 0:
             good_ver = max(cpm_versions)
             password_to_set = await self.get_password_version(account,good_ver)
-            print(f"{account.address};{password_to_set}")
             return await self.set_next_password(account,password_to_set)
         else:
             raise AiobastionException("There is no CPM version for this account")

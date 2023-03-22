@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.18] - 2023-03-09
+### Bugfixes
+- Fixed print in restore_last_cpm_version_by_cpm function
+
 ## [0.0.17] - 2023-03-09
 ### Changes
 - add_member function now takes the permissions as argument instead of a profile
