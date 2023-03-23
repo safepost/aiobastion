@@ -35,8 +35,8 @@ class TestSafe(IsolatedAsyncioTestCase):
         else:
             return random.choices(safes, k=n)
 
-    async def test_add_member(self):
-        with self.assertRaises(AssertionError):
+    async def test_add_member_profile(self):
+        with self.assertRaises(CyberarkAPIException):
             ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, "tutu")
 
         # Trying to remove first in case of the user is already username
@@ -45,24 +45,46 @@ class TestSafe(IsolatedAsyncioTestCase):
         except CyberarkException:
             pass
 
-        ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, "use")
+        ret = await self.vault.safe.add_member_profile(self.test_safe, self.test_usr, "use")
         self.assertIn("memberId", ret)
 
         # check already username exception
         with self.assertRaises(CyberarkAPIException):
-            ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, "use")
+            ret = await self.vault.safe.add_member_profile(self.test_safe, self.test_usr, "use")
 
         # undo
         ret = await self.vault.safe.remove_member(self.test_safe, self.test_usr)
         self.assertTrue(ret)
 
         custom_perm = {"UseAccounts": True}
-        ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, custom_perm)
+        ret = await self.vault.safe.add_member_profile(self.test_safe, self.test_usr, custom_perm)
         self.assertIn("memberId", ret)
 
         # undo
         ret = await self.vault.safe.remove_member(self.test_safe, self.test_usr)
         self.assertTrue(ret)
+
+    async def test_add_member(self):
+        with self.assertRaises(CyberarkAPIException):
+            ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, "tutu")
+
+        # Trying to remove first in case of the user is already username
+        try:
+            await self.vault.safe.remove_member(self.test_safe, self.test_usr)
+        except CyberarkException:
+            pass
+
+        ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, useAccounts=True, listAccounts=True)
+        self.assertIn("memberId", ret)
+
+        # check already username exception
+        with self.assertRaises(CyberarkAPIException):
+            ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, useAccounts=True, listAccounts=True)
+
+        # undo
+        ret = await self.vault.safe.remove_member(self.test_safe, self.test_usr)
+        self.assertTrue(ret)
+
 
     async def test_remove_member(self):
         self.skipTest("Already covered in test_add_safe_member")
@@ -122,7 +144,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.assertIn(self.test_safe, ret)
 
         ret = await self.vault.safe.list(details=True)
-
+        self.assertIn(self.test_safe, [r["safeName"] for r in ret])
 
     async def test_search_safe(self):
         ret = await self.vault.safe.search()
