@@ -18,14 +18,16 @@ class User:
         url = "WebServices/PIMServices.svc/User"
         return await self.epv.handle_request("get", url)
 
-    async def list(self, pattern: str = None, user_type: str = None, details=False):
+    async def list(self, pattern: str = None, user_type: str = None, details=False, extended_details=False):
         """
         Returns a list of users matching criteria
 
         :param pattern: free search pattern
         :param user_type: user_type, for example "EPVUser"
-        :param details: Instead of returning list of user names, return a list of dict with all infos
+        :param details: Instead of returning list of user names, return a list of dict with more infos
+        :param extended_details: Adding groupsMembership, enableUser and suspended infos
         :return: A list of user, or a list of dict with extended details
+
         """
         data = {}
 
@@ -35,12 +37,12 @@ class User:
         if pattern is not None:
             data["search"] = pattern
 
-        if details:
-            data["ExtendedDetails"] = "True"
+        if extended_details:
+            data["ExtendedDetails"] = str(extended_details)
 
         url = "api/Users"
         ret = await self.epv.handle_request("get", url, params=data, filter_func=lambda x: x["Users"])
-        if details:
+        if details or extended_details:
             return ret
         else:
             return [u["username"] for u in ret]

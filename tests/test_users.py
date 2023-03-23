@@ -33,6 +33,13 @@ class TestUsers(IsolatedAsyncioTestCase):
         self.assertIn(self.api_user, req)
         self.assertIn(self.test_usr, req)
 
+        req = await self.vault.user.list(details=True)
+        self.assertIn(self.api_user, [r["username"] for r in req])
+        self.assertIn(self.test_usr, [r["username"] for r in req])
+
+        req = await self.vault.user.list(extended_details=True)
+        self.assertIn("groupsMembership", [r.keys() for r in req][0])
+
 
     async def test_get_users(self):
         req = await self.vault.user.list()

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import warnings
 from typing import AsyncIterator
 
 from .abstract import Vault
@@ -174,8 +175,10 @@ class Safe:
                 await self.add_member_profile(safe_name, user, profile)
             except CyberarkAPIException as err:
                 if err.http_status == 409:
-                    # Already exists
-                    pass
+                    warnings.warn(err.err_message)
+                    # pass
+                elif err.http_status == 403:
+                    warnings.warn(err.err_message)
                 else:
                     raise
 
