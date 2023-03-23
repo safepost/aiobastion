@@ -14,6 +14,28 @@ class TestApplication(IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.vault.close_session()
 
+
+    async def test_add_application(self):
+        ret = await self.vault.application.add("sampleapp")
+        self.assertTrue(ret)
+
+        ret = await self.vault.application.delete("sampleapp")
+        self.assertTrue(ret)
+
+        ret = await self.vault.application.add("sampleapp", disabled=True)
+        self.assertTrue(ret)
+
+        ret = await self.vault.application.delete("sampleapp")
+        self.assertTrue(ret)
+
+    async def test_del_application(self):
+        ret = await self.vault.application.add("sampleapp")
+        self.assertTrue(ret)
+
+        ret = await self.vault.application.delete("sampleapp")
+        self.assertTrue(ret)
+
+
     async def test_del_all_authentication(self):
         # Cleanup all authentications
         auths = await self.vault.application.get_authentication(self.app_name)

@@ -1,3 +1,4 @@
+import aiobastion.exceptions
 from .abstract import Vault
 from .exceptions import AiobastionException
 
@@ -15,6 +16,56 @@ from .exceptions import AiobastionException
 class Applications:
     def __init__(self, epv: Vault):
         self.epv = epv
+
+    async def add(self, app_name: str, description: str = "", location: str = "\\", access_from: int = None,
+                  access_to: int = None, expiration:str = None, disabled:bool = None,
+                  owner_first_name: str = "", owner_last_name: str = "", owner_email: str = None, owner_phone: str = ""
+                  ):
+        url = "WebServices/PIMServices.svc/Applications/"
+
+        data = {
+            "application": {
+                "AppID": app_name,
+                "Description": description,
+                "Location": location,
+                "BusinessOwnerFName": owner_first_name,
+                "BusinessOwnerLName": owner_last_name,
+                "BusinessOwnerPhone": owner_phone
+              }
+            }
+
+        if access_from is not None:
+            if access_from not in list(range(23)):
+                raise AiobastionException(f"access_from argument must be int between 0 and 23, given : {access_from}")
+            data["application"]["AccessPermittedFrom"] = access_from
+
+        if access_to is not None:
+            if access_to not in list(range(23)):
+                raise AiobastionException(f"access_from argument must be int between 0 and 23, given : {access_to}")
+            data["application"]["AccessPermittedTo"] = access_to
+
+        if expiration is not None:
+            # Format mm-dd-yyy
+            data["application"]["ExpirationDate"] = expiration
+
+        if disabled is not None:
+            data["application"]["Disabled"] = disabled
+
+        if owner_email is not None:
+            import re
+            if not re.fullmatch("[^@]+@[^@]+\.[^@]+", owner_email):
+                raise AiobastionException(f"owner_email argument must be valid mail, given : {owner_email}")
+            data["application"]["BusinessOwnerEmail"] = owner_email
+
+
+        return await self.epv.handle_request("post", url, data=data)
+
+
+    async def delete(self, app_name:str):
+        url = f"WebServices/PIMServices.svc/Applications/{app_name}"
+
+        return await self.epv.handle_request("delete", url)
+
 
     async def details(self, app_name: str):
         url = "WebServices/PIMServices.svc/Applications/"
