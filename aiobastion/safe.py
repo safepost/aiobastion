@@ -68,6 +68,10 @@ class Safe:
             'MemberName': username,
             'Permissions': perm
         }
+
+        if not await self.epv.user.exists(username):
+            raise AiobastionException(f"{username} was not found")
+
         return await self.epv.handle_request("post", url, data=data)
     
     async def add_member_profile(self, safe: str, username: str, profile: (str, dict)):
@@ -93,6 +97,7 @@ class Safe:
             'MemberName': username,
             'Permissions': perm
         }
+
         return await self.epv.handle_request("post", url, data=data)
 
     async def remove_member(self, safe: str, username: str):
