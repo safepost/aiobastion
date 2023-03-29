@@ -2,7 +2,10 @@
 
 from abc import ABC, abstractmethod
 from .config import Config
+from .safe import Safe
 from typing import List
+
+from .users import User
 
 
 class PrivilegedAccount(ABC):
@@ -47,12 +50,14 @@ class Vault(ABC):
     request_params: dict
     cpm: str
     retention: int
+    safe: Safe
+    user: User
 
-    @abstractmethod
-    def __init__(self):
-        self.accountgroup = None
-        self.account = None
-        self.safe = None
+    # @abstractmethod
+    # def __init__(self):
+    #     self.accountgroup = None
+    #     self.account = None
+    #     self.safe = Safe(self)
 
     @abstractmethod
     def logoff(self):
