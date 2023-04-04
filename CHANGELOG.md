@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - adding add application and delete application functions
 - Verify username existence before adding it to safe
 - Adding some objects in abstract for typehint
+- Adding del_member function 
 
 ### Bugfixes
 
