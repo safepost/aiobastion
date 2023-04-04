@@ -280,3 +280,15 @@ class Group:
         if domain is not None:
             data['domainName'] = domain
         return await self.epv.handle_request("post", f'api/UserGroups/{groupId}/Members', data=data)
+
+    async def del_member(self, groupId: str, username: str):
+        """
+        Add the user or group identified by username on the group identified by groupId
+
+        :param groupId: The unique ID of the group that is retrieved by get_id
+        :param username: the user or group name to delete from the safe
+        :return: Boolean
+        """
+
+        url = f'api/UserGroups/{groupId}/Members/{username}/'
+        return await self.epv.handle_request("delete", url)
