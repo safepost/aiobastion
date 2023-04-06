@@ -65,7 +65,7 @@ class User:
         if self.epv.user_list is None:
             results = await self.epv.handle_request("get", 'API/Users', filter_func=lambda result: result["Users"])
             self.epv.user_list = [u['username'].lower().strip() for u in results]
-        return username in self.epv.user_list
+        return username.lower() in self.epv.user_list
 
     async def details(self, username: str = "", user_id=None):
         """
