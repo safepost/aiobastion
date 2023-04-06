@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changes
 - adding add application and delete application functions
 - Verify username existence before adding it to safe
+- Verify safe existence before adding user to safe
 - Adding some objects in abstract for typehint
-- Adding del_member function 
+- Adding del_member function
 
 ### Bugfixes
 - Fixed a bug where checking if a user exists was case-sensitive
+- Fixed a bug where checking an empty safe name existence resulted in an exception
 
 ## [0.0.19] - 2023-03-23
 ### Changes

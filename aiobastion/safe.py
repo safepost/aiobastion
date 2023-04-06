@@ -69,6 +69,9 @@ class Safe:
             'Permissions': perm
         }
 
+        if not await self.exists(safe):
+            raise AiobastionException(f"Safe : \"{safe}\" was not found")
+
         if not await self.epv.user.exists(username):
             raise AiobastionException(f"{username} was not found")
 
@@ -113,11 +116,14 @@ class Safe:
 
     async def exists(self, safename: str):
         """
-        Return whether or not a safe exists
+        Return whether a safe exists or not
 
         :param safename: name of the safe
         :return: Boolean
         """
+        if safename == "":
+            return False
+
         url = f"api/Safes/{safename}"
         try:
             req = await self.epv.handle_request("get", url)
