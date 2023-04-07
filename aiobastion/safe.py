@@ -13,7 +13,7 @@ class Safe:
     def __init__(self, epv: Vault):
         self.epv = epv
 
-    async def add_member(self, safe: str, username: str,
+    async def add_member(self, safe: str, username: str, search_in: str = "Vault",
                          useAccounts: bool = False,
                          retrieveAccounts: bool = False,
                          listAccounts: bool = False,
@@ -66,7 +66,8 @@ class Safe:
 
         data = {
             'MemberName': username,
-            'Permissions': perm
+            'Permissions': perm,
+            'searchIn': search_in
         }
 
         if not await self.exists(safe):
