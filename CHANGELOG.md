@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changes
 - Adding "search_in" in add_member to allow search in directory
 
+### Bugfixes
+- Fixed a bug where getting group ID was case-sensitive
+
 ## [0.0.21] - 2023-04-06
 ### Bugfixes
 - Fixed circular imports
