@@ -215,7 +215,7 @@ class Group:
         url = f"api/UserGroups"
         ret = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
         for r in ret:
-            if r['groupName'] == group_name:
+            if r['groupName'].upper() == group_name.upper():
                 return r['id']
         raise AiobastionException(f"No such user found : {group_name}")
 
@@ -259,7 +259,7 @@ class Group:
                   "filter": f"groupName eq {group_name}"}
         ret = await self.epv.handle_request("get", url, params=params, filter_func=lambda x: x["value"])
         for r in ret:
-            if r['groupName'] == group_name:
+            if r['groupName'].upper() == group_name.upper():
                 return r['members']
         raise AiobastionException(f"No such user found : {group_name}")
 
