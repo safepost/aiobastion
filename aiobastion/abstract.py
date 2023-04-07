@@ -45,12 +45,17 @@ class Account(ABC):
         pass
 
 
+class User(ABC):
+    @abstractmethod
+    def exists(self, username):
+        pass
+
+
 class Vault(ABC):
     config: Config
     request_params: dict
     cpm: str
     retention: int
-    safe: Safe
     user: User
 
     # @abstractmethod
