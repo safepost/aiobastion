@@ -73,9 +73,6 @@ class Safe:
         if not await self.exists(safe):
             raise AiobastionException(f"Safe : \"{safe}\" was not found")
 
-        if not await self.epv.user.exists(username):
-            raise AiobastionException(f"{username} was not found")
-
         return await self.epv.handle_request("post", url, data=data)
     
     async def add_member_profile(self, safe: str, username: str, profile: (str, dict)):
