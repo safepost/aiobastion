@@ -6,6 +6,7 @@ import aiobastion
 import tests
 from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
 from aiobastion.accounts import PrivilegedAccount
+from typing import List, Union
 
 privileged = PrivilegedAccount("test_account", "platform", "testSafe", address="176.171.20.224", id="78_222")
 create_me = PrivilegedAccount("test_account", "UnixSSH", "sample-it-dept", address="176.171.220.224", userName="admin")
@@ -13,7 +14,8 @@ create_me2 = PrivilegedAccount("test_account2", "UnixSSH", "sample-it-dept", add
                                userName="admin")
 create_me3 = PrivilegedAccount("test_account3", "UnixSSH", "sample-it-dept", address="176.171.220.226",
                                userName="admin")
-
+admin = PrivilegedAccount("admin", "UnixSSH", "sample-it-dept", address="222.192.113.246", userName="admin")
+recon = PrivilegedAccount("recon", "UnixSSH", "sample-it-dept", address="222.192.113.246", userName="recon")
 
 class TestAccount(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -26,7 +28,7 @@ class TestAccount(IsolatedAsyncioTestCase):
         await self.vault.close_session()
         # await self.vault.logoff()
 
-    async def get_random_account(self, n=1):
+    async def get_random_account(self, n=1) -> Union[PrivilegedAccount,List[PrivilegedAccount]]:
         accounts = await self.vault.account.search_account_by(
             safe=self.test_safe
         )
@@ -73,7 +75,11 @@ class TestAccount(IsolatedAsyncioTestCase):
             self.acc_id = await self.vault.account.add_account_to_safe(create_me_list)
             self.assertIsInstance(self.acc_id, list)
             for a in self.acc_id:
-                self.assertRegex(a, r'[0-9_]+')
+                if isinstance(a, CyberarkAPIException):
+                    # print(str(a))
+                    raise a
+                else:
+                    self.assertRegex(a, r'[0-9_]+')
 
             # We're done, now delete accounts
             await self.vault.account.delete(self.acc_id)
@@ -116,6 +122,16 @@ class TestAccount(IsolatedAsyncioTestCase):
         self.assertTrue(undo)
 
     async def test_link_account_by_address(self):
+
+        for acc in (admin, recon):
+            try:
+                await self.vault.account.add_account_to_safe(acc)
+            except CyberarkAPIException as err:
+                if err.http_status == 409:
+                    pass
+                else:
+                    raise
+
         ret = await self.vault.account.link_reconcile_account_by_address("admin", "recon", "222.192.113.246")
         self.assertTrue(ret)
 
@@ -288,6 +304,110 @@ class TestAccount(IsolatedAsyncioTestCase):
         self.assertTrue(ret)
         acc_group = await self.vault.account.get_account_group(account)
         self.assertIsNone(acc_group)
+
+    async def test_cpm_status(self):
+        status = ("success", "failure", "Deactivated", "No status (yet)")
+        account = await self.get_random_account()
+        # print(account.cpm_status())
+        self.assertIn(account.cpm_status(), status)
+
+    async def test_last_modified(self):
+        account = await self.get_random_account()
+        self.assertIsInstance(account.last_modified(True), int)
+        self.assertIsInstance(account.last_modified(False), int)
+
+    async def test_is_valid(self):
+        self.assertFalse(self.vault.account.is_valid_username("tutut\r\n"))
+        self.assertTrue(self.vault.account.is_valid_username("tututu"))
+        self.assertFalse(self.vault.account.is_valid_safename("tutut\r\n"))
+        self.assertTrue(self.vault.account.is_valid_safename("tututu"))
+
+
+    async def test_update_using_list(self):
+        # testing with 1 account
+        account = await self.get_random_account()
+        old_username = account.userName
+        new_username = "tutu"
+        data = [
+            {"path": "/userName", "op": "replace", "value": new_username},
+        ]
+        updated = await self.vault.account.update_using_list(account, data)
+        self.assertEqual(updated.userName, new_username)
+        data = [
+            {"path": "/userName", "op": "replace", "value": old_username},
+        ]
+        updated = await self.vault.account.update_using_list(account, data)
+        self.assertEqual(updated.userName, old_username)
+
+        # testing with N accounts
+        accounts = await self.get_random_account(2)
+        data = [
+            {"path": "/userName", "op": "replace", "value": new_username},
+        ]
+        updated = await self.vault.account.update_using_list(accounts, data)
+        [self.assertEqual(u.userName, new_username) for u in updated]
+        for a in accounts:
+            data = [{"path": "/userName", "op": "replace", "value": a.userName}]
+            updated = await self.vault.account.update_using_list(a, data)
+            self.assertEqual(updated.userName, a.userName)
+
+        # Remove FC test
+        data = [{"path": "/userName", "op": "remove"},]
+        with self.assertRaises(CyberarkAPIException):
+            updated = await self.vault.account.update_using_list(account, data)
+
+    async def test_update_single_fc(self):
+        account = await self.get_random_account()
+        new_username = "tutu"
+        updated = await self.vault.account.update_single_fc(account, "userName", new_username)
+        self.assertEqual(updated.userName, new_username)
+
+        updated = await self.vault.account.update_single_fc(account, "userName", account.userName)
+        self.assertEqual(updated.userName, account.userName)
+
+    async def test_update_file_category(self):
+        account = await self.get_random_account()
+        new_username = "tutu"
+        new_address = "221.112.152.100"
+        updated = await self.vault.account.update_file_category(account,
+                                                                ["userName", "address"],
+                                                                [new_username, new_address])
+        self.assertEqual(updated.userName, new_username)
+        self.assertEqual(updated.address, new_address)
+        updated = await self.vault.account.update_file_category(account,
+                                                                ["userName", "address"],
+                                                                [account.userName, account.address])
+        self.assertEqual(updated.userName, account.userName)
+        self.assertEqual(updated.address, account.address)
+
+    async def test_restore_last_cpm_version(self):
+        # Unfortunately we have no CPM working on sample accounts
+        account = await self.get_random_account()
+        with self.assertRaises(AiobastionException):
+            await self.vault.account.restore_last_cpm_version(account, "CPM")
+
+    async def test_restore_last_cpm_version_by_cpm(self):
+        # Unfortunately we have no CPM working on sample accounts
+        account = await self.get_random_account()
+        with self.assertRaises(AiobastionException):
+            await self.vault.account.restore_last_cpm_version_by_cpm(account, "CPM")
+
+    async def test_get_password_version(self):
+        account = await self.get_random_account()
+        # Generate versions
+        versions = []
+        for v in range(1, 5):
+            generated = secrets.token_hex(44) + "ac12AB$$"
+            await self.vault.account.set_password(account, generated)
+            versions.append(generated)
+
+        all_versions = await self.vault.account.get_secret_versions(account)
+        version_id = reversed(sorted([v["versionID"] for v in all_versions]))
+
+        for v, z in zip(version_id, reversed(versions)):
+            self.assertEqual(z, await self.vault.account.get_secret_version(account, v))
+
+
 
 
 if __name__ == '__main__':

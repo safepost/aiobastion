@@ -69,8 +69,20 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
 
     async def test_members(self):
         group = await self.get_random_account_group()
+        # Adding a member of this group to be sure we have one member
+        account = await self.get_random_account()
+        try:
+            await self.vault.accountgroup.add_member(account, group)
+        except CyberarkAPIException as err:
+            if err.err_code == 400:
+                # The account already have a group, we update the group accordingly
+                group = await self.vault.account.get_account_group(account)
+
         members = await self.vault.accountgroup.members(group)
-        # are we sure the address group have members ? not sure !
+
+        # Undo
+        await self.vault.accountgroup.delete_member(account, group)
+
         self.assertGreater(len(members), 0)
         self.assertIsInstance(members, list)
 

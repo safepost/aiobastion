@@ -106,6 +106,9 @@ def _filter_account(account: dict, filters: dict):
         elif k.lower() in ("platform", "platformid"):
             if account['platformId'].upper() != v.upper():
                 return False
+        elif k.lower() == "name":
+            if account['name'].upper() != v.upper():
+                return False
         elif k not in account['platformAccountProperties']:
             return False
         elif account['platformAccountProperties'][k] != v:
@@ -218,7 +221,7 @@ class Account:
             raise CyberarkException("More than one address %s with address %s was found !" %
                                     (acc_username, address))
         if len(acc) == 0:
-            raise CyberarkException("The address %s with address %s was not found !" % (acc_username, address))
+            raise CyberarkException("The account %s with address %s was not found !" % (acc_username, address))
 
         if len(rec_acc) > 1:
             raise CyberarkException("More than one reconciliation address %s with address %s was found !" %
@@ -473,7 +476,7 @@ class Account:
         )
         # return await self.epv.handle_request("patch", f"API/Accounts/{account_id}", data=data)
 
-    async def update_using_list(self, account, data):
+    async def update_using_list(self, account, data) -> Union[PrivilegedAccount, List[PrivilegedAccount]]:
         """
         :param account: address, list of accounts, account_id, list of accounts id
         :param data: example :
@@ -482,14 +485,19 @@ class Account:
                 {"path": "/address", "op": "replace", "value": new_address},
                 {"path": "/platformId", "op": "replace", "value": new_platformId},
             ]
-        :return: json repr of the address
+            Valid values are : Replace, Remove or Add
+        :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
         """
-        return await self.handle_acc_id_list(
+        updated_accounts = await self.handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
             data
         )
+        if isinstance(updated_accounts, dict):
+            return PrivilegedAccount(**updated_accounts)
+        else:
+            return [PrivilegedAccount(**u) for u in updated_accounts]
 
         # return await self.epv.handle_request("patch", 'API/Accounts/' + account_id, data=data)
     # Doc + Test
@@ -502,7 +510,18 @@ class Account:
             return "/platformaccountproperties/"
 
     async def update_single_fc(self,  account, file_category, new_value, operation="replace"):
+        """
+        Update / Delete / Create a File Category for an account or a list of accounts
+        The path of the file_category is (hopefully) automatically detected
 
+        :param account: address, list of accounts, account_id, list of accounts id
+        :param file_category: the File Category to update
+        :param new_value: The new value of the FC
+        :param operation: Replace, Remove or Add
+        :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
+        :raises AiobastionException if the FC was not found in the Vault
+        :raises CyberarkAPIException if another error occured
+        """
         # if we "add" and FC exists it will replace it
         data = [{"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": operation, "value": new_value}]
         try:
@@ -511,6 +530,8 @@ class Account:
             if err.err_code == "PASWS164E" and operation == "replace":
                 # Try to add FC instead of replacing it
                 return await self.update_single_fc(account, file_category, new_value, "add")
+            if err.http_status == 400:
+                raise AiobastionException("The FC was not found in the Vault (it is case sensitive)") from err
             else:
                 raise
 
@@ -529,7 +550,7 @@ class Account:
             try:
                 assert isinstance(new_value, list)
             except AssertionError:
-                raise AiobastionException("If file_category is a list, then new value must be a list aswell")
+                raise AiobastionException("If file_category is a list, then new value must be a list as well")
             try:
                 assert len(file_category) == len(new_value)
             except AssertionError:
@@ -543,29 +564,55 @@ class Account:
         return await self.update_using_list(account, data)
 
 
-    # Doc + Test
     async def restore_last_cpm_version(self, account: PrivilegedAccount, cpm):
+        """
+        Find in the history of passwords the last password set by the CPM and updates the password accordingly
+        in the Vault
+
+        :param account: a PrivilegedAccount object
+        :param cpm: the name of the CPM who set the password
+        :return: True if success
+        :raises AiobastionException if no CPM version was found
+        """
         versions = await self.get_secret_versions(account)
         cpm_versions = [v["versionID"] for v in versions if v["modifiedBy"] == cpm]
         if len(cpm_versions) > 0:
             good_ver = max(cpm_versions)
-            password_to_set = await self.get_password_version(account,good_ver)
+            password_to_set = await self.get_secret_version(account, good_ver)
             return await self.set_password(account,password_to_set)
         else:
             raise AiobastionException("There is no CPM version for this account")
 
     async def restore_last_cpm_version_by_cpm(self, account: PrivilegedAccount, cpm):
+        """
+        Find in the history of passwords the last password set by the CPM and schedule a password change with this value
+
+        :param account: a PrivilegedAccount object
+        :param cpm: the name of the CPM who set the password
+        :return: True if success
+        :raises AiobastionException if there is no CPM version for this account
+        """
         versions = await self.get_secret_versions(account)
         cpm_versions = [v["versionID"] for v in versions if v["modifiedBy"] == cpm]
         if len(cpm_versions) > 0:
             good_ver = max(cpm_versions)
-            password_to_set = await self.get_password_version(account,good_ver)
-            return await self.set_next_password(account,password_to_set)
+            password_to_set = await self.get_secret_version(account, good_ver)
+            return await self.set_next_password(account, password_to_set)
         else:
             raise AiobastionException("There is no CPM version for this account")
 
-    # Doc + test
-    async def get_password_version(self, account: PrivilegedAccount, version: int):
+    async def get_secret_version(self, account: PrivilegedAccount, version: int):
+        """
+        Get the version of a password
+
+        :param account: a PrivilegedAccount object
+        :param version: the version ID (that you can find with get_secret_versions). The higher is the most recent.
+        :return: the secret
+        :raises CyberarkException if the version was not found
+        """
+        if version < 1:
+            raise AiobastionException("The version must be a non-zero natural integer")
+
         data = {"Version": version}
         account_id = await self.get_account_id(account)
 
@@ -615,11 +662,19 @@ class Account:
 
         if isinstance(versions, list):
             return [v["Versions"] for v in versions]
-        else:
+        elif isinstance(versions, dict):
             return versions["Versions"]
+        else:
+            raise AiobastionException(versions)
 
     # Test
     async def get_secret(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
+        """
+        Get the secret of an account, detecting if the secret type is password or key
+
+        :param account: A PrivilegedAccount object, or a list of PrivilegedAccount objects
+        :return: The password, key or list of passwords / keys.
+        """
         if isinstance(account, list):
             tasks = []
             for a in account:
