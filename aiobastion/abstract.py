@@ -44,11 +44,11 @@ class Account(ABC):
                           platform=None, name=None, ip=None) -> List[PrivilegedAccount]:
         pass
 
-
-class User(ABC):
-    @abstractmethod
-    def exists(self, username):
-        pass
+#
+# class User(ABC):
+#     @abstractmethod
+#     def exists(self, username):
+#         pass
 
 
 class Vault(ABC):
@@ -56,7 +56,7 @@ class Vault(ABC):
     request_params: dict
     cpm: str
     retention: int
-    user: User
+    # user: User
 
     # @abstractmethod
     # def __init__(self):
