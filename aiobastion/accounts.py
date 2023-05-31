@@ -540,7 +540,7 @@ class Account:
         else:
             data.append({"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": "add", "value": new_value})
 
-        return self.update_using_list(account, data)
+        return await self.update_using_list(account, data)
 
 
     # Doc + Test
