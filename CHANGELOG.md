@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.0.25] - 2023-05-31
+### Changes
+- Checking name of the object in _filter_acccount
+- Adding some docstrings
+- Changing return of update_using_list function (now returns PrivilegedAccount objects)
+- Renamed "get_password_version" to "get_secret_version" to respect CA's nomenclature
+- Adding some tests for accounts functions
+
 ### Bugfixes
 - Fix bug where coroutine was not awaited in update_file_category
 
