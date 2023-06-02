@@ -7,6 +7,11 @@ It helps you to manage your Cyberark implementation faster and in an intuitive w
 See [examples of usage](https://aiobastion.readthedocs.io/en/latest/started.html#examples) in the [documentation](https://aiobastion.readthedocs.io/en/latest/index.html)
 
 ## Getting started
+### Logon
+
+
+
+
 [Define a config file](https://aiobastion.readthedocs.io/en/latest/login.html#define-a-configuration-file), and start using functions to avoid spending hours in annoying tasks in the PVWA :
 
 * [Accounts manipulation](https://aiobastion.readthedocs.io/en/latest/accounts.html)
