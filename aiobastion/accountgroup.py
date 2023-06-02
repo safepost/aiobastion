@@ -1,7 +1,6 @@
 import re
 
 from .accounts import PrivilegedAccount
-from .abstract import Vault
 from .exceptions import AiobastionException, CyberarkAPIException
 
 
@@ -27,7 +26,7 @@ class PrivilegedAccountGroup:
 
 
 class AccountGroup:
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
 
     # Account groups

@@ -7,7 +7,6 @@ from typing import Tuple
 import aiohttp
 from aiohttp import ContentTypeError
 
-from .abstract import Vault
 from .accountgroup import AccountGroup
 from .accounts import Account
 from .applications import Applications
@@ -21,7 +20,10 @@ from .users import User, Group
 from .utilities import Utilities
 
 
-class EPV(Vault):
+class EPV:
+    """
+    Class that represent the connection, or future connection, to the Vault.
+    """
     def __init__(self, configfile: str = None, serialized: dict = None, token: str = None):
         if configfile is None and serialized is None:
             raise AiobastionException("You must provide either configfile or serialized to init EPV")
