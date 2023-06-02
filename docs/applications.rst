@@ -40,6 +40,7 @@ add_authentication
     Example subject :
 
 .. code-block::
+
     subject="CN=adminserver.acme.corp, OU=ADMINS, O=ACME, L=Paris, S=ILE-DE-FRANCE, C=CORP",
 
 

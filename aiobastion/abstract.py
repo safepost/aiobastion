@@ -50,6 +50,10 @@ class Account(ABC):
 #     def exists(self, username):
 #         pass
 
+class AccountGroup(ABC):
+    @abstractmethod
+    def list_by_safe(self):
+        pass
 
 class Vault(ABC):
     config: Config
@@ -57,7 +61,7 @@ class Vault(ABC):
     cpm: str
     retention: int
     # user: User
-
+    accountgroup: AccountGroup
     # @abstractmethod
     # def __init__(self):
     #     self.accountgroup = None

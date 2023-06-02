@@ -6,11 +6,11 @@ In the following table, Account design a PrivilegedAccount object described belo
 .. csv-table:: Section overview
     :header: "Section", "Description"
 
-    :ref:`Updating accounts` , Search and find accounts in the vault
-    :ref:`Creating accounts` , Create accounts
-    :ref:`Account manipulation` , get, update, delete and move accounts
-    :ref:`Password Actions` , Change, reconcile, verify, set or get passwords
-    :ref:`Password management` , Disable or resume password management, get CPM Status
+    :ref:`Updating accounts` , "Search and find accounts in the vault"
+    :ref:`Creating accounts` , "Create accounts"
+    :ref:`Account manipulation` , "get, update, delete and move accounts"
+    :ref:`Password Actions` , "Change, reconcile, verify, set or get passwords"
+    :ref:`Password management` , "Disable or resume password management, get CPM Status"
 
 
 The PrivilegedAccount Class
@@ -38,6 +38,7 @@ it has the following methods :
     * get_name : return the computed name "address-username"
     * to_json: return the json representation of the Object
     * cpm_status: return the CPM status of the account
+    * last_modified : return the last modified time (days since last password change)
 
 Calling functions
 -------------------
