@@ -2,7 +2,6 @@
 import warnings
 from typing import AsyncIterator
 
-from .abstract import Vault
 from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile
 from .exceptions import (
     CyberarkAPIException, CyberarkException, AiobastionException
@@ -10,7 +9,7 @@ from .exceptions import (
 
 
 class Safe:
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
 
     async def add_member(self, safe: str, username: str, search_in: str = "Vault",

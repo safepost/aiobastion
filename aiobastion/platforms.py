@@ -3,12 +3,11 @@ import asyncio
 import base64
 
 import aiohttp
-from .abstract import Vault
 from .exceptions import CyberarkException, CyberarkAPIException
 
 
 class Platform:
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
         # self.session = self.epv.session
 

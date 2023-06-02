@@ -4,7 +4,6 @@ import re
 from typing import List, Union, AsyncIterator, AsyncGenerator
 import aiohttp
 
-from .abstract import Vault
 from .config import validate_ip, flatten
 from .exceptions import (
     CyberarkAPIException, CyberarkException, AiobastionException
@@ -141,7 +140,7 @@ class Account:
     """
     Utility class to handle account manipulation
     """
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
 
     async def handle_acc_list(self, api_call, account, *args, **kwargs):

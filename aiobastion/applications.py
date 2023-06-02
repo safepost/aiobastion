@@ -1,5 +1,4 @@
 import aiobastion.exceptions
-from .abstract import Vault
 from .exceptions import AiobastionException
 
 
@@ -14,7 +13,7 @@ from .exceptions import AiobastionException
 
 
 class Applications:
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
 
     async def add(self, app_name: str, description: str = "", location: str = "\\", access_from: int = None,

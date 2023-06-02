@@ -1,11 +1,5 @@
-from aiobastion.abstract import Vault
-from .exceptions import (
-    CyberarkAPIException, CyberarkException, AiobastionException
-)
-
-
 class SystemHealth:
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
 
     async def summary(self):

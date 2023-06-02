@@ -1,12 +1,11 @@
 import asyncio
-from .abstract import Vault
 from .exceptions import AiobastionException
 
 from typing import List
 
 
 class User:
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
 
     async def get_logged_on_user_details(self):
@@ -180,7 +179,7 @@ class User:
 
 
 class Group:
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
 
     async def list(self, pattern: str = None, group_type: str = None, details: bool = False,

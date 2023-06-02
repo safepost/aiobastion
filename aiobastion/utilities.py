@@ -1,9 +1,10 @@
 import asyncio
 import copy
 
-from .exceptions import *
+from .accounts import PrivilegedAccount
+from .exceptions import AiobastionException
 import logging
-from .abstract import Vault, PrivilegedAccount
+
 
 
 def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_name=True) -> PrivilegedAccount:
@@ -20,7 +21,7 @@ def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_n
 
 
 class Utilities:
-    def __init__(self, epv: Vault):
+    def __init__(self, epv):
         self.epv = epv
 
     async def cpm_change_failed_accounts(self, address, username_filter: list = None):

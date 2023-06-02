@@ -2,10 +2,11 @@ import random
 import secrets
 import unittest
 from unittest import TestCase, IsolatedAsyncioTestCase
-import aiobastion
+# import aiobastion.EPV
 import tests
 from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
 from aiobastion.accounts import PrivilegedAccount
+from aiobastion.cyberark import EPV
 from typing import List, Union
 
 privileged = PrivilegedAccount("test_account", "platform", "testSafe", address="176.171.20.224", id="78_222")
