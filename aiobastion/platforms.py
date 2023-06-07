@@ -143,7 +143,7 @@ class Platform:
         Get the list of PSMConnectors for a platform unique ID
 
         :param platformId: the base64 ID of platform (use get_target_platform_unique_id)
-        :return a list of connection component
+        :return: a list of connection component
         """
         return await self.epv.handle_request(
             "get",

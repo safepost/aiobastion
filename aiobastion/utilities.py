@@ -2,7 +2,7 @@ import asyncio
 import copy
 
 from .accounts import PrivilegedAccount
-from .exceptions import AiobastionException
+from .exceptions import AiobastionException, CyberarkAPIException
 import logging
 
 
@@ -226,7 +226,7 @@ class Utilities:
         Gather a list of coros with concurrency
 
         :param n: Number of max coros launched at the same time
-        :param tasks: task1, task2, ..., tasksn (if you have a list then prefix it with *)
+        :param tasks: task1, task2, ...  , tasksn (if you have a list then prefix it with a * )
         :param return_exceptions: if set to True, exceptions are returned as regular results, instead of being raised
         :return: List of results in the same order as the tasks
         """
