@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-# from .cyberark import EPV
-# from .exceptions import *
+from .cyberark import EPV
+from .exceptions import *
 
 all = [
     'accounts',

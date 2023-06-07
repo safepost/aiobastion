@@ -143,7 +143,7 @@ class Account:
     def __init__(self, epv):
         self.epv = epv
 
-    async def handle_acc_list(self, api_call, account, *args, **kwargs):
+    async def _handle_acc_list(self, api_call, account, *args, **kwargs):
         """
         Internal function to handle a list of account for a specific API call
 
@@ -169,7 +169,7 @@ class Account:
             raise AiobastionException("You must call the function with PrivilegedAccount or list of Privileged Accounts"
                                       "(or valid account_id for some functions)")
 
-    async def handle_acc_id_list(self, method, url, accounts, data=None):
+    async def _handle_acc_id_list(self, method, url, accounts, data=None):
         """
         Utility function for handling a list of accounts id in parameter of url::
 
@@ -185,10 +185,10 @@ class Account:
         :raises Aiobastion: if the function was not called with PrivilegedAccount(s)
         """
 
-        async def api_call(acc_id):
+        async def _api_call(acc_id):
             return await self.epv.handle_request(method, url(acc_id), data=data)
 
-        return await self.handle_acc_list(api_call, accounts)
+        return await self._handle_acc_list(_api_call, accounts)
 
     async def add_account_to_safe(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]) -> str:
         """ **This function support list of PrivilegedAccount as argument**
@@ -201,11 +201,11 @@ class Account:
         :raises CyberarkAPIException:  If there is something wrong
         """
 
-        async def api_call(acc):
+        async def _api_call(acc):
             return await self.epv.handle_request("post", 'API/Accounts', data=acc.to_json(),
                                                  filter_func=lambda r: r["id"])
 
-        return await self.handle_acc_list(api_call, account)
+        return await self._handle_acc_list(_api_call, account)
 
     async def get_account(self, account_id) -> Union[PrivilegedAccount, List[PrivilegedAccount]]:
         """ **This function support list of PrivilegedAccount as argument**
@@ -216,7 +216,7 @@ class Account:
         :return: PrivilegedAccount or list(PrivilegedAccount | exceptions)
         :raises CyberarkException: 404 if the account doesn't exist.
         """
-        acc = await self.handle_acc_id_list(
+        acc = await self._handle_acc_id_list(
             "get",
             lambda a: f"API/Accounts/{a}",
             account_id
@@ -374,7 +374,7 @@ class Account:
         if extra_password_index not in [1, 2, 3]:
             raise AiobastionException("ExtraPasswordIndex must be between 1 and 3")
 
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "delete",
             lambda a: f"API/Accounts/{a}/LinkAccount/{extra_password_index}",
             await self.get_account_id(account)
@@ -408,7 +408,7 @@ class Account:
                 "folder": folder
             }
 
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "post",
             lambda a: f"API/Accounts/{a}/LinkAccount",
             account_id,
@@ -430,7 +430,7 @@ class Account:
             "ChangeEntireGroup": change_group
         }
 
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "post",
             lambda acc_id: f"API/Accounts/{acc_id}/Change",
             await self.get_account_id(account),
@@ -447,7 +447,7 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If reconciliation failed
         """
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "post",
             lambda a: f"API/Accounts/{a}/Reconcile",
             await self.get_account_id(account)
@@ -463,7 +463,7 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If verify failed
         """
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "post",
             lambda a: f"API/Accounts/{a}/Verify",
             await self.get_account_id(account)
@@ -489,7 +489,7 @@ class Account:
 
     async def search_account_by_ip_addr(self, address: Union[PrivilegedAccount, str]):
         """
-        This function will search an account by IP address bu checking if “address” is a valid IPv4 address
+        This function will search an account by IP address by checking if “address” is a valid IPv4 address
         and checking if “Address” property of the account is exactly the given address.
         You can also provide an PrivilegedAccount, the function will search on its address property
 
@@ -521,10 +521,11 @@ class Account:
 
     async def search_account_by(self, keywords=None, username=None, address=None, safe=None,
                                 platform=None, **kwargs) -> List[PrivilegedAccount]:
-        """
+        """search_account_by(keywords=None, username=None, address=None, safe=None, platform=None, **kwargs) -> list
         | This function allow to search using one or more parameters and return list of address id.
         | This is the easiest way to retrieve accounts from the vault.
         | It allows you to either search on given keywords, or more precisely on an account attribute.
+
         For example::
 
             accounts = await search_account_by(username="admin", safe="Linux-SRV", my_custom_FC="Database")
@@ -680,7 +681,7 @@ class Account:
             {"op": "add", "path": "/secretManagement/manualManagementReason", "value": reason}
         ]
 
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
@@ -699,7 +700,7 @@ class Account:
         data = [
             {"op": "replace", "path": "/secretManagement/automaticManagementEnabled", "value": True},
         ]
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
@@ -729,7 +730,7 @@ class Account:
 
         :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
         """
-        updated_accounts = await self.handle_acc_id_list(
+        updated_accounts = await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
@@ -764,8 +765,8 @@ class Account:
         :param new_value: The new value of the FC
         :param operation: Replace, Remove or Add
         :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
-        :raises AiobastionException if the FC was not found in the Vault
-        :raises CyberarkAPIException if another error occured
+        :raises AiobastionException: if the FC was not found in the Vault
+        :raises CyberarkAPIException: if another error occured
         """
         # if we "add" and FC exists it will replace it
         data = [{"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": operation, "value": new_value}]
@@ -817,7 +818,7 @@ class Account:
         :param account: a PrivilegedAccount object
         :param cpm: the name of the CPM who set the password
         :return: True if success
-        :raises AiobastionException if no CPM version was found
+        :raises AiobastionException: if no CPM version was found
         """
         versions = await self.get_secret_versions(account)
         cpm_versions = [v["versionID"] for v in versions if v["modifiedBy"] == cpm]
@@ -835,7 +836,7 @@ class Account:
         :param account: a PrivilegedAccount object
         :param cpm: the name of the CPM who set the password
         :return: True if success
-        :raises AiobastionException if there is no CPM version for this account
+        :raises AiobastionException: if there is no CPM version for this account
         """
         versions = await self.get_secret_versions(account)
         cpm_versions = [v["versionID"] for v in versions if v["modifiedBy"] == cpm]
@@ -853,7 +854,7 @@ class Account:
         :param account: a PrivilegedAccount object
         :param version: the version ID (that you can find with get_secret_versions). The higher is the most recent.
         :return: the secret
-        :raises CyberarkException if the version was not found
+        :raises CyberarkException: if the version was not found
         """
         if version < 1:
             raise AiobastionException("The version must be a non-zero natural integer")
@@ -875,7 +876,7 @@ class Account:
         :return: Account password value  (or list of passwords)
         :raises CyberarkException: If retrieve failed
         """
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "post",
             lambda account_id: f"API/Accounts/{account_id}/Password/Retrieve",
             await self.get_account_id(account)
@@ -892,7 +893,7 @@ class Account:
         :return: SSH key value, or a list of ssh key values
         """
 
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "post",
             lambda account_id: f"API/Accounts/{account_id}/Secret/Retrieve",
             await self.get_account_id(account)
@@ -905,7 +906,7 @@ class Account:
         :param account: Privileged Account or address id
         :return: Account password value
         """
-        versions = await self.handle_acc_id_list(
+        versions = await self._handle_acc_id_list(
             "get",
             lambda account_id: f"API/Accounts/{account_id}/Secret/Versions/",
             await self.get_account_id(account)
@@ -950,7 +951,7 @@ class Account:
         :return: True if success
         :raises CyberarkException: If set password failed (your platform enforce complexity, or you don’t have rights)
         """
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "post",
             lambda account_id: f"API/Accounts/{account_id}/Password/Update",
             await self.get_account_id(account),
@@ -966,7 +967,7 @@ class Account:
         :param password: new password to set
         :return: True if change was successfully planned.
         """
-        return await self.handle_acc_id_list(
+        return await self._handle_acc_id_list(
             "post",
             lambda account_id: f"API/Accounts/{account_id}/SetNextPassword",
             await self.get_account_id(account),
@@ -990,7 +991,7 @@ class Account:
             except CyberarkAPIException:
                 return await self.epv.handle_request("delete", f"WebServices/PIMServices.svc/Accounts/{account_id}")
 
-        return await self.handle_acc_list(
+        return await self._handle_acc_list(
             api_call,
             await self.get_account_id(account)
         )
@@ -1018,7 +1019,7 @@ class Account:
         :return: The activity dictionary as-is it is returned by Cyberark
         :raises CyberarkException: If call failed
         """
-        activities = await self.handle_acc_id_list(
+        activities = await self._handle_acc_id_list(
             "get",
             lambda account_id: f"WebServices/PIMServices.svc/Accounts/{account_id}/Activities/",
             await self.get_account_id(account)
@@ -1090,7 +1091,7 @@ class Account:
             data = {"AccountId": acc.id}
             return await self.epv.handle_request("post", url, data=data)
 
-        return await self.handle_acc_list(
+        return await self._handle_acc_list(
             _api_call,
             account
         )
@@ -1113,7 +1114,7 @@ class Account:
                         return groupid
             return None
 
-        return await self.handle_acc_list(_api_call, account)
+        return await self._handle_acc_list(_api_call, account)
 
     async def del_account_group_membership(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """ Find and delete the account_group membership of a PrivilegedAccount (or list)
@@ -1135,7 +1136,7 @@ class Account:
                     raise CyberarkException("Unable to remove address group " + str(err))
                 return True
 
-        return await self.handle_acc_list(_del_accountgroup, account)
+        return await self._handle_acc_list(_del_accountgroup, account)
 
     async def update_platform(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], new_platform: str):
         """ This function updates the account’s (or list) platform
@@ -1174,4 +1175,4 @@ class Account:
                 raise CyberarkException(f"Unable to delete {acc.name} old address : {str(err)}")
             return new_account_id
 
-        return await self.handle_acc_list(_move, account)
+        return await self._handle_acc_list(_move, account)
