@@ -12,7 +12,7 @@ add_member (in safe)
 
     :param safe: The safe name
     :param username: the username or a group name
-    :param profile: must be one of "admin", "use", "show", "audit", "prov", "power" or "cpm" (see also :ref:`Profiles`)
+    :param profile: must be one of "admin", "use", "show", "audit", "prov", "power" or "cpm" (see also `Profiles`_)
     :return: boolean
 
 remove_member

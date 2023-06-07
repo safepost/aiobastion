@@ -6,10 +6,12 @@ Define a configuration file
 Defining a configuration file is the first step to allow you to connect to PVWA and start using this module.
 
 You have different choices in order to login:
- - :ref:`Specify a login / password that can perform API calls hardcoded in a config file<Login with PVWA and specified login and password>`
- - :ref:`Use a minimal configuration file and specify the username and the password in your code<Login with PVWA and specify user or password later>`
- - :ref:`Use an account stored in the Vault that you will retrieve with AIM (AAM) using a certificate<Login with AIM>`
+ - :ref:`Specify a login / password that can perform API calls hardcoded in a config file <pvwa_login>`
+ - :ref:`Use a minimal configuration file and specify the username and the password in your code<pvwa_login_nopasswd>`
+ - :ref:`Use an account stored in the Vault that you will retrieve with AIM (AAM) using a certificate<aim_login>`
 
+
+.. _pvwa_login:
 
 Login with PVWA and specified login and password
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -24,6 +26,8 @@ Login with PVWA and specified login and password
       Host: "pvwa.acme.fr"
       CA: "C:/Folder/PVWA_Root_CA.pem"
 
+.. _pvwa_login_nopasswd:
+
 Login with PVWA and specify user or password later
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -34,6 +38,7 @@ A minimal file only defines a PVWA host
     PVWA:
       Host: "pvwa.acme.fr"
 
+.. _aim_login:
 
 Login with AIM
 ~~~~~~~~~~~~~~~~
