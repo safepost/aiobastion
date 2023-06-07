@@ -11,5 +11,6 @@ sphinx:
 python:
   # Install our python package before building the docs
   install:
+    - requirements: aiobastion/requirements.txt
     - method: pip
       path: .
