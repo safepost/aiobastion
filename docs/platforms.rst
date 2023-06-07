@@ -232,7 +232,7 @@ del_target_plaform
     :async:
 
     Delete target platform using ID
-    You can get ID using :ref:`get_target_platform_details`
+    You can get ID using `get_target_platform_details`_
 
     :param pfid: Target Platform ID (eg 38)
     :return: Boolean
@@ -276,7 +276,7 @@ get_target_platform_connection_components
 
     Get the list of PSMConnectors for a platform unique ID
 
-    :param platformId: the base64 ID of platform (use :ref:`get_target_platform_unique_id`)
+    :param platformId: the base64 ID of platform (use `get_target_platform_unique_id`_)
     :return: a list of connection component
 
 
