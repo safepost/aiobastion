@@ -36,7 +36,7 @@ class TestEPV(IsolatedAsyncioTestCase):
 
     async def test_inline_conf(self):
         self.skipTest("Need harcoded credentials")
-        config = {'api_host': 'stn0x610.hpadmin.sf.intra.laposte.fr'}
+        config = {'api_host': 'pvwa.acme.fr'}
 
         production_vault = aiobastion.EPV(serialized=config)
         await production_vault.login("admin", "Cyberark1")
