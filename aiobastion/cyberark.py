@@ -335,7 +335,7 @@ class EPV:
         :param data: valid json data if needed
         :return:
         """
-        assert method.lower() in ("post", "delete", "get", "patch")
+        assert method.lower() in ("post", "delete", "get", "patch", "put")
 
         url, head = self.get_url(short_url)
 

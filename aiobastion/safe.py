@@ -349,3 +349,21 @@ class Safe:
         """
         url = f"api/Safes/{safename}/members/{username}"
         return await self.epv.handle_request("get", url, filter_func=lambda r: r["permissions"])
+
+    async def rename(self, safename: str, new_name: str):
+        """
+        Rename a safe
+        """
+        found_safes = await self.search(safename, True, True)
+        try:
+            good_safe = next(_s for _s in found_safes if _s["safeName"].upper() == safename.upper())
+        except StopIteration:
+            raise AiobastionException(f"Safe {safename} was not found")
+        # print(good_safe)
+        safe_url_id = good_safe["safeUrlId"]
+        url = f"API/Safes/{safe_url_id}/"
+
+        # Update name in safe data
+        good_safe["safeName"] = new_name
+
+        return await self.epv.handle_request("put", url, data=good_safe)
