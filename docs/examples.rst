@@ -1,7 +1,7 @@
 Account manipulation
 =======================
 
-Creating an accounts
+Creating accounts
 ------------------------
 
 To create an account, simply create a "PrivilegedAccount" object and then add it to a safe.
