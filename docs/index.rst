@@ -13,6 +13,7 @@ Welcome to aiobastion's documentation!
    safe
    users
    utilities
+   examples
 
 
 
