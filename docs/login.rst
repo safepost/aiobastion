@@ -66,6 +66,7 @@ Additional configuration options for AIM
     retention: 10 #(days) optional, days of retention for objects in safe, default = 10
     CPM: "PasswordManager" #optional, CPM to assign to safes, default = "" (no CPM)
     CA: "C:/Folder/AIM_Root_CA.pem" #optional, set if you want to add additional ca certs
+
 Connect to the PVWA
 ---------------------
 
