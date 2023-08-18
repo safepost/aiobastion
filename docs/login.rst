@@ -49,23 +49,23 @@ Example file for connecting through AIM
     Label: Production Vault
     Connection:
       Username: admin_restapi
-    PVWA: "pvwa.acme.fr"
+    PVWA: 
+      Host: "pvwa.acme.fr"
     AIM:
       Host: "aim.acme.fr"
       AppID: "Automation"
       Cert: "C:/Folder/cert.pem"
       Key: "C:/Folder/key.pem"
-    #  CA: "C:/Folder/AIM_Root_CA.pem"
-    CAFile: "C:/Folder/PVWA_Root_CA.pem"
 
-Additional configuration options
+
+Additional configuration options for AIM
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code-block:: yaml
 
     timeout: 30 #(seconds) optional, timeout for requests to PVWA, default = 30
     retention: 10 #(days) optional, days of retention for objects in safe, default = 10
     CPM: "PasswordManager" #optional, CPM to assign to safes, default = "" (no CPM)
-
+    CA: "C:/Folder/AIM_Root_CA.pem" #optional, set if you want to add additional ca certs
 Connect to the PVWA
 ---------------------
 
