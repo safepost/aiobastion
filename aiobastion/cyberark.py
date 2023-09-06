@@ -23,6 +23,11 @@ from .system_health import SystemHealth
 from .users import User, Group
 from .utilities import Utilities
 
+# Default value
+_default_timeout = 30
+_default_max_concurrent_tasks = 10
+_default_retention = 30
+
 class EPV:
     """
     Class that represent the connection, or future connection, to the Vault.
@@ -42,13 +47,13 @@ class EPV:
         if configfile is not None:
             self.config = Config(configfile)
 
-            if self.config.verify is not False:
-                if not os.path.exists(self.config.verify):
-                    raise AiobastionException(f"Parameter 'CA' in PVWA: file not found {self.config.verify!r}")
+            if self.config.PVWA_CA is not False:
+                if not os.path.exists(self.config.PVWA_CA):
+                    raise AiobastionException(f"Parameter 'CA' in PVWA: file not found {self.config.PVWA_CA!r}")
 
                 self.request_params = {"timeout": self.config.timeout,
-                                       "ssl": ssl.create_default_context(cafile=self.config.verify)}
-                self.verify = self.config.verify
+                                       "ssl": ssl.create_default_context(cafile=self.config.PVWA_CA)}
+                self.verify = self.config.PVWA_CA
             else:
                 self.request_params = {"timeout": self.config.timeout, "ssl": False}
 
@@ -70,8 +75,11 @@ class EPV:
             # AIM Communication
             if "AIM" in serialized:
                 serialized_aim = serialized["AIM"]
-                serialized_aim.setdefault("max_concurrent_tasks", self.max_concurrent_tasks)
-                serialized_aim.setdefault("timeout", self.timeout)
+
+                serialized_aim.setdefault("host",                 getattr(self, "api_host",    None))
+                serialized_aim.setdefault("max_concurrent_tasks", getattr(self, "max_concurrent_tasks", _default_max_concurrent_tasks))
+                serialized_aim.setdefault("timeout",              getattr(self, "timeout", _default_timeout))
+                serialized_aim.setdefault("verify",               getattr(self, "verify",  False))
 
                 self.AIM = EPV_AIM(epv=self, serialized=serialized["AIM"])
 
@@ -99,7 +107,7 @@ class EPV:
         if "timeout" in serialized:
             self.timeout = serialized["timeout"]
         else:
-            self.timeout = 30
+            self.timeout = _default_timeout
 
         if "verify" in serialized:
             self.verify = serialized["verify"]
@@ -114,7 +122,7 @@ class EPV:
                 self.request_params = {"timeout": self.timeout, "ssl": False}
         else:
             self.verify = False
-            self.request_params = {"timeout": 20, "ssl": self.verify}
+            self.request_params = {"timeout": _default_timeout, "ssl": self.verify}
 
         self.api_host = serialized['api_host']
 
@@ -130,11 +138,11 @@ class EPV:
         if "retention" in serialized:
             self.retention = serialized['retention']
         else:
-            self.retention = 10
+            self.retention = _default_retention
         if "max_concurrent_tasks" in serialized:
             self.max_concurrent_tasks = serialized['max_concurrent_tasks']
         else:
-            self.max_concurrent_tasks = 10
+            self.max_concurrent_tasks = _default_max_concurrent_tasks
         if "token" in serialized:
             self.__token = serialized['token']
         else:
@@ -215,7 +223,7 @@ class EPV:
         #     return True
 
 
-    async def login_with_aim(self, aim_host: str, appid: str, username: str, cert_file: str, cert_key: str, root_ca=False, timeout: int = 30, max_concurrent_tasks: int = 10, user_search: dict = None, auth_type=""):
+    async def login_with_aim(self, aim_host: str, appid: str, username: str, cert_file: str, cert_key: str, root_ca=False, timeout: int = _default_timeout, max_concurrent_tasks: int = _default_max_concurrent_tasks, user_search: dict = None, auth_type=""):
         # Is it a new AIM ?
         if self.AIM:
             if (aim_host            and aim_host  != self.AIM.host)  or \
@@ -434,7 +442,7 @@ class EPV_AIM:
     Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
     """
     def __init__(self, host: str = None, appid: str = None, cert: str = None
-                ,key: str = None, verify: str = None, timeout: int = 30, max_concurrent_tasks: int = 10, serialized:dict = None, epv: EPV = None):
+                ,key: str = None, verify: str = None, timeout: int = _default_timeout, max_concurrent_tasks: int = _default_max_concurrent_tasks, serialized:dict = None, epv: EPV = None):
 
 
         self.host    = host
@@ -467,10 +475,10 @@ class EPV_AIM:
 
         # Optional attributs
         if self.timeout is None:
-            self.timeout = 30
+            self.timeout = _default_timeout
 
         if self.max_concurrent_tasks is None:
-            self.max_concurrent_tasks = 10
+            self.max_concurrent_tasks = _default_max_concurrent_tasks
 
         # Prepare AIM communication
         if self.verify:
@@ -508,7 +516,7 @@ class EPV_AIM:
 
                 if key_lower not in EPV_AIM._getPassword_request_parm:
                     is_valid_ind = False
-                    error_str = f"unknow parameter: {k}={params[k]!r}"
+                    error_str = f"unknown parameter: {k}={params[k]!r}"
                     break
 
                 if k != key_lower:

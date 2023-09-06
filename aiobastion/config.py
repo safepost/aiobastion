@@ -1,142 +1,103 @@
 # -*- coding: utf-8 -*-
 
 import yaml
+from collections import namedtuple
 
-_default_timeout = 30
-_default_max_concurrent_tasks = 10
+
+_AttrName_def = namedtuple('_AttrName_def', ['attrName', 'defaultValue', 'multipleName_ind'])
 
 class Config:
     def __init__(self, configfile):
+        # Default value
+        _default_timeout = 30
+        _default_max_concurrent_tasks = 10
+        _default_retention = 30
+
+        # Define name in Yaml (in lowercase) =  (<classe attribut name>, <default value>)
+        _attrname_def_connection = {
+             "appid":       _AttrName_def("appid",       None,       False)
+            ,"authtype":    _AttrName_def("authtype",    "Cyberark", False)
+            ,"password":    _AttrName_def("password",    None,       False)
+            ,"user_search": _AttrName_def("user_search", None,       False)
+            ,"username":    _AttrName_def("username",    None,       False)
+        }
+
+        _attrname_def_PVWA = {
+             "host":                 _AttrName_def("PVWA",                 None, False)
+            ,"max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", _default_max_concurrent_tasks, True)
+            ,"maxtasks":             _AttrName_def("max_concurrent_tasks", _default_max_concurrent_tasks, True)
+            ,"timeout":              _AttrName_def("timeout",              _default_timeout, False)
+            ,"ca":                   _AttrName_def("PVWA_CA",              False, True)
+            ,"verify":               _AttrName_def("PVWA_CA",              False, True)
+        }
+
+
+        _attrname_def_AIM = {
+             "appid":                _AttrName_def("appid", None, None)
+            ,"cert":                 _AttrName_def("cert", None, None)
+            ,"host":                 _AttrName_def("host", None, None)
+            ,"key":                  _AttrName_def("key", None, None)
+            ,"max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", None, True)
+            ,"maxtasks":             _AttrName_def("max_concurrent_tasks", None, True)
+            ,"ca":                   _AttrName_def("verify", False, True)
+            ,"verify":               _AttrName_def("verify", False, True)
+            ,"timeout":              _AttrName_def("timeout", None, None)
+        }
+
         with open(configfile, 'r') as config:
             document = yaml.safe_load(config)
 
         try:
-            if "Connection" not in document or document["Connection"] is None:
-                self.username = None
-                self.password = None
-                self.authtype = "Cyberark"
-                self.appid = None
-                self.user_search = None
-            else:
-                for k in list(document["Connection"].keys()):
-                    # Convert key name in lowercase
+            # Connection section
+            if "Connection" not in document:
+                # Initialiaze default attributes
+                document["Connection"] = None
+
+            self._check_yaml(document["Connection"], "Connection", _attrname_def_connection, raise_unknown_attr=True)
+
+            # Connection section: Specific Validation
+            if self.user_search:
+                if not isinstance(self.user_search, dict):
+                    raise ValueError(f"Configuration file error: Malformed attribute 'User_search' in 'Connection' section: {self.user_search!r}")
+
+                # Check user_search parameter name
+                _getPassword_request_parm = [ "safe", "folder", "object",  "username", "address", "database", "policyid", "reason"
+                                            , "connectiontimeout", "query", "queryformat", "failrequestonpasswordchange" ]
+
+                for k in self.user_search:
                     keyname = k.lower()
+                    if keyname not in _getPassword_request_parm:
+                        raise ValueError(f"Configuration file error: Unknown Connection/user_search attribut in configuration file: {k}={self.user_search[k]!r}")
+
                     if k != keyname:
-                        document["Connection"][keyname] = document["Connection"].pop(k)
+                        self.user_search[keyname] = self.user_search.pop(k)
 
-                if "username" in document["Connection"]:
-                    self.username = document["Connection"]["username"]
-                else:
-                    self.username = None
-                if "password" in document["Connection"]:
-                    self.password = document["Connection"]["password"]
-                else:
-                    self.password = None
-                if "appid" in document["Connection"]:
-                    self.appid = document["Connection"]["appid"]
-                else:
-                    self.appid = None
-                if "authtype" in document["Connection"]:
-                    self.authtype = document["Connection"]["authtype"]
-                else:
-                    self.authtype = None
-
-                if "user_search" in document["Connection"]:
-                    user_search = document["Connection"]["user_search"]
-
-                    if not isinstance(user_search, dict):
-                        raise ValueError(f"Malformed configuration file, Connection section, User_search : {user_search!r}")
-
-                    # Check user_search parameter name
-                    _getPassword_request_parm = [ "safe", "folder", "object",  "username", "address", "database", "policyid", "reason"
-                                                , "connectiontimeout", "query", "queryformat", "failrequestonpasswordchange" ]
-
-                    for k in user_search:
-                        key_lower = k.lower()
-                        if key_lower not in _getPassword_request_parm:
-                           raise ValueError(f"Unknow Connection/Username_search parameter in configuration file: {k}={user_search[k]!r}")
-
-                        if k != key_lower:
-                            user_search[key_lower] = user_search.pop(k)
-
-                    self.user_search = user_search
-                else:
-                    self.user_search = None
-
+            # PVWA section
             if "PVWA" in document:
-                for k in list(document["PVWA"].keys()):
-                    # Convert key name in lowercase
-                    keyname = k.lower()
-                    if k != keyname:
-                        document["PVWA"][keyname] = document["PVWA"].pop(k)
+                self._check_yaml(document["PVWA"], "PVWA", _attrname_def_PVWA, raise_unknown_attr=True)
+                self.timeout = int(self.timeout)
+                self.max_concurrent_tasks = int(self.max_concurrent_tasks)
 
-                # 'MaxTasks' becomes 'max_concurrent_tasks'
-                if "maxtasks" in document["PVWA"] and "max_concurrent_tasks" in document["PVWA"]:
-                    raise KeyError(f"Mutually exclusive parameters: MaxTasks and max_concurrent_tasks in PVWA section")
-
-                if "maxtasks" in document["PVWA"]:
-                    document["PVWA"]["max_concurrent_tasks"] = document["PVWA"].pop("maxtasks")
-
-                # 'CA' becomes 'verify'
-                if "verify" in document["PVWA"] and "ca" in document["PVWA"]:
-                    raise KeyError(f"Mutually exclusive parameters: 'verify' and 'CA' in PVWA section")
-
-                if "ca" in document["PVWA"]:
-                    document["PVWA"]["verify"] = document["PVWA"].pop("ca")
-
-                if "host" in document["PVWA"]:
-                    self.PVWA = document["PVWA"]["host"]
-                if "verify" in document["PVWA"]:
-                    self.verify = document["PVWA"]["verify"]
-                else:
-                    self.verify = False
-                if "timeout" in document["PVWA"]:
-                    self.timeout = int(document["PVWA"]["timeout"])
-                else:
-                    self.timeout = _default_timeout
-                if "max_concurrent_tasks" in document["PVWA"]:
-                    self.max_concurrent_tasks = int(document["PVWA"]["max_concurrent_tasks"])
-                else:
-                    self.max_concurrent_tasks = _default_max_concurrent_tasks
-
+            # AIM section
             if "AIM" in document and document["AIM"] is not None:
-                # Convert keyname to lowercase and validate it
-                #    problem with key name "key" need to use list()
-                for k in list(document["AIM"].keys()):
-                    keyname = k.lower()
+                self.AIM = {}
+                self._check_yaml(document["AIM"], "AIM", _attrname_def_AIM, self.AIM, raise_unknown_attr=True)
 
-                    if keyname not in ["host", "appid", "cert", "key",  "verify", "timeout", "max_concurrent_tasks", "maxtasks", "ca"]:
-                        raise KeyError(f"Unknown parameter in configuration file - AIM section {k}: {document['AIM'][k]!r}")
-
-                    if keyname != k:
-                        document["AIM"][keyname] = document["AIM"].pop(k)
-
-                # "maxtasks" becomes "max_concurrent_tasks"
-                if "maxtasks" in document["AIM"] and "max_concurrent_tasks" in document["AIM"]:
-                    raise KeyError(f"Mutually exclusive parameters: 'maxtasks' and 'max_concurrent_tasks' in AIM section")
-
-                if "maxtasks" in document["AIM"]:
-                    document["AIM"]["max_concurrent_tasks"] = document["AIM"].pop("maxtasks")
-
-                # "CA" becomes "verify"
-                if "verify" in document["AIM"] and "ca" in document["AIM"]:
-                    raise KeyError(f"Mutually exclusive parameters: 'verify' and 'ca' in AIM section")
-
-                if "ca" in document["AIM"]:
-                    document["AIM"]["verify"] = document["AIM"].pop("ca")
-
-                # Set default value, if not defined used PVWA value to complete initialization.
-                document["AIM"].setdefault("host",                  getattr(self, "PVWA",    None))
-                document["AIM"].setdefault("appid",                 getattr(self, "appid",   None))
-                document["AIM"].setdefault("verify",                getattr(self, "verify", False))
-                document["AIM"].setdefault("timeout",               getattr(self, "timeout", _default_timeout))
-                document["AIM"].setdefault("max_concurrent_tasks",  getattr(self, "max_concurrent_tasks", _default_max_concurrent_tasks))
+                # If not defined used PVWA value to complete initialization.
+                if self.AIM["host"] is None:
+                    self.AIM["host"]    = getattr(self, "PVWA",    None)
+                if self.AIM["appid"] is None:
+                    self.AIM["appid"]   = getattr(self, "appid",   None)
+                if self.AIM["verify"] is None:
+                    self.AIM["verify"]  = getattr(self, "verify", False)
+                if self.AIM["timeout"] is None:
+                    self.AIM["timeout"] = getattr(self, "timeout", _default_timeout)
+                if self.AIM["max_concurrent_tasks"] is None:
+                    self.AIM["max_concurrent_tasks"] =  getattr(self, "max_concurrent_tasks", _default_max_concurrent_tasks)
 
                 # Integer conversion
-                document["AIM"]["timeout"] = int(document["AIM"]["timeout"])
-                document["AIM"]["max_concurrent_tasks"] = int(document["AIM"]["max_concurrent_tasks"])
-
-                self.AIM = document["AIM"]
+                self.AIM["timeout"] = int(self.AIM["timeout"])
+                self.AIM["max_concurrent_tasks"] = int(self.AIM["max_concurrent_tasks"])
             else:
                 self.AIM = None
 
@@ -147,13 +108,84 @@ class Config:
             if "retention" in document:
                 self.retention = int(document["retention"])
             else:
-                self.retention = 30
+                self.retention = _default_retention
             if "customIPField" in document:
                 self.customIPField = document["customIPField"]
             else:
                 self.customIPField = None
         except AttributeError as e:
             raise ValueError(f"Malformed configuration file : {str(e)}")
+
+    def _check_yaml(self, yaml_dict: dict, yaml_name: str, attrname_definition, dict_name: dict = None, raise_unknown_attr=False):
+        """_check_yaml - Read a YAML section and initialize variable
+
+        Initialize dict_name if define from Yaml
+            otherwise set self attributes
+
+        Arguments:
+            yaml_dict {dict}            Yaml section definition
+            yaml_name {str}             Name of the Yaml section
+            attrname_definition {dict}  Section attribut defintion
+
+        Keyword Arguments:
+            dict_name {dict}            Dictionary return value
+            raise_unknown_attr          Raise a error for a unknown attribute
+
+        Raises:
+            KeyError: Mutually exclusive parameters
+            KeyError: Unknown attribut name in section
+        """
+        multiple_name={}
+
+        # Set the default value of all attributes
+        for k, attr_def in attrname_definition.items():
+            if dict_name is None:
+                setattr(self, attr_def.attrName, attr_def.defaultValue)
+            else:
+                dict_name[attr_def.attrName] = attr_def.defaultValue
+
+            # setup multiple name validation
+            if attr_def.multipleName_ind:
+                if attr_def.attrName not in multiple_name:
+                    multiple_name[attr_def.attrName] = [k]
+                else:
+                    multiple_name[attr_def.attrName].append(k)
+
+        if yaml_dict is None:
+            return
+
+        # Read Yaml
+        for k in list(yaml_dict.keys()):
+            keyname = k.lower()
+            attr_def = attrname_definition.get(keyname, None)
+
+            if attr_def is None:
+                if raise_unknown_attr:
+                    raise KeyError(f"Configuration file error: Unknown attribut name in section '{yaml_name}': {k}={yaml_dict[k]!r}")
+                else:
+                    continue
+
+            if k != keyname:
+                yaml_dict[keyname] = yaml_dict.pop(k)
+
+            if dict_name is None:
+                setattr(self, attr_def.attrName, yaml_dict[keyname])
+            else:
+                dict_name[attr_def.attrName] = yaml_dict[keyname]
+
+
+        # Check if multiple names have been define more that once
+        if multiple_name:
+            for exclusive_list in multiple_name.values():
+                count = 0
+                for name in exclusive_list:
+                    if name in yaml_dict:
+                        count += 1
+
+                if count > 1:
+                    raise KeyError(f"Configuration file error: Mutually exclusive parameters: {exclusive_list!r} in '{yaml_name}' section")
+
+
 
 # No rights at all
 DEFAULT_PERMISSIONS = {
