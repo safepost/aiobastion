@@ -2,6 +2,8 @@
 
 import yaml
 
+_default_timeout = 30
+_default_max_concurrent_tasks = 10
 
 class Config:
     def __init__(self, configfile):
@@ -14,62 +16,127 @@ class Config:
                 self.password = None
                 self.authtype = "Cyberark"
                 self.appid = None
+                self.user_search = None
             else:
-                if "Username" in document["Connection"].keys():
-                    self.username = document["Connection"]["Username"]
+                for k in list(document["Connection"].keys()):
+                    # Convert key name in lowercase
+                    keyname = k.lower()
+                    if k != keyname:
+                        document["Connection"][keyname] = document["Connection"].pop(k)
+
+                if "username" in document["Connection"]:
+                    self.username = document["Connection"]["username"]
                 else:
                     self.username = None
-                if "Password" in document["Connection"].keys():
-                    self.password = document["Connection"]["Password"]
+                if "password" in document["Connection"]:
+                    self.password = document["Connection"]["password"]
                 else:
                     self.password = None
-                if "AppId" in document["Connection"].keys():
-                    self.appid = document["Connection"]["AppId"]
+                if "appid" in document["Connection"]:
+                    self.appid = document["Connection"]["appid"]
                 else:
                     self.appid = None
-                if "Authtype" in document["Connection"].keys():
-                    self.authtype = document["Connection"]["Authtype"]
+                if "authtype" in document["Connection"]:
+                    self.authtype = document["Connection"]["authtype"]
                 else:
                     self.authtype = None
 
-            if "PVWA" in document:
-                if "Host" in document["PVWA"].keys():
-                    self.PVWA = document["PVWA"]["Host"]
-                if "CA" in document["PVWA"].keys():
-                    self.PVWA_CA = document["PVWA"]["CA"]
+                if "user_search" in document["Connection"]:
+                    user_search = document["Connection"]["user_search"]
+
+                    if not isinstance(user_search, dict):
+                        raise ValueError(f"Malformed configuration file, Connection section, User_search : {user_search!r}")
+
+                    # Check user_search parameter name
+                    _getPassword_request_parm = [ "safe", "folder", "object",  "username", "address", "database", "policyid", "reason"
+                                                , "connectiontimeout", "query", "queryformat", "failrequestonpasswordchange" ]
+
+                    for k in user_search:
+                        key_lower = k.lower()
+                        if key_lower not in _getPassword_request_parm:
+                           raise ValueError(f"Unknow Connection/Username_search parameter in configuration file: {k}={user_search[k]!r}")
+
+                        if k != key_lower:
+                            user_search[key_lower] = user_search.pop(k)
+
+                    self.user_search = user_search
                 else:
-                    self.PVWA_CA = False
-                if "timeout" in document["PVWA"].keys():
+                    self.user_search = None
+
+            if "PVWA" in document:
+                for k in list(document["PVWA"].keys()):
+                    # Convert key name in lowercase
+                    keyname = k.lower()
+                    if k != keyname:
+                        document["PVWA"][keyname] = document["PVWA"].pop(k)
+
+                # 'MaxTasks' becomes 'max_concurrent_tasks'
+                if "maxtasks" in document["PVWA"] and "max_concurrent_tasks" in document["PVWA"]:
+                    raise KeyError(f"Mutually exclusive parameters: MaxTasks and max_concurrent_tasks in PVWA section")
+
+                if "maxtasks" in document["PVWA"]:
+                    document["PVWA"]["max_concurrent_tasks"] = document["PVWA"].pop("maxtasks")
+
+                # 'CA' becomes 'verify'
+                if "verify" in document["PVWA"] and "ca" in document["PVWA"]:
+                    raise KeyError(f"Mutually exclusive parameters: 'verify' and 'CA' in PVWA section")
+
+                if "ca" in document["PVWA"]:
+                    document["PVWA"]["verify"] = document["PVWA"].pop("ca")
+
+                if "host" in document["PVWA"]:
+                    self.PVWA = document["PVWA"]["host"]
+                if "verify" in document["PVWA"]:
+                    self.verify = document["PVWA"]["verify"]
+                else:
+                    self.verify = False
+                if "timeout" in document["PVWA"]:
                     self.timeout = int(document["PVWA"]["timeout"])
                 else:
-                    self.timeout = 30
-                if "MaxTasks" in document["PVWA"].keys():
-                    self.max_concurrent_tasks = int(document["PVWA"]["MaxTasks"])
+                    self.timeout = _default_timeout
+                if "max_concurrent_tasks" in document["PVWA"]:
+                    self.max_concurrent_tasks = int(document["PVWA"]["max_concurrent_tasks"])
                 else:
-                    self.max_concurrent_tasks = 10
+                    self.max_concurrent_tasks = _default_max_concurrent_tasks
 
-            if "AIM" in document:
-                self.AIM = True
-                if "Host" in document["AIM"].keys():
-                    self.AIM_HOST = document["AIM"]["Host"]
-                else:
-                    self.AIM = False
-                if "AppID" in document["AIM"].keys():
-                    self.AIM_AppID = document["AIM"]["AppID"]
-                else:
-                    self.AIM = False
-                if "Cert" in document["AIM"].keys():
-                    self.AIM_Cert = document["AIM"]["Cert"]
-                else:
-                    self.AIM = False
-                if "Key" in document["AIM"].keys():
-                    self.AIM_Key = document["AIM"]["Key"]
-                else:
-                    self.AIM = False
-                if "CA" in document["AIM"].keys():
-                    self.AIM_CA = document["AIM"]["CA"]
-                else:
-                    self.AIM_CA = False
+            if "AIM" in document and document["AIM"] is not None:
+                # Convert keyname to lowercase and validate it
+                #    problem with key name "key" need to use list()
+                for k in list(document["AIM"].keys()):
+                    keyname = k.lower()
+
+                    if keyname not in ["host", "appid", "cert", "key",  "verify", "timeout", "max_concurrent_tasks", "maxtasks", "ca"]:
+                        raise KeyError(f"Unknown parameter in configuration file - AIM section {k}: {document['AIM'][k]!r}")
+
+                    if keyname != k:
+                        document["AIM"][keyname] = document["AIM"].pop(k)
+
+                # "maxtasks" becomes "max_concurrent_tasks"
+                if "maxtasks" in document["AIM"] and "max_concurrent_tasks" in document["AIM"]:
+                    raise KeyError(f"Mutually exclusive parameters: 'maxtasks' and 'max_concurrent_tasks' in AIM section")
+
+                if "maxtasks" in document["AIM"]:
+                    document["AIM"]["max_concurrent_tasks"] = document["AIM"].pop("maxtasks")
+
+                # "CA" becomes "verify"
+                if "verify" in document["AIM"] and "ca" in document["AIM"]:
+                    raise KeyError(f"Mutually exclusive parameters: 'verify' and 'ca' in AIM section")
+
+                if "ca" in document["AIM"]:
+                    document["AIM"]["verify"] = document["AIM"].pop("ca")
+
+                # Set default value, if not defined used PVWA value to complete initialization.
+                document["AIM"].setdefault("host",                  getattr(self, "PVWA",    None))
+                document["AIM"].setdefault("appid",                 getattr(self, "appid",   None))
+                document["AIM"].setdefault("verify",                getattr(self, "verify", False))
+                document["AIM"].setdefault("timeout",               getattr(self, "timeout", _default_timeout))
+                document["AIM"].setdefault("max_concurrent_tasks",  getattr(self, "max_concurrent_tasks", _default_max_concurrent_tasks))
+
+                # Integer conversion
+                document["AIM"]["timeout"] = int(document["AIM"]["timeout"])
+                document["AIM"]["max_concurrent_tasks"] = int(document["AIM"]["max_concurrent_tasks"])
+
+                self.AIM = document["AIM"]
             else:
                 self.AIM = None
 

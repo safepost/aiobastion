@@ -1,40 +1,54 @@
 # -*- coding: utf-8 -*-
+import os.path
 import asyncio
 import json
 import ssl
 from typing import Tuple
+import copy
 
 import aiohttp
 from aiohttp import ContentTypeError
+from http import HTTPStatus
+from collections import namedtuple
 
 from .accountgroup import AccountGroup
 from .accounts import Account
 from .applications import Applications
 from .config import Config
 from .exceptions import CyberarkException, GetTokenException, AiobastionException, CyberarkAPIException, \
-    ChallengeResponseException
+    ChallengeResponseException, CyberarkAIMnotFound
 from .platforms import Platform
 from .safe import Safe
 from .system_health import SystemHealth
 from .users import User, Group
 from .utilities import Utilities
 
-
 class EPV:
     """
     Class that represent the connection, or future connection, to the Vault.
     """
     def __init__(self, configfile: str = None, serialized: dict = None, token: str = None):
+        # AIM Communication
+        self.AIM       = None
+        self.cpm       = ""
+        self.config    = None
+        self.verify    = False
+
         if configfile is None and serialized is None:
             raise AiobastionException("You must provide either configfile or serialized to init EPV")
         if configfile is not None and serialized is not None:
             raise AiobastionException("You must provide either configfile or serialized to init EPV, not both")
+
         if configfile is not None:
             self.config = Config(configfile)
 
-            if self.config.PVWA_CA is not False:
+            if self.config.verify is not False:
+                if not os.path.exists(self.config.verify):
+                    raise AiobastionException(f"Parameter 'CA' in PVWA: file not found {self.config.verify!r}")
+
                 self.request_params = {"timeout": self.config.timeout,
-                                       "ssl": ssl.create_default_context(cafile=self.config.PVWA_CA)}
+                                       "ssl": ssl.create_default_context(cafile=self.config.verify)}
+                self.verify = self.config.verify
             else:
                 self.request_params = {"timeout": self.config.timeout, "ssl": False}
 
@@ -43,41 +57,24 @@ class EPV:
             self.cpm = self.config.CPM
             self.retention = self.config.retention
             self.max_concurrent_tasks = self.config.max_concurrent_tasks
+            self.timeout = self.config.timeout
             self.__token = token
 
+            # AIM Communication
+            if self.config.AIM is not None:
+                self.AIM = EPV_AIM(epv=self, **self.config.AIM)
+
         if serialized is not None:
-            if "verify" in serialized:
-                if serialized["verify"] is not False:
-                    self.request_params = {"timeout": serialized["timeout"],
-                                           "ssl": ssl.create_default_context(cafile=serialized["verify"])}
-                else:
-                    self.request_params = {"timeout": serialized["timeout"], "ssl": False}
-            else:
-                self.request_params = {"timeout": 20, "ssl": False}
+            self.epv_serialize(serialized)
 
-            self.api_host = serialized['api_host']
+            # AIM Communication
+            if "AIM" in serialized:
+                serialized_aim = serialized["AIM"]
+                serialized_aim.setdefault("max_concurrent_tasks", self.max_concurrent_tasks)
+                serialized_aim.setdefault("timeout", self.timeout)
 
-            if "authtype" in serialized:
-                self.authtype = serialized["authtype"]
-            else:
-                self.authtype = None
+                self.AIM = EPV_AIM(epv=self, serialized=serialized["AIM"])
 
-            if "cpm" in serialized:
-                self.cpm = serialized['cpm']
-            else:
-                self.cpm = ""
-            if "retention" in serialized:
-                self.retention = serialized['retention']
-            else:
-                self.retention = 10
-            if "max_concurrent_tasks" in serialized:
-                self.max_concurrent_tasks = serialized['max_concurrent_tasks']
-            else:
-                self.max_concurrent_tasks = 10
-            if "token" in serialized:
-                self.__token = serialized['token']
-            else:
-                self.__token = None
 
         # self.session = requests.Session()
 
@@ -97,6 +94,52 @@ class EPV:
         self.accountgroup = AccountGroup(self)
         self.system_health = SystemHealth(self)
         self.utils = Utilities(self)
+
+    def epv_serialize(self, serialized):
+        if "timeout" in serialized:
+            self.timeout = serialized["timeout"]
+        else:
+            self.timeout = 30
+
+        if "verify" in serialized:
+            self.verify = serialized["verify"]
+
+            if self.verify is not False:
+                if not os.path.exists(self.verify):
+                    raise AiobastionException(f"Parameter 'verify' (or 'CA') in serialized: file not found {self.verify!r}")
+
+                self.request_params = {"timeout": self.timeout,
+                                        "ssl": ssl.create_default_context(cafile=self.verify)}
+            else:
+                self.request_params = {"timeout": self.timeout, "ssl": False}
+        else:
+            self.verify = False
+            self.request_params = {"timeout": 20, "ssl": self.verify}
+
+        self.api_host = serialized['api_host']
+
+        if "authtype" in serialized:
+            self.authtype = serialized["authtype"]
+        else:
+            self.authtype = None
+
+        if "cpm" in serialized:
+            self.cpm = serialized['cpm']
+        else:
+            self.cpm = ""
+        if "retention" in serialized:
+            self.retention = serialized['retention']
+        else:
+            self.retention = 10
+        if "max_concurrent_tasks" in serialized:
+            self.max_concurrent_tasks = serialized['max_concurrent_tasks']
+        else:
+            self.max_concurrent_tasks = 10
+        if "token" in serialized:
+            self.__token = serialized['token']
+        else:
+            self.__token = None
+
 
     # Context manager
     async def __aenter__(self):
@@ -135,8 +178,6 @@ class EPV:
                 await session.close()
                 return tok.replace('"', '')
 
-            # Cleaning password after authentication
-            self.__password = ""
         except ChallengeResponseException:
             raise
         except (ConnectionError, TimeoutError):
@@ -152,6 +193,7 @@ class EPV:
                     raise CyberarkException("Error disconnecting to PVWA with code : %s" % str(req.status))
         await self.close_session()
         self.__token = None
+
         return True
 
     async def check_token(self) -> bool or None:
@@ -172,75 +214,60 @@ class EPV:
         #         return False
         #     return True
 
-    async def get_aim_secret(self, aim_host, appid, username, cert_file: str, cert_key: str, ca_file):
-        if appid is None:
-            raise AiobastionException("Missing mandatory parameter : AppID")
 
-        if cert_file is None and cert_key is None:
-            raise AiobastionException("Provide cert_file and cert_key arguments in order to connect")
-
-        try:
-
-            url = f"https://{aim_host}/AIMWebService/api/Accounts"
-            data = {
-                "AppId": appid,
-                "Username": username
-            }
-
-            if ca_file is not False:
-                sslcontext = ssl.create_default_context(cafile=ca_file)
-                sslcontext.load_cert_chain(cert_file, cert_key)
-            else:
-                sslcontext = ssl.create_default_context()
-                sslcontext.load_cert_chain(cert_file, cert_key)
-
-            req_params = {"timeout": self.config.timeout, "ssl": sslcontext}
-
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=data, **req_params) as req:
-                    result = await req.json()
-
-            if "ErrorCode" in result:
-                raise CyberarkException(f"AIM Request failed : {result}")
-
-            return result["Content"]
-
-        except Exception:
-            raise
-
-    async def login_with_aim(self, aim_host, appid, username, cert_file: str, cert_key: str, root_ca=False):
-        if self.check_token():
-            return
-        password = await self.get_aim_secret(aim_host, appid, username, cert_file, cert_key, root_ca)
+    async def login_with_aim(self, aim_host: str, appid: str, username: str, cert_file: str, cert_key: str, root_ca=False, timeout: int = 30, max_concurrent_tasks: int = 10, user_search: dict = None, auth_type=""):
+        # Is it a new AIM ?
+        if self.AIM:
+            if (aim_host            and aim_host  != self.AIM.host)  or \
+               (appid               and appid     != self.AIM.appid) or \
+               (cert_file           and cert_file != self.AIM.cert)  or \
+               (cert_key            and cert_key  != self.AIM.key)   or \
+               (root_ca is not None and root_ca   != self.AIM.verify):
+                raise CyberarkException("AIM is already initialized ! Please close EPV before reopen it.")
+        else:
+            self.AIM = EPV_AIM(epv=self, host=aim_host, appid=appid, cert=cert_file, key=cert_key, verify=root_ca, timeout=timeout, max_concurrent_tasks=max_concurrent_tasks)
 
         try:
-            self.__token = self.__login_cyberark(username, password, self.config.authtype)
+            await self.login(username=username, password=None, auth_type=auth_type, user_search=user_search)
+
         except CyberarkException as err:
-            raise GetTokenException(err)
+            raise GetTokenException(str(err))
 
-    async def login(self, username=None, password=None, auth_type=""):
+    async def login(self, username=None, password=None, auth_type="", user_search=None):
         if await self.check_token():
             return
 
         if username is None:
-            if self.config.username is None:
-                raise AiobastionException("Username must be provided on login call or in configuration file")
+            if self.config is None or self.config.username is None:
+                raise AiobastionException("Username must be provided on login call or in configuration file. Or you must configure the AIM section.")
             username = self.config.username
+
         if password is None:
-            if self.config.password is None:
-                if self.config.AIM is not None:
-                    if self.config.AIM:
-                        # All infos regarding AIM auth were given in the configuration file
-                        password = await self.get_aim_secret(self.config.AIM_HOST, self.config.AIM_AppID, username,
-                                                             self.config.AIM_Cert, self.config.AIM_Key,
-                                                             self.config.AIM_CA)
-                    else:
-                        raise AiobastionException(
-                            "Missing AIM information to perform AIM authentication, see documentation")
-                else:
-                    raise AiobastionException("Password must be provided on login call or in configuration file")
-            else:
+            if self.config and self.config.password:
                 password = self.config.password
+            else:
+                if not self.AIM:
+                    raise AiobastionException("Password must be provided on login call or in configuration file. Or you must configure the AIM section.")
+
+                params = {"UserName": username}
+
+                if user_search is None:
+                    if self.config and self.config.user_search:
+                        user_search = self.config.user_search
+
+                if user_search:
+                    err = EPV_AIM.valide_secret_params(user_search)
+
+                    if err:
+                        raise GetTokenException(f"invalid parameter in 'user_search' {err}")
+
+                    params.update(user_search)
+
+                try:
+                    # Get password form AIM
+                    password = await self.AIM.get_secret(**params)
+                except (CyberarkAIMnotFound, CyberarkAPIException, CyberarkException) as err:
+                    raise GetTokenException(str(err))
 
         if auth_type == "":
             if self.authtype is not None:
@@ -248,21 +275,16 @@ class EPV:
             else:
                 auth_type = "Cyberark"
 
-
         try:
             self.__token = await self.__login_cyberark(username, password, auth_type)
-            # head = {'Content-type': 'application/json',
-            #         'Authorization': self.__token}
-
             # update the session
             await self.close_session()
-            # self.session = aiohttp.ClientSession(headers=head)
         except ChallengeResponseException:
             # User should enter passcode now
             raise
 
         except CyberarkException as err:
-            raise GetTokenException(err)
+            raise GetTokenException(str(err))
 
     def get_session(self):
         if self.__token is None and self.session is None:
@@ -283,15 +305,24 @@ class EPV:
 
         if self.__sema is None:
             self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
+
+            if self.AIM:
+                self.AIM.set_semaphore(self.__sema, self.session)
+
         return self.session
 
     async def close_session(self):
         try:
-            await self.session.close()
+            if self.AIM:
+                await self.AIM.close_session()
+
+            if self.session:
+                await self.session.close()
         except (CyberarkException, AttributeError):
             pass
         self.session = None
         self.__sema = None
+
 
     def get_url(self, url) -> Tuple[str, dict]:
         addr = 'https://' + self.api_host + '/PasswordVault/' + url
@@ -305,15 +336,20 @@ class EPV:
 
     def to_json(self):
         serialized = {
-            "api_host": self.config.PVWA,
-            "authtype": self.config.authtype,
-            "timeout": self.config.timeout,
-            "verify": self.config.PVWA_CA,
-            "cpm": self.config.CPM,
-            "retention": self.config.retention,
-            "max_concurrent_tasks": self.config.max_concurrent_tasks,
-            "token": self.__token,
+            "api_host": self.api_host,
+            "authtype": self.authtype,
+            "timeout": self.timeout,
+            "verify": self.verify,
+            "cpm": self.cpm,
+            "retention": self.retention,
+            "max_concurrent_tasks": self.max_concurrent_tasks,
+            "token": self.__token
         }
+
+        # AIM Communication
+        if self.AIM:
+            serialized["AIM"]  = self.AIM.to_json()
+
         return serialized
 
     async def get_version(self):
@@ -341,8 +377,9 @@ class EPV:
 
         session = self.get_session()
 
+
         async with self.__sema:
-            async with session.request(method, url, json=data, params=params, **self.request_params) as req:
+            async with session.request(method, url, json=data, headers=head, params=params, **self.request_params) as req:
                 if req.status in (200, 201, 204):
                     try:
                         if len(await req.read()) == 0:
@@ -377,9 +414,259 @@ class EPV:
                         details = content["Details"]
                     else:
                         details = ""
+
                     if "ErrorCode" in content and "ErrorMessage" in content:
                         raise CyberarkAPIException(req.status, content["ErrorCode"], content["ErrorMessage"], details)
                     else:
                         raise CyberarkAPIException(req.status, "NO_ERR_CODE", content)
             # except Exception as err:
             #     raise CyberarkException(err)
+
+# AIM section
+AIM_secret_resp = namedtuple('AIM_secret_resp', ['secret', 'detail'])
+
+class EPV_AIM:
+    _serialized_fields = ["host", "appid", "cert", "key", "verify", "timeout", "max_concurrent_tasks" ]
+    _getPassword_request_parm = [ "safe", "folder", "object",  "username", "address", "database"
+                          ,"policyid", "reason",  "connectiontimeout", "query", "queryformat", "failrequestonpasswordchange" ]
+
+    """
+    Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
+    """
+    def __init__(self, host: str = None, appid: str = None, cert: str = None
+                ,key: str = None, verify: str = None, timeout: int = 30, max_concurrent_tasks: int = 10, serialized:dict = None, epv: EPV = None):
+
+
+        self.host    = host
+        self.appid   = appid
+        self.cert    = cert
+        self.key     = key
+        self.verify  = verify
+        self.timeout = timeout
+        self.max_concurrent_tasks = max_concurrent_tasks
+
+        # Session management
+        self.epv = epv
+        self.__sema = None
+        self.session = None
+
+        if serialized:
+            for k,v in serialized.items():
+                keyname = k.lower()
+                if keyname in EPV_AIM._serialized_fields:
+                    setattr(self, keyname, v)
+                else:
+                    raise AiobastionException(f"Unknown serialized AIM field: {k} = {v!r}")
+
+        # Check mandatory attributs
+        if self.host  is None or \
+           self.appid is None or \
+           self.cert  is None or \
+           self.key   is None:
+            raise AiobastionException("Missing AIM mandatory parameters: host, appid, cert, key (and a optional verify).")
+
+        # Optional attributs
+        if self.timeout is None:
+            self.timeout = 30
+
+        if self.max_concurrent_tasks is None:
+            self.max_concurrent_tasks = 10
+
+        # Prepare AIM communication
+        if self.verify:
+            if not os.path.exists(self.verify):
+                raise AiobastionException(f"Parameter 'verify' in AIM: file not found {self.verify!r}")
+
+            if not os.path.exists(self.cert):
+                raise AiobastionException(f"Parameter 'cert' in AIM: file not found: {self.cert!r}")
+
+            if not os.path.exists(self.key):
+                raise AiobastionException(f"Parameter 'key' in AIM: file not found: {self.key!r}")
+
+            ssl_context = ssl.create_default_context(cafile=self.verify)
+            ssl_context.load_cert_chain(self.cert, self.key)
+        else:
+            ssl_context = ssl.create_default_context()
+            ssl_context.load_cert_chain(self.cert, self.key)
+
+        self.request_params =  \
+            {"timeout": self.timeout,
+             "ssl"    : ssl_context}
+
+
+    @staticmethod
+    def valide_secret_params(params: dict = None) -> str:
+        is_valid_ind = True
+        error_str= ""
+
+        if not isinstance(params, dict):
+            is_valid_ind = False
+            error_str = "parameter is not a dictionary"
+        else:
+            for k in params:
+                key_lower = k.lower()
+
+                if key_lower not in EPV_AIM._getPassword_request_parm:
+                    is_valid_ind = False
+                    error_str = f"unknow parameter: {k}={params[k]!r}"
+                    break
+
+                if k != key_lower:
+                    params[key_lower] = params.pop(k)
+
+        return error_str
+
+    def set_semaphore(self, sema, session):
+        """ Initialize the semaphore of the AIM interface,
+            so that EPV and EPV_AIM could share the same semaphore.
+        """
+        if not self.__sema:
+            self.__sema = sema
+
+        if not self.session:
+            self.session = session
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in EPV_AIM._serialized_fields:
+            serialized[attr_name] = getattr(self, attr_name, None)
+
+        return serialized
+
+    def get_url(self, url) -> Tuple[str, dict]:
+        addr = f"https://{self.host}/AIMWebService/api/{url}"
+        head = {"Content-type": "application/json"}
+
+        return addr, head
+
+
+    # Context manager
+    async def __aenter__(self):
+        self.get_session()
+
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close_session()
+
+    def get_session(self):
+        if self.session is None:
+            if self.epv.session:
+                self.session = self.epv.session
+            else:
+                self.session = aiohttp.ClientSession()
+
+        if self.__sema is None:
+            if self.epv._EPV__sema:
+                self.__sema = self.epv._EPV__sema
+            else:
+                self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
+
+        return self.session
+
+    async def close_session(self):
+        try:
+            if self.session:
+                # Are we using the epv.session, if so don't close it
+                if self.epv.session and self.epv.session != self.session:
+                    await self.session.close()
+        except (CyberarkException, AttributeError):
+            pass
+        self.session = None
+        self.__sema = None
+
+
+    async def get_secret(self, **kwargs):
+        """
+        This function allow to search using one or more parameters and return list of address id
+        :param kwargs: any searchable key = value
+                  like:  UserName, Safe, Folder, Object (which is name), Address, Database, PolicyID, Reason, Query, QueryFormat, FailRequestOnPasswordChange, ...
+        :raise CyberarkAIMnotFound: Account not found
+        :raise CyberarkAPIException: HTTP error or CyberArk error
+        :raise CyberarkException: Execution error
+        :return: The password
+        """
+
+        secret_detail = await self.get_secret_detail(**kwargs)
+
+        return secret_detail.secret
+
+
+    async def get_secret_detail(self, **kwargs):
+        """
+        Retrieve the secret from the GetPassword Web Service Central Credential Provider (AIM)
+        :param kwargs: any searchable key = value
+                  keys:  username, safe, folder, object, address, database, policyid, reason, Query, ...
+        :raise CyberarkAIMnotFound: Account not found
+        :raise CyberarkAPIException: HTTP error or CyberArk error
+        :raise CyberarkException: Execution error
+        :return:  namedtuple of (secret, detail) or None
+            secret = password
+            detail = dictionary from the Central Credential Provider (AIM) GetPassword Web Service
+        """
+
+        detail_info = await self.handle_request("get", "Accounts", params=kwargs)
+        secret_detail = AIM_secret_resp(detail_info["Content"], detail_info)
+
+        return secret_detail
+
+    @staticmethod
+    def handle_error_detail_info(url: str = None, params: dict = None):
+        # Mask the appid attribut, if you are a security maniac
+        if "appid" in params:
+            params_copy = copy.deepcopy(params)
+
+            params_copy["appid"]="xxxxx"
+
+        return f"url: {url!r}, params: {params_copy!r}"
+
+    async def handle_request(self, method: str, short_url: str, data=None, params: dict = None, filter_func=lambda x: x):
+        """
+        Function that handles AIM requests to the API
+        :param method: "get"
+        :param params: dictonary parameters for CyberArk like Safe, Object, UserName, Address, Reason, Query, ...
+        :param short_url: piece of URL after AIMWebService/api/
+        :param filter_func:
+        :raise CyberarkAIMnotFound: Account not found
+        :raise CyberarkAPIException: HTTP error or CyberArk error
+        :raise CyberarkException: Execution error
+        :return: dictonary return by CyberArk
+        """
+        #assert method.lower() in ("post", "delete", "get", "patch")
+        assert method.lower() in ("get")
+
+        url, head = self.get_url(short_url)
+        session = self.get_session()
+        params.setdefault('appid', self.appid)
+
+        async with self.__sema:
+            async with session.request(method, url, headers=head, params=params, **self.request_params) as req:
+                try:
+                    resp_json = await req.json()
+
+                    if req.status == 200:
+                        if "Content" not in resp_json:
+                            raise CyberarkAPIException(req.status, "INVALID_JSON", "Could not find the password ('Content')" , EPV_AIM.handle_error_detail_info(url, params))
+
+                        return filter_func(resp_json)
+                    else:
+                        # This is a error
+                        if "Details" in resp_json:
+                            details = resp_json["Details"]
+                        else:
+                            details =  EPV_AIM.handle_error_detail_info(url, params)
+
+                        if "ErrorCode" in resp_json and "ErrorMsg" in resp_json:
+                            if resp_json["ErrorCode"] == "APPAP004E":
+                                raise CyberarkAIMnotFound(req.status, resp_json["ErrorCode"], resp_json["ErrorMsg"], details)
+                            else:
+                                raise CyberarkAPIException(req.status, resp_json["ErrorCode"], resp_json["ErrorMsg"], details)
+                        else:
+                            http_error = HTTPStatus(req.status)
+
+                            raise CyberarkAPIException(req.status, "HTTP_ERR_CODE", http_error.phrase, details)
+                except (KeyError, ValueError, ContentTypeError) as err:
+                    #http_error = HTTPStatus(req.status)
+                    details = EPV_AIM.handle_error_detail_info(url, params)
+                    raise CyberarkException(f"HTTP error {req.status}: {str(err)} || Additional Details : {details}")
