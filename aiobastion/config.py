@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import sys
 import yaml
 from collections import namedtuple
 
@@ -14,6 +15,15 @@ class Config:
         _default_retention = 30
 
         # Define name in Yaml (in lowercase) =  (<classe attribut name>, <default value>)
+        _attrname_def_global    = {
+             "connection":      _AttrName_def("Connection",     None,               False)
+            ,"pvwa":            _AttrName_def("PVWA",           None,               False)
+            ,"aim":             _AttrName_def("AIM",            None,               False)
+            ,"cpm":             _AttrName_def("CPM",            "",                 False)
+            ,"retention":       _AttrName_def("retention",      _default_retention, False)
+            ,"customipfield":   _AttrName_def("customIPField",  None,               False)
+        }
+        
         _attrname_def_connection = {
              "appid":       _AttrName_def("appid",       None,       False)
             ,"authtype":    _AttrName_def("authtype",    "Cyberark", False)
@@ -31,7 +41,6 @@ class Config:
             ,"verify":               _AttrName_def("PVWA_CA",              False, True)
         }
 
-
         _attrname_def_AIM = {
              "appid":                _AttrName_def("appid", None, None)
             ,"cert":                 _AttrName_def("cert", None, None)
@@ -48,12 +57,12 @@ class Config:
             document = yaml.safe_load(config)
 
         try:
+            # Check global section
+            document_check = {}
+            self._check_yaml(document, "Global", _attrname_def_global, document_check, raise_unknown_attr=False)
+            
             # Connection section
-            if "Connection" not in document:
-                # Initialiaze default attributes
-                document["Connection"] = None
-
-            self._check_yaml(document["Connection"], "Connection", _attrname_def_connection, raise_unknown_attr=True)
+            self._check_yaml(document_check["Connection"], "Connection", _attrname_def_connection, raise_unknown_attr=True)
 
             # Connection section: Specific Validation
             if self.user_search:
@@ -73,15 +82,14 @@ class Config:
                         self.user_search[keyname] = self.user_search.pop(k)
 
             # PVWA section
-            if "PVWA" in document:
-                self._check_yaml(document["PVWA"], "PVWA", _attrname_def_PVWA, raise_unknown_attr=True)
-                self.timeout = int(self.timeout)
-                self.max_concurrent_tasks = int(self.max_concurrent_tasks)
+            self._check_yaml(document_check["PVWA"], "PVWA", _attrname_def_PVWA, raise_unknown_attr=True)
+            self.timeout = int(self.timeout)
+            self.max_concurrent_tasks = int(self.max_concurrent_tasks)
 
-            # AIM section
-            if "AIM" in document and document["AIM"] is not None:
+            # AIM section (optional section)
+            if document_check["AIM"] is not None:
                 self.AIM = {}
-                self._check_yaml(document["AIM"], "AIM", _attrname_def_AIM, self.AIM, raise_unknown_attr=True)
+                self._check_yaml(document_check["AIM"], "AIM", _attrname_def_AIM, self.AIM, raise_unknown_attr=True)
 
                 # If not defined used PVWA value to complete initialization.
                 if self.AIM["host"] is None:
@@ -100,21 +108,14 @@ class Config:
                 self.AIM["max_concurrent_tasks"] = int(self.AIM["max_concurrent_tasks"])
             else:
                 self.AIM = None
-
-            if "CPM" in document:
-                self.CPM = document["CPM"]
-            else:
-                self.CPM = ""
-            if "retention" in document:
-                self.retention = int(document["retention"])
-            else:
-                self.retention = _default_retention
-            if "customIPField" in document:
-                self.customIPField = document["customIPField"]
-            else:
-                self.customIPField = None
+                
+            self.CPM            = document_check["CPM"]
+            self.retention      = int(document_check["retention"])
+            self.customIPField  = document_check["customIPField"]
+            
         except AttributeError as e:
             raise ValueError(f"Malformed configuration file : {str(e)}")
+
 
     def _check_yaml(self, yaml_dict: dict, yaml_name: str, attrname_definition, dict_name: dict = None, raise_unknown_attr=False):
         """_check_yaml - Read a YAML section and initialize variable
@@ -128,7 +129,7 @@ class Config:
             attrname_definition {dict}  Section attribut defintion
 
         Keyword Arguments:
-            dict_name {dict}            Dictionary return value
+            dict_name {dict}            Dictionary return value, if None self is set
             raise_unknown_attr          Raise a error for a unknown attribute
 
         Raises:
@@ -160,10 +161,14 @@ class Config:
             attr_def = attrname_definition.get(keyname, None)
 
             if attr_def is None:
+                s = f"aiobastion configuration file error: Unknown attribut '{k}' in section '{yaml_name}': {k}={yaml_dict[k]!r}"
+                
                 if raise_unknown_attr:
-                    raise KeyError(f"Configuration file error: Unknown attribut name in section '{yaml_name}': {k}={yaml_dict[k]!r}")
+                    raise KeyError(s)
                 else:
-                    continue
+                    # Print error in stderr, and let the user handle the error
+                    print(s, file=sys.stderr)
+                    # continue
 
             if k != keyname:
                 yaml_dict[keyname] = yaml_dict.pop(k)
