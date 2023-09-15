@@ -16,14 +16,15 @@ class Config:
 
         # Define name in Yaml (in lowercase) =  (<classe attribut name>, <default value>)
         _attrname_def_global    = {
-             "connection":      _AttrName_def("Connection",     None,               False)
-            ,"pvwa":            _AttrName_def("PVWA",           None,               False)
-            ,"aim":             _AttrName_def("AIM",            None,               False)
+             "aim":             _AttrName_def("AIM",            None,               False)
+            ,"connection":      _AttrName_def("Connection",     None,               False)
             ,"cpm":             _AttrName_def("CPM",            "",                 False)
-            ,"retention":       _AttrName_def("retention",      _default_retention, False)
             ,"customipfield":   _AttrName_def("customIPField",  None,               False)
+            ,"label":           _AttrName_def("Label",          None,               False)
+            ,"pvwa":            _AttrName_def("PVWA",           None,               False)
+            ,"retention":       _AttrName_def("retention",      _default_retention, False)
         }
-        
+
         _attrname_def_connection = {
              "appid":       _AttrName_def("appid",       None,       False)
             ,"authtype":    _AttrName_def("authtype",    "Cyberark", False)
@@ -42,15 +43,15 @@ class Config:
         }
 
         _attrname_def_AIM = {
-             "appid":                _AttrName_def("appid", None, None)
+             "appid":                _AttrName_def("appid", None, None)                 # Default = Connection
             ,"cert":                 _AttrName_def("cert", None, None)
-            ,"host":                 _AttrName_def("host", None, None)
+            ,"host":                 _AttrName_def("host", None, None)                  # Default = PVWA (host)
             ,"key":                  _AttrName_def("key", None, None)
-            ,"max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", None, True)
-            ,"maxtasks":             _AttrName_def("max_concurrent_tasks", None, True)
-            ,"ca":                   _AttrName_def("verify", False, True)
-            ,"verify":               _AttrName_def("verify", False, True)
-            ,"timeout":              _AttrName_def("timeout", None, None)
+            ,"max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", None, True)  # Default = PVWA (max_concurrent_tasks)
+            ,"maxtasks":             _AttrName_def("max_concurrent_tasks", None, True)  # Default = PVWA (max_concurrent_tasks)
+            ,"ca":                   _AttrName_def("verify", None, True)                # Default = PVWA (PVWA_CA)
+            ,"verify":               _AttrName_def("verify", None, True)                # Default = PVWA (PVWA_CA)
+            ,"timeout":              _AttrName_def("timeout", None, None)               # Default = PVWA (timeout)
         }
 
         with open(configfile, 'r') as config:
@@ -60,7 +61,7 @@ class Config:
             # Check global section
             document_check = {}
             self._check_yaml(document, "Global", _attrname_def_global, document_check, raise_unknown_attr=False)
-            
+
             # Connection section
             self._check_yaml(document_check["Connection"], "Connection", _attrname_def_connection, raise_unknown_attr=True)
 
@@ -92,27 +93,27 @@ class Config:
                 self._check_yaml(document_check["AIM"], "AIM", _attrname_def_AIM, self.AIM, raise_unknown_attr=True)
 
                 # If not defined used PVWA value to complete initialization.
-                if self.AIM["host"] is None:
-                    self.AIM["host"]    = getattr(self, "PVWA",    None)
                 if self.AIM["appid"] is None:
                     self.AIM["appid"]   = getattr(self, "appid",   None)
-                if self.AIM["verify"] is None:
-                    self.AIM["verify"]  = getattr(self, "verify", False)
+                if self.AIM["host"] is None:
+                    self.AIM["host"]    = getattr(self, "PVWA",    None)
                 if self.AIM["timeout"] is None:
                     self.AIM["timeout"] = getattr(self, "timeout", _default_timeout)
                 if self.AIM["max_concurrent_tasks"] is None:
                     self.AIM["max_concurrent_tasks"] =  getattr(self, "max_concurrent_tasks", _default_max_concurrent_tasks)
+                if self.AIM["verify"] is None:
+                    self.AIM["verify"]  = getattr(self, "PVWA_CA", False)
 
                 # Integer conversion
                 self.AIM["timeout"] = int(self.AIM["timeout"])
                 self.AIM["max_concurrent_tasks"] = int(self.AIM["max_concurrent_tasks"])
             else:
                 self.AIM = None
-                
+
             self.CPM            = document_check["CPM"]
             self.retention      = int(document_check["retention"])
             self.customIPField  = document_check["customIPField"]
-            
+
         except AttributeError as e:
             raise ValueError(f"Malformed configuration file : {str(e)}")
 
@@ -161,14 +162,12 @@ class Config:
             attr_def = attrname_definition.get(keyname, None)
 
             if attr_def is None:
-                s = f"aiobastion configuration file error: Unknown attribut '{k}' in section '{yaml_name}': {k}={yaml_dict[k]!r}"
-                
                 if raise_unknown_attr:
-                    raise KeyError(s)
+                    raise KeyError(f"aiobastion configuration file error: Unknown attribut '{k}' in section '{yaml_name}': {k}={yaml_dict[k]!r}")
                 else:
                     # Print error in stderr, and let the user handle the error
-                    print(s, file=sys.stderr)
-                    # continue
+                    print(f"Warning - aiobastion configuration file error: Unknown attribut '{k}' in section '{yaml_name}': {k}={yaml_dict[k]!r}", file=sys.stderr)
+                    continue
 
             if k != keyname:
                 yaml_dict[keyname] = yaml_dict.pop(k)
