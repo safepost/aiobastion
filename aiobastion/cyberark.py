@@ -23,10 +23,6 @@ from .system_health import SystemHealth
 from .users import User, Group
 from .utilities import Utilities
 
-# Default value
-_default_timeout = 30
-_default_max_concurrent_tasks = 10
-_default_retention = 30
 
 class EPV:
     """
@@ -49,7 +45,7 @@ class EPV:
 
             if self.config.PVWA_CA is not False:
                 if not os.path.exists(self.config.PVWA_CA):
-                    raise AiobastionException(f"Parameter 'CA' in PVWA: file not found {self.config.PVWA_CA!r}")
+                    raise AiobastionException(f"Parameter 'CA' (or 'verify') in PVWA: file not found {self.config.PVWA_CA!r}")
 
                 self.request_params = {"timeout": self.config.timeout,
                                        "ssl": ssl.create_default_context(cafile=self.config.PVWA_CA)}
@@ -74,11 +70,11 @@ class EPV:
 
             # AIM Communication
             if "AIM" in serialized:
-                serialized_aim = serialized["AIM"]
+                serialized_aim = copy.copy(serialized["AIM"])
 
                 serialized_aim.setdefault("host",                 getattr(self, "api_host",    None))
-                serialized_aim.setdefault("max_concurrent_tasks", getattr(self, "max_concurrent_tasks", _default_max_concurrent_tasks))
-                serialized_aim.setdefault("timeout",              getattr(self, "timeout", _default_timeout))
+                serialized_aim.setdefault("max_concurrent_tasks", getattr(self, "max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS))
+                serialized_aim.setdefault("timeout",              getattr(self, "timeout", Config.CYBERARK_DEFAULT_TIMEOUT))
                 serialized_aim.setdefault("verify",               getattr(self, "verify",  False))
 
                 self.AIM = EPV_AIM(epv=self, serialized=serialized["AIM"])
@@ -104,10 +100,28 @@ class EPV:
         self.utils = Utilities(self)
 
     def epv_serialize(self, serialized):
+        if not isinstance(serialized, dict):
+            raise AiobastionException(f"Type error: Parameter 'serialized' must be a dictionary.")
+
+        # Validate dictionary key
+        for k in serialized.keys():
+            if k not in [
+                     "AIM"
+                    ,"api_host"
+                    ,"authtype"
+                    ,"cpm"
+                    ,"max_concurrent_tasks"
+                    ,"retention"
+                    ,"timeout"
+                    ,"token"
+                    ,"verify"
+                    ]:
+                raise AiobastionException(f"Unknown serialized field: {k} = {serialized[k]!r}")
+
         if "timeout" in serialized:
             self.timeout = serialized["timeout"]
         else:
-            self.timeout = _default_timeout
+            self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
 
         if "verify" in serialized:
             self.verify = serialized["verify"]
@@ -122,9 +136,13 @@ class EPV:
                 self.request_params = {"timeout": self.timeout, "ssl": False}
         else:
             self.verify = False
-            self.request_params = {"timeout": _default_timeout, "ssl": self.verify}
+            self.request_params = {"timeout": Config.CYBERARK_DEFAULT_TIMEOUT, "ssl": self.verify}
 
-        self.api_host = serialized['api_host']
+        if "api_host" in serialized:
+            self.api_host = serialized['api_host']
+        else:
+            # raise AiobastionException("Missing EPV mandatory parameter in serialized: 'api_host'.")
+            self.api_host = None
 
         if "authtype" in serialized:
             self.authtype = serialized["authtype"]
@@ -138,11 +156,11 @@ class EPV:
         if "retention" in serialized:
             self.retention = serialized['retention']
         else:
-            self.retention = _default_retention
+            self.retention = Config.CYBERARK_DEFAULT_RETENTION
         if "max_concurrent_tasks" in serialized:
             self.max_concurrent_tasks = serialized['max_concurrent_tasks']
         else:
-            self.max_concurrent_tasks = _default_max_concurrent_tasks
+            self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
         if "token" in serialized:
             self.__token = serialized['token']
         else:
@@ -223,7 +241,7 @@ class EPV:
         #     return True
 
 
-    async def login_with_aim(self, aim_host: str, appid: str, username: str, cert_file: str, cert_key: str, root_ca=False, timeout: int = _default_timeout, max_concurrent_tasks: int = _default_max_concurrent_tasks, user_search: dict = None, auth_type=""):
+    async def login_with_aim(self, aim_host: str, appid: str, username: str, cert_file: str, cert_key: str, root_ca=False, timeout: int = Config.CYBERARK_DEFAULT_TIMEOUT, max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS, user_search: dict = None, auth_type=""):
         # Is it a new AIM ?
         if self.AIM:
             if (aim_host            and aim_host  != self.AIM.host)  or \
@@ -244,6 +262,9 @@ class EPV:
     async def login(self, username=None, password=None, auth_type="", user_search=None):
         if await self.check_token():
             return
+
+        if self.api_host is None:
+            raise AiobastionException("Host must be provided in configuration file or in EPV(serialized={'api_host: 'cyberark-host'}).")
 
         if username is None:
             if self.config is None or self.config.username is None:
@@ -278,7 +299,7 @@ class EPV:
                     raise GetTokenException(str(err))
 
         if auth_type == "":
-            if self.authtype is not None:
+            if self.authtype:
                 auth_type = self.authtype
             else:
                 auth_type = "Cyberark"
@@ -394,7 +415,6 @@ class EPV:
                             return True
                         else:
                             return filter_func(await req.json())
-                        # return filter_func(await req.json())
                     except ContentTypeError:
                         response = await req.text()
                         try:
@@ -442,7 +462,7 @@ class EPV_AIM:
     Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
     """
     def __init__(self, host: str = None, appid: str = None, cert: str = None
-                ,key: str = None, verify: str = None, timeout: int = _default_timeout, max_concurrent_tasks: int = _default_max_concurrent_tasks, serialized:dict = None, epv: EPV = None):
+                ,key: str = None, verify: str = None, timeout: int = Config.CYBERARK_DEFAULT_TIMEOUT, max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS, serialized:dict = None, epv: EPV = None):
 
 
         self.host    = host
@@ -475,10 +495,10 @@ class EPV_AIM:
 
         # Optional attributs
         if self.timeout is None:
-            self.timeout = _default_timeout
+            self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
 
         if self.max_concurrent_tasks is None:
-            self.max_concurrent_tasks = _default_max_concurrent_tasks
+            self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
 
         # Prepare AIM communication
         if self.verify:
@@ -623,8 +643,7 @@ class EPV_AIM:
     def handle_error_detail_info(url: str = None, params: dict = None):
         # Mask the appid attribut, if you are a security maniac
         if "appid" in params:
-            params_copy = copy.deepcopy(params)
-
+            params_copy = copy.copy(params)
             params_copy["appid"]="xxxxx"
 
         return f"url: {url!r}, params: {params_copy!r}"
