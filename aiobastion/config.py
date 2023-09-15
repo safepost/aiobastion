@@ -4,15 +4,15 @@ import sys
 import yaml
 from collections import namedtuple
 
-
 _AttrName_def = namedtuple('_AttrName_def', ['attrName', 'defaultValue', 'multipleName_ind'])
 
 class Config:
+    #Default value
+    CYBERARK_DEFAULT_TIMEOUT = 30
+    CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS = 10
+    CYBERARK_DEFAULT_RETENTION = 10
+
     def __init__(self, configfile):
-        # Default value
-        _default_timeout = 30
-        _default_max_concurrent_tasks = 10
-        _default_retention = 30
 
         # Define name in Yaml (in lowercase) =  (<classe attribut name>, <default value>)
         _attrname_def_global    = {
@@ -22,7 +22,7 @@ class Config:
             ,"customipfield":   _AttrName_def("customIPField",  None,               False)
             ,"label":           _AttrName_def("Label",          None,               False)
             ,"pvwa":            _AttrName_def("PVWA",           None,               False)
-            ,"retention":       _AttrName_def("retention",      _default_retention, False)
+            ,"retention":       _AttrName_def("retention",      Config.CYBERARK_DEFAULT_RETENTION, False)
         }
 
         _attrname_def_connection = {
@@ -35,9 +35,9 @@ class Config:
 
         _attrname_def_PVWA = {
              "host":                 _AttrName_def("PVWA",                 None, False)
-            ,"max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", _default_max_concurrent_tasks, True)
-            ,"maxtasks":             _AttrName_def("max_concurrent_tasks", _default_max_concurrent_tasks, True)
-            ,"timeout":              _AttrName_def("timeout",              _default_timeout, False)
+            ,"max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS, True)
+            ,"maxtasks":             _AttrName_def("max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS, True)
+            ,"timeout":              _AttrName_def("timeout",              Config.CYBERARK_DEFAULT_TIMEOUT, False)
             ,"ca":                   _AttrName_def("PVWA_CA",              False, True)
             ,"verify":               _AttrName_def("PVWA_CA",              False, True)
         }
@@ -98,9 +98,9 @@ class Config:
                 if self.AIM["host"] is None:
                     self.AIM["host"]    = getattr(self, "PVWA",    None)
                 if self.AIM["timeout"] is None:
-                    self.AIM["timeout"] = getattr(self, "timeout", _default_timeout)
+                    self.AIM["timeout"] = getattr(self, "timeout", Config.CYBERARK_DEFAULT_TIMEOUT)
                 if self.AIM["max_concurrent_tasks"] is None:
-                    self.AIM["max_concurrent_tasks"] =  getattr(self, "max_concurrent_tasks", _default_max_concurrent_tasks)
+                    self.AIM["max_concurrent_tasks"] =  getattr(self, "max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS)
                 if self.AIM["verify"] is None:
                     self.AIM["verify"]  = getattr(self, "PVWA_CA", False)
 
