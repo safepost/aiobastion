@@ -411,6 +411,12 @@ class TestAccount(IsolatedAsyncioTestCase):
             self.assertEqual(z, await self.vault.account.get_secret_version(account, v))
 
 
+    async def test_get_password_aim(self):
+        account = await self.get_random_account()
+
+        password = await self.vault.account.get_password_aim(address=account.address,
+                                                             safe=account.safeName )
+        print(password)
 
 
 if __name__ == '__main__':

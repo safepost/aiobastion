@@ -671,7 +671,8 @@ class EPV_AIM:
             async with session.request(method, url, headers=head, params=params, **self.request_params) as req:
                 try:
                     resp_json = await req.json()
-
+                    # fixme if error is 404 then send Attempt to decode JSON with unexpected mimetype
+                    # need to better try / catch the req json (or ignore if 404)
                     if req.status == 200:
                         if "Content" not in resp_json:
                             raise CyberarkAPIException(req.status, "INVALID_JSON", "Could not find the password ('Content')" , EPV_AIM.handle_error_detail_info(url, params))
