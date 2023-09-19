@@ -46,3 +46,20 @@ class ChallengeResponseException(Exception):
     this exception is raised on login when the user need to authenticate again with passcode
     """
     pass
+
+class CyberarkAIMnotFound(Exception):
+    """
+    this exception is raised when AIM has not found the specified account (HTTP 404)
+    """
+    def __init__(self, http_status, err_code, err_message, details=" "):
+        self.http_status = http_status
+        self.err_code = err_code
+        self.err_message = err_message
+        self.details = details
+
+    def __str__(self):
+        error = f"HTTP {self.http_status}, {self.err_code} : {self.err_message}"
+        if self.details != "":
+            error += f" || Additional Details : {self.details}"
+        return error
+    pass

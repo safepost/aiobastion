@@ -6,7 +6,7 @@ import aiohttp
 
 from .config import validate_ip, flatten
 from .exceptions import (
-    CyberarkAPIException, CyberarkException, AiobastionException
+    CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound
 )
 
 BASE_FILECATEGORY = ("platformId", "userName", "address", "name")
@@ -71,9 +71,23 @@ class PrivilegedAccount:
 
         return json_object
 
+
     def __str__(self):
         strrepr = self.to_json()
         return str(strrepr)
+
+    def __repr__(self):
+        # For Debugging, short account identification
+        s = f"<{self.__class__.__name__} {hex(id(self))}:"
+
+        for attr in ["id", "name", "safeName"]:
+            v = getattr(self, attr, None)
+            if v:
+                s += f" {attr}={v}"
+
+        s += ">"
+
+        return s
 
     def cpm_status(self):
         """
@@ -551,7 +565,6 @@ class Account:
                                       platform=None, **kwargs) -> AsyncIterator[PrivilegedAccount]:
         """
         | This function allow to search using one or more parameters and return list of address id.
-        | This
 
         :param keywords: free search
         :param username: username search (field "userName")
@@ -1084,7 +1097,7 @@ class Account:
                 if group_name.lower() == group.name.lower():
                     group_id = group.id
         if group_id == 0:
-            raise AiobastionException("Group name was incorrect of not found")
+            raise AiobastionException("Group name was incorrect or not found")
 
         async def _api_call(acc):
             url = f"API/AccountGroups/{group_id}/Members"
@@ -1176,3 +1189,68 @@ class Account:
             return new_account_id
 
         return await self._handle_acc_list(_move, account)
+
+    # AIM get secret function
+    async def get_secret_aim(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], reason: str = None):
+        """ **This function support list of PrivilegedAccount as argument**
+
+        This function update the secret attribut of the PrivilegedAccount with the password returned by the AIM Web service
+        If the account is not found, the secret is set to None.
+
+        :param account: A PrivilegedAccount object, or a list of PrivilegedAccount objects
+        :type account: PrivilegedAccount, list
+        :return: PrivilegedAccount Object updated, if the password is not found the secret will be None
+        :raise CyberarkAIMnotFound: Account not found
+        :raise CyberarkAPIException: HTTP error or CyberArk error
+        :raise CyberarkException: If something else is something wrong
+        """
+        if self.epv.AIM is None:
+            raise AiobastionException(
+                    "Missing AIM information to perform AIM authentication, see documentation")
+
+        if isinstance(account, list):
+            tasks = []
+            for acc in account:
+                if not acc.secretType or (acc.secretType and acc.secretType == "password"):
+                    tasks.append(self.get_secret_aim(acc, reason))
+            return await asyncio.gather(*tasks)
+
+        # Treat a single account
+        if not isinstance(account, PrivilegedAccount):
+            raise AiobastionException("You must provide a valid PrivilegedAccount.")
+
+        params={"Object": account.name }
+
+        if reason:
+            params["Reason"] = reason
+        if account.safeName:
+            params["SafeName"] = account.safeName
+
+        try:
+            account.secret = await self.epv.AIM.get_secret(**params)
+
+        except CyberarkAIMnotFound:
+            account.secret = None
+
+        return account
+
+
+    async def get_password_aim(self, **kwargs):
+        """
+        | Retrieve the Central Credential Provider (AIM) GetPassword Web Service information using kwargs criterias
+
+        :param kwargs: any searchable key = value
+            like UserName, Safe, Folder, Object (which is name), Address, Database, PolicyID, Reason, Query, QueryFormat, FailRequestOnPasswordChange, ...
+        :return:  namedtuple of (secret, detail)
+            secret = password
+            detail = dictionary from the Central Credential Provider (AIM) GetPassword Web Service
+        :raise CyberarkAIMnotFound: Account not found
+        :raise CyberarkAPIException: HTTP error or CyberArk error
+        :raise CyberarkException: If something else is something wrong
+        """
+        if self.epv.AIM is None:
+            raise AiobastionException(
+                    "Missing AIM information to perform AIM authentication, see documentation")
+
+        return await self.epv.AIM.get_secret_detail(self, **kwargs)
+
