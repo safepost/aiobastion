@@ -1,0 +1,76 @@
+---
+Label: &not_required
+  default:
+  required: False
+
+# Connection Section
+Connection:
+  Username: *not_required
+  Password: *not_required
+  Authtype: *not_required
+  AppID: *not_required
+  User_Search: *not_required
+
+# PVWA Section
+PVWA: &PVWA
+  Host: &required
+    required: True
+  PWVA_CA:
+    <<: *not_required
+    alternate_names:
+      - ca
+      - verify
+  timeout:
+    default: <CYBERARK_DEFAULT_TIMEOUT>
+  max_concurrent_tasks:
+    default: <CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS>
+    alternate_names:
+      - maxtasks
+
+# AIM Section
+AIM:
+  <<: *PVWA
+
+CPM: *not_required
+CustomIPField: *not_required
+Retention: <CYBERARK_DEFAULT_RETENTION>
+
+
+
+#
+#            ,"connection":      _AttrName_def("Connection",     None,               False)
+#            ,"cpm":             _AttrName_def("CPM",            "",                 False)
+#            ,"customipfield":   _AttrName_def("customIPField",  None,               False)
+#            ,"label":           _AttrName_def("Label",          None,               False)
+#            ,"pvwa":            _AttrName_def("PVWA",           None,               False)
+#            ,"retention":       _AttrName_def("retention",      Config.CYBERARK_DEFAULT_RETENTION, False)
+#        }
+#
+#        _attrname_def_connection = {
+#             "appid":       _AttrName_def("appid",       None,       False)
+#            ,"authtype":    _AttrName_def("authtype",    "Cyberark", False)
+#            ,"password":    _AttrName_def("password",    None,       False)
+#            ,"user_search": _AttrName_def("user_search", None,       False)
+#            ,"username":    _AttrName_def("username",    None,       False)
+#        }
+#
+#        _attrname_def_PVWA = {
+#             "host":                 _AttrName_def("PVWA",                 None, False)
+#            ,"max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS, True)
+#            ,"maxtasks":             _AttrName_def("max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS, True)
+#            ,"timeout":              _AttrName_def("timeout",              Config.CYBERARK_DEFAULT_TIMEOUT, False)
+#            ,"ca":                   _AttrName_def("PVWA_CA",              False, True)
+#            ,"verify":               _AttrName_def("PVWA_CA",              False, True)
+#        }
+#
+#        _attrname_def_AIM = {
+#             "appid":                _AttrName_def("appid", None, None)                 # Default = Connection
+#            ,"cert":                 _AttrName_def("cert", None, None)
+#            ,"host":                 _AttrName_def("host", None, None)                  # Default = PVWA (host)
+#            ,"key":                  _AttrName_def("key", None, None)
+#            ,"max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", None, True)  # Default = PVWA (max_concurrent_tasks)
+#            ,"maxtasks":             _AttrName_def("max_concurrent_tasks", None, True)  # Default = PVWA (max_concurrent_tasks)
+#            ,"ca":                   _AttrName_def("verify", None, True)                # Default = PVWA (PVWA_CA)
+#            ,"verify":               _AttrName_def("verify", None, True)                # Default = PVWA (PVWA_CA)
+#            ,"timeout":              _AttrName_def("timeout", None, None)               # Default = PVWA (timeout)
+#        }

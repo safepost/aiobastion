@@ -6,7 +6,7 @@ from unittest import TestCase, IsolatedAsyncioTestCase
 import aiobastion
 # import aiobastion.EPV
 import tests
-from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
+from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound
 from aiobastion.accounts import PrivilegedAccount
 from aiobastion import EPV
 from typing import List, Union
@@ -414,9 +414,33 @@ class TestAccount(IsolatedAsyncioTestCase):
     async def test_get_password_aim(self):
         account = await self.get_random_account()
 
-        password = await self.vault.account.get_password_aim(address=account.address,
-                                                             safe=account.safeName )
-        print(password)
+        # Generating new password and ensuring it respect security policy
+        new_password = secrets.token_hex(44) + "ac12AB$$"
+        ret = await self.vault.account.set_password(account, new_password)
+        self.assertTrue(ret)
+
+        get_password = await self.vault.account.get_password_aim(address=account.address, safe=account.safeName)
+        self.assertEqual(new_password, get_password.secret)
+
+        get_secret = await self.vault.account.get_secret_aim(account)
+        self.assertEqual(new_password, get_secret.secret)
+
+        with self.assertRaises(CyberarkAIMnotFound):
+            await self.vault.account.get_password_aim(address="not_exist")
+
+    async def test_get_secret_aim(self):
+        account = await self.get_random_account(50)
+
+        retrieved_password = await self.vault.account.get_secret(account[15])
+
+        import time
+        start_time = time.time()
+        get_secret = await self.vault.account.get_secret_aim(account)
+        execution_time = time.time() - start_time
+
+        self.assertEqual(retrieved_password, get_secret[15].secret)
+        #
+        # # print(account[10])
 
 
 if __name__ == '__main__':
