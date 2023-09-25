@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
-import sys
 import yaml
-from collections import namedtuple
 
 from aiobastion.exceptions import AiobastionConfigurationException
 
-_AttrName_def = namedtuple('_AttrName_def', ['attrName', 'defaultValue', 'multipleName_ind'])
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
-
 
 class Config:
     # Default value
@@ -27,125 +23,14 @@ class Config:
 
         # Lower case dicts
         lower_user_config = Config._lowercase(user_configuration_file)
+
         self.hydrate(attributes, lower_user_config)
 
-        print("# Remaining Dict ===> ")
-        print(lower_user_config)
+        # if len(lower_user_config) == 0:
+        self.warn_user(lower_user_config)
 
-        print(self.__str__())
-        print(self.AIM)
-
-
-        print(attributes)
-        # Define name in Yaml (in lowercase) =  (<classe attribut name>, <default value>)
-        _attrname_def_global = {
-            "aim": _AttrName_def("AIM", None, False),
-            "connection": _AttrName_def("Connection", None, False),
-            "cpm": _AttrName_def("CPM", "", False)
-            , "customipfield": _AttrName_def("customIPField", None, False)
-            , "label": _AttrName_def("Label", None, False)
-            , "pvwa": _AttrName_def("PVWA", None, False)
-            , "retention": _AttrName_def("retention", Config.CYBERARK_DEFAULT_RETENTION, False)
-        }
-
-        _attrname_def_connection = {
-            "appid": _AttrName_def("appid", None, False)
-            , "authtype": _AttrName_def("authtype", "Cyberark", False)
-            , "password": _AttrName_def("password", None, False)
-            , "user_search": _AttrName_def("user_search", None, False)
-            , "username": _AttrName_def("username", None, False)
-        }
-
-        _attrname_def_PVWA = {
-            "host": _AttrName_def("PVWA", None, False)
-            ,
-            "max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS,
-                                                  True)
-            , "maxtasks": _AttrName_def("max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS, True)
-            , "timeout": _AttrName_def("timeout", Config.CYBERARK_DEFAULT_TIMEOUT, False)
-            , "ca": _AttrName_def("PVWA_CA", False, True)
-            , "verify": _AttrName_def("PVWA_CA", False, True)
-        }
-
-        _attrname_def_AIM = {
-            "appid": _AttrName_def("appid", None, None)  # Default = Connection
-            , "cert": _AttrName_def("cert", None, None)
-            , "host": _AttrName_def("host", None, None)  # Default = PVWA (host)
-            , "key": _AttrName_def("key", None, None)
-            , "max_concurrent_tasks": _AttrName_def("max_concurrent_tasks", None, True)
-            # Default = PVWA (max_concurrent_tasks)
-            , "maxtasks": _AttrName_def("max_concurrent_tasks", None, True)  # Default = PVWA (max_concurrent_tasks)
-            , "ca": _AttrName_def("verify", None, True)  # Default = PVWA (PVWA_CA)
-            , "verify": _AttrName_def("verify", None, True)  # Default = PVWA (PVWA_CA)
-            , "timeout": _AttrName_def("timeout", None, None)  # Default = PVWA (timeout)
-        }
-
-        try:
-            # Check global section
-            document_check = {}
-            self._check_yaml(document, "Global", _attrname_def_global, document_check, raise_unknown_attr=False)
-            print("Document :")
-            print(document_check)
-            # Connection section
-            self._check_yaml(document_check["Connection"], "Connection", _attrname_def_connection,
-                             raise_unknown_attr=True)
-            print("Document :")
-            print(document_check)
-            # Connection section: Specific Validation
-            if self.user_search:
-                if not isinstance(self.user_search, dict):
-                    raise ValueError(
-                        f"Configuration file error: Malformed attribute 'User_search' in 'Connection' section: {self.user_search!r}")
-
-                # Check user_search parameter name
-                _getPassword_request_parm = ["safe", "folder", "object", "username", "address", "database", "policyid",
-                                             "reason"
-                    , "connectiontimeout", "query", "queryformat", "failrequestonpasswordchange"]
-
-                for k in self.user_search:
-                    keyname = k.lower()
-                    if keyname not in _getPassword_request_parm:
-                        raise ValueError(
-                            f"Configuration file error: Unknown Connection/user_search attribut in configuration file: {k}={self.user_search[k]!r}")
-
-                    if k != keyname:
-                        self.user_search[keyname] = self.user_search.pop(k)
-
-            # PVWA section
-            self._check_yaml(document_check["PVWA"], "PVWA", _attrname_def_PVWA, raise_unknown_attr=True)
-            self.timeout = int(self.timeout)
-            self.max_concurrent_tasks = int(self.max_concurrent_tasks)
-
-            # AIM section (optional section)
-            if document_check["AIM"] is not None:
-                self.AIM = {}
-                self._check_yaml(document_check["AIM"], "AIM", _attrname_def_AIM, self.AIM, raise_unknown_attr=True)
-
-                # If not defined used PVWA value to complete initialization.
-                if self.AIM["appid"] is None:
-                    self.AIM["appid"] = getattr(self, "appid", None)
-                if self.AIM["host"] is None:
-                    self.AIM["host"] = getattr(self, "PVWA", None)
-                if self.AIM["timeout"] is None:
-                    self.AIM["timeout"] = getattr(self, "timeout", Config.CYBERARK_DEFAULT_TIMEOUT)
-                if self.AIM["max_concurrent_tasks"] is None:
-                    self.AIM["max_concurrent_tasks"] = getattr(self, "max_concurrent_tasks",
-                                                               Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS)
-                if self.AIM["verify"] is None:
-                    self.AIM["verify"] = getattr(self, "PVWA_CA", False)
-
-                # Integer conversion
-                self.AIM["timeout"] = int(self.AIM["timeout"])
-                self.AIM["max_concurrent_tasks"] = int(self.AIM["max_concurrent_tasks"])
-            else:
-                self.AIM = None
-
-            self.CPM = document_check["CPM"]
-            self.retention = int(document_check["retention"])
-            self.customIPField = document_check["customIPField"]
-
-        except AttributeError as e:
-            raise ValueError(f"Malformed configuration file : {str(e)}")
+        for _k in self.__dict__.keys():
+            print(f"Config.{_k} : {getattr(self,_k)} ")
 
     @staticmethod
     def _lowercase(obj):
@@ -155,93 +40,87 @@ class Config:
         else:
             return obj
 
-    def hydrate(self, attributes_yaml: dict, user_config: dict, raise_unknown_attributes=False, parent=None):
+    def hydrate(self, attributes_yaml: dict, user_config: dict, parent: dict = None):
         for a_key, a_value in attributes_yaml.items():
             # We will first detect if this is a section or not
             if any(isinstance(sub_value, dict) for _, sub_value in a_value.items()):
-                print(f"{a_key} => This is not final")
-                # print(f"{a_value}")
+                # We are in a section
+                try:
+                    if parent is None:
+                        # If config.section_name doesn't exist, we initialise it
+                        try:
+                            getattr(self, a_key)
+                        except AttributeError:
+                            setattr(self, a_key, {})
 
+                        # We skip section if not in user_config (by choice)
+                        if a_key.lower() in user_config:
+                            # Then we recursively call the function with sub-dicts
+                            self.hydrate(attributes_yaml[a_key], user_config[a_key.lower()], getattr(self, a_key))
+                    else:
+                        # Same logic
+                        if a_key not in parent:
+                            parent[a_key] = {}
+                        if a_key.lower() in user_config:
+                            self.hydrate(attributes_yaml[a_key], user_config[a_key.lower()], parent[a_key])
 
-                if parent is None:
-                    self.hydrate(attributes_yaml[a_key], user_config, True, a_key)
-                else:
-                    self.hydrate(attributes_yaml[a_key], user_config, True, f"{parent}.{a_key}")
+                except AiobastionConfigurationException as err:
+                    raise AiobastionConfigurationException(f"{a_key} | {err}")
+
             else:
-                print(f"FINAL ({a_key}) => {a_value} // PARENT : {parent}")
+                # We are not in a section but in a final key / value dict
                 default = a_value["default"] if "default" in a_value else None
                 required = a_value["required"] if "required" in a_value else False
                 alt_names = a_value["alternate_names"] if "alternate_names" in a_value else []
 
-                self.get_user_value(user_config, a_key, parent, default, required, alt_names)
-
-    def set_value_with_multiple_key_names(self, key, user_config, parent, key_names: list):
-        if parent is not None:
-
-            if any(_k.lower() in user_config[parent.lower()] for _k in key_names):
-
-                user_value_key_name = next(_k.lower() for _k in key_names if _k.lower() in user_config[parent.lower()])
-
-                print(f"SETTING attribute self.{parent}.{key} = {user_config[parent.lower()][user_value_key_name]}")
-                print(f"Detected key : {user_value_key_name}")
-
-                getattr(self, parent)[key] = user_config[parent.lower()].pop(user_value_key_name)
-
-                another_key_name = next((_k for _k in key_names if _k.lower() in user_config[parent.lower()]),None)
-                if another_key_name is not None:
-                    raise AiobastionConfigurationException(
-                        f"Configuration file error: Mutually exclusive parameters: {user_value_key_name} "
-                        f"and {another_key_name} in {parent} section")
-
-                return True
-        else:
-            if any(_k.lower() in user_config for _k in key_names):
-                user_value_key_name = next(_k.lower() for _k in key_names if _k.lower() in user_config)
-                setattr(self, key, user_config.pop(user_value_key_name))
-
-                another_key_name = next((_k.lower() for _k in key_names if _k.lower() in user_config), None)
-                if another_key_name is not None:
-                    raise AiobastionConfigurationException(
-                        f"Configuration file error: Mutually exclusive parameters: {key} and {another_key_name}")
-
-                return True
-
-
-    def get_user_value(self, user_config, key, parent, default, required, alt_names):
-        if parent is not None:
-            # Section initialisation (ie first time a section is met)
-            try:
-                getattr(self, parent)
-            except AttributeError:
-                setattr(self, parent, {})
-
-            if parent.lower() in user_config:
-                # Find the value in user configuration with the key or one of its alternate name
-                if self.set_value_with_multiple_key_names(key, user_config, parent, alt_names + [key]):
-                    # If popped the last item in the section, we remove it from dict in order to warn user
-                    if len(user_config[parent.lower()]) == 0:
-                        user_config.pop(parent.lower())
-
-                elif required:
-                    raise AiobastionConfigurationException(f"{key} is required in configuration file"
-                                                           f"if {parent} is specified")
-                elif default:
-                    getattr(self, parent)[key] = self.get_default_value(default)
+                if parent is None:
+                    self.get_user_value(user_config, a_key, self, default, required, alt_names)
                 else:
-                    print(f"Attribute self.{parent}.{key} not found in user dict")
-            else:
-                pass
-                print(f"{parent} was not in user config")
-                # Section {parent} no (longer) in user dict,
-                # so we don't handle if subkey is required but section not present
-        else:
-            if self.set_value_with_multiple_key_names(key, user_config, parent, alt_names + [key]):
-                pass
-            elif required:
-                raise AiobastionConfigurationException(f"{key} is required in configuration file")
-            elif default:
-                setattr(self, key, self.get_default_value(default))
+                    self.get_user_value(user_config, a_key, parent, default, required, alt_names)
 
+    def set_value_with_multiple_key_names(self, key, user_config, parent: dict, key_names: list):
+        if any(_k.lower() in user_config for _k in key_names):
+            user_value_key_name = next(_k.lower() for _k in key_names if _k.lower() in user_config)
+
+            if isinstance(parent, Config):
+                setattr(parent, key, user_config.pop(user_value_key_name))
+            else:
+                parent[key] = user_config.pop(user_value_key_name)
+
+            # We successfully assigned a key, search another matching key
+            another_key_name = next((_k for _k in key_names if _k.lower() in user_config), None)
+            if another_key_name is not None:
+                raise AiobastionConfigurationException(
+                    f"Mutually exclusive parameters: {user_value_key_name} and {another_key_name}")
+
+            return True
+        else:
+            return False
+
+    def get_user_value(self, user_config: dict, key: str, parent, default: str, required: bool, alt_names: list):
+        """
+        Assign the key attributes from user config to the object Config
+        :param user_config: user_config dict or subdict
+        :param key: they current key we want to retrieve
+        :param parent: The Config object itself or a child dictionary that represent the section being processed
+        :param default: The default value, or None
+        :param required: Is this parameter required in config file ?
+        :param alt_names: Alternate names for this key
+        :return: nothing
+        """
+        if self.set_value_with_multiple_key_names(key, user_config, parent, alt_names + [key]):
+            # We return the len of user_config to be able to clean the user_dict
+            return
+        elif required:
+            raise AiobastionConfigurationException(f"Field \"{key}\" is mandatory, but was not found")
+        elif default:
+            if isinstance(parent, Config):
+                setattr(parent, key, self.get_default_value(default))
+            else:
+                parent[key] = self.get_default_value(default)
+        else:
+            # Attribute "key" was not found in user dict, but no default value was provided, we ignore it
+            return
 
     def get_default_value(self, value: str):
         """
@@ -254,85 +133,21 @@ class Config:
         else:
             return value
 
-    def _check_yaml(self, yaml_dict: dict, yaml_name: str, attrname_definition, dict_name: dict = None,
-                    raise_unknown_attr=False):
-        """_check_yaml - Read a YAML section and initialize variable
 
-        Initialize dict_name if define from Yaml
-            otherwise set self attributes
-
-        Arguments:
-            yaml_dict {dict}            Yaml section definition
-            yaml_name {str}             Name of the Yaml section
-            attrname_definition {dict}  Section attribut defintion
-
-        Keyword Arguments:
-            dict_name {dict}            Dictionary return value, if None self is set
-            raise_unknown_attr          Raise a error for a unknown attribute
-
-        Raises:
-            KeyError: Mutually exclusive parameters
-            KeyError: Unknown attribut name in section
+    def warn_user(self, remaining_dict, section=""):
+        import warnings
         """
-        multiple_name = {}
-
-        # Set the default value of all attributes
-        for k, attr_def in attrname_definition.items():
-            if dict_name is None:
-                print(f"setting Global values self.{attr_def.attrName} = {attr_def.defaultValue}")
-                setattr(self, attr_def.attrName, attr_def.defaultValue)
+        :param remaining_dict:
+        :return:
+        """
+        for k, v in remaining_dict.items():
+            if isinstance(v, dict):
+                if len(v) > 0:
+                    self.warn_user(remaining_dict[k], k)
             else:
-                print(f"Setting specific value : {dict_name.__str__()}[{attr_def.attrName}]={attr_def.defaultValue}")
-                dict_name[attr_def.attrName] = attr_def.defaultValue
-
-            # setup multiple name validation
-            if attr_def.multipleName_ind:
-                if attr_def.attrName not in multiple_name:
-                    multiple_name[attr_def.attrName] = [k]
-                else:
-                    multiple_name[attr_def.attrName].append(k)
-
-        print(str(self))
-        print(multiple_name)
-        if yaml_dict is None:
-            return
-
-        # Read Yaml
-        for k in list(yaml_dict.keys()):
-            keyname = k.lower()
-            attr_def = attrname_definition.get(keyname, None)
-
-            if attr_def is None:
-                if raise_unknown_attr:
-                    raise KeyError(
-                        f"aiobastion configuration file error: Unknown attribut '{k}' in section '{yaml_name}': {k}={yaml_dict[k]!r}")
-                else:
-                    # Print error in stderr, and let the user handle the error
-                    print(
-                        f"Warning - aiobastion configuration file error: Unknown attribut '{k}' in section '{yaml_name}': {k}={yaml_dict[k]!r}",
-                        file=sys.stderr)
-                    continue
-
-            if k != keyname:
-                yaml_dict[keyname] = yaml_dict.pop(k)
-
-            if dict_name is None:
-                setattr(self, attr_def.attrName, yaml_dict[keyname])
-            else:
-                dict_name[attr_def.attrName] = yaml_dict[keyname]
-
-        # Check if multiple names have been defined more that once
-        if multiple_name:
-            for exclusive_list in multiple_name.values():
-                count = 0
-                for name in exclusive_list:
-                    if name in yaml_dict:
-                        count += 1
-
-                if count > 1:
-                    raise KeyError(
-                        f"Configuration file error: Mutually exclusive parameters: {exclusive_list!r} in '{yaml_name}' section")
-
+                if section == "":
+                    section = "root"
+                warnings.warn(f"Section {section} Key {k} was found in configuration file, but ignored")
 
 # No rights at all
 DEFAULT_PERMISSIONS = {
