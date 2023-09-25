@@ -12,7 +12,7 @@ Connection:
   User_Search: *not_required
 
 # PVWA Section
-PVWA: &PVWA
+PVWA:
   Host: &required
     required: True
   PWVA_CA:
@@ -29,11 +29,30 @@ PVWA: &PVWA
 
 # AIM Section
 AIM:
-  <<: *PVWA
+  AppID: *required
+  Host: *required
+  Cert: *required
+  Key: *required
+  AIM_CA:
+    <<: *not_required
+    alternate_names:
+      - ca
+      - verify
+  timeout:
+    default: <CYBERARK_DEFAULT_TIMEOUT>
+  max_concurrent_tasks:
+    default: <CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS>
+    alternate_names:
+      - maxtasks
+  User_Search:
+    Safe: *required
+    Object: *required
 
 CPM: *not_required
 CustomIPField: *not_required
-Retention: <CYBERARK_DEFAULT_RETENTION>
+Retention:
+  default: <CYBERARK_DEFAULT_RETENTION>
+  required: False
 
 
 

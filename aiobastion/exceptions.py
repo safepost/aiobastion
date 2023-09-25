@@ -33,6 +33,12 @@ class CyberarkAPIException(Exception):
     pass
 
 
+class AiobastionConfigurationException(Exception):
+    """
+    This exception is raised when a required field in configuration was not provided
+    """
+
+
 class AiobastionException(Exception):
     """
     This exception is raised when a function does not have correct parameters
@@ -46,6 +52,7 @@ class ChallengeResponseException(Exception):
     this exception is raised on login when the user need to authenticate again with passcode
     """
     pass
+
 
 class CyberarkAIMnotFound(Exception):
     """

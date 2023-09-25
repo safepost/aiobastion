@@ -4,6 +4,8 @@ import sys
 import yaml
 from collections import namedtuple
 
+from aiobastion.exceptions import AiobastionConfigurationException
+
 _AttrName_def = namedtuple('_AttrName_def', ['attrName', 'defaultValue', 'multipleName_ind'])
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
 
@@ -21,10 +23,18 @@ class Config:
 
         # User Config file
         with open(configfile, 'r') as config:
-            document = yaml.safe_load(config)
+            user_configuration_file = yaml.safe_load(config)
 
+        # Lower case dicts
+        lower_user_config = Config._lowercase(user_configuration_file)
+        self.hydrate(attributes, lower_user_config)
 
-        self.hydrate(attributes, document)
+        print("# Remaining Dict ===> ")
+        print(lower_user_config)
+
+        print(self.__str__())
+        print(self.AIM)
+
 
         print(attributes)
         # Define name in Yaml (in lowercase) =  (<classe attribut name>, <default value>)
@@ -69,7 +79,6 @@ class Config:
             , "verify": _AttrName_def("verify", None, True)  # Default = PVWA (PVWA_CA)
             , "timeout": _AttrName_def("timeout", None, None)  # Default = PVWA (timeout)
         }
-
 
         try:
             # Check global section
@@ -146,41 +155,104 @@ class Config:
         else:
             return obj
 
-    def hydrate(self, attributes_yaml: dict, user_config: dict, raise_unknwon_attributes = False):
-        print("Dict => ")
-        print(attributes_yaml)
-        print("Lower cased dict =>")
-        print(Config._lowercase(attributes_yaml))
-
+    def hydrate(self, attributes_yaml: dict, user_config: dict, raise_unknown_attributes=False, parent=None):
         for a_key, a_value in attributes_yaml.items():
             # We will first detect if this is a section or not
             if any(isinstance(sub_value, dict) for _, sub_value in a_value.items()):
                 print(f"{a_key} => This is not final")
+                # print(f"{a_value}")
+
+
+                if parent is None:
+                    self.hydrate(attributes_yaml[a_key], user_config, True, a_key)
+                else:
+                    self.hydrate(attributes_yaml[a_key], user_config, True, f"{parent}.{a_key}")
             else:
-                print(f"{a_key} => This key is final")
-                # if
-                # self.a_key = user_config[a_key]
+                print(f"FINAL ({a_key}) => {a_value} // PARENT : {parent}")
+                default = a_value["default"] if "default" in a_value else None
+                required = a_value["required"] if "required" in a_value else False
+                alt_names = a_value["alternate_names"] if "alternate_names" in a_value else []
+
+                self.get_user_value(user_config, a_key, parent, default, required, alt_names)
+
+    def set_value_with_multiple_key_names(self, key, user_config, parent, key_names: list):
+        if parent is not None:
+
+            if any(_k.lower() in user_config[parent.lower()] for _k in key_names):
+
+                user_value_key_name = next(_k.lower() for _k in key_names if _k.lower() in user_config[parent.lower()])
+
+                print(f"SETTING attribute self.{parent}.{key} = {user_config[parent.lower()][user_value_key_name]}")
+                print(f"Detected key : {user_value_key_name}")
+
+                getattr(self, parent)[key] = user_config[parent.lower()].pop(user_value_key_name)
+
+                another_key_name = next((_k for _k in key_names if _k.lower() in user_config[parent.lower()]),None)
+                if another_key_name is not None:
+                    raise AiobastionConfigurationException(
+                        f"Configuration file error: Mutually exclusive parameters: {user_value_key_name} "
+                        f"and {another_key_name} in {parent} section")
+
+                return True
+        else:
+            if any(_k.lower() in user_config for _k in key_names):
+                user_value_key_name = next(_k.lower() for _k in key_names if _k.lower() in user_config)
+                setattr(self, key, user_config.pop(user_value_key_name))
+
+                another_key_name = next((_k.lower() for _k in key_names if _k.lower() in user_config), None)
+                if another_key_name is not None:
+                    raise AiobastionConfigurationException(
+                        f"Configuration file error: Mutually exclusive parameters: {key} and {another_key_name}")
+
+                return True
 
 
+    def get_user_value(self, user_config, key, parent, default, required, alt_names):
+        if parent is not None:
+            # Section initialisation (ie first time a section is met)
+            try:
+                getattr(self, parent)
+            except AttributeError:
+                setattr(self, parent, {})
 
-        # for (a_key, a_value), (u_key, u_value) in zip(attributes_yaml.items(), user_config.items()):
-        #     print(a_key, a_value, u_key, u_value)
+            if parent.lower() in user_config:
+                # Find the value in user configuration with the key or one of its alternate name
+                if self.set_value_with_multiple_key_names(key, user_config, parent, alt_names + [key]):
+                    # If popped the last item in the section, we remove it from dict in order to warn user
+                    if len(user_config[parent.lower()]) == 0:
+                        user_config.pop(parent.lower())
 
-            # for sub_key, sub_value in a_value.items():
-            #     print(f"SUB KEY: {sub_key} SUB VALUE: {sub_value}")
-            #     if isinstance(sub_value, dict):
-            #         print("This is NOT final")
-            #     else:
-            #         print("This is final")
+                elif required:
+                    raise AiobastionConfigurationException(f"{key} is required in configuration file"
+                                                           f"if {parent} is specified")
+                elif default:
+                    getattr(self, parent)[key] = self.get_default_value(default)
+                else:
+                    print(f"Attribute self.{parent}.{key} not found in user dict")
+            else:
+                pass
+                print(f"{parent} was not in user config")
+                # Section {parent} no (longer) in user dict,
+                # so we don't handle if subkey is required but section not present
+        else:
+            if self.set_value_with_multiple_key_names(key, user_config, parent, alt_names + [key]):
+                pass
+            elif required:
+                raise AiobastionConfigurationException(f"{key} is required in configuration file")
+            elif default:
+                setattr(self, key, self.get_default_value(default))
 
-            # Detect if
 
-
-        # print(config_yaml)
-        # print(params_yaml)
-        exit(0)
-
-
+    def get_default_value(self, value: str):
+        """
+        If a value was specified inside < > in config.yaml file, then try to get the global variable defined here
+        :param value: the value as it appears in the config file
+        :return: the default value, or the value of the global variable associated
+        """
+        if value.startswith("<") and value.endswith(">"):
+            return getattr(self, value[1:-1])
+        else:
+            return value
 
     def _check_yaml(self, yaml_dict: dict, yaml_name: str, attrname_definition, dict_name: dict = None,
                     raise_unknown_attr=False):
