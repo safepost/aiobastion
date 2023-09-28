@@ -536,7 +536,7 @@ class EPV_AIM:
 
                 if key_lower not in EPV_AIM._getPassword_request_parm:
                     is_valid_ind = False
-                    error_str = f"unknown parameter: {k}={params[k]!r}"
+                    error_str = f"unknown parameter: {k}={params[k]}"
                     break
 
                 if k != key_lower:
@@ -586,6 +586,9 @@ class EPV_AIM:
                 self.session = aiohttp.ClientSession()
 
         if self.__sema is None:
+            # This statement is wrong:
+            #    if self.epv.__sema:
+            #        self.__sema = self.epv.__sema
             if self.epv._EPV__sema:
                 self.__sema = self.epv._EPV__sema
             else:
@@ -597,7 +600,7 @@ class EPV_AIM:
         try:
             if self.session:
                 # Are we using the epv.session, if so don't close it
-                if self.epv.session and self.epv.session != self.session:
+                if self.epv.session is None or (self.epv.session and self.epv.session != self.session):
                     await self.session.close()
         except (CyberarkException, AttributeError):
             pass
@@ -644,9 +647,11 @@ class EPV_AIM:
         # Mask the appid attribut, if you are a security maniac
         if "appid" in params:
             params_copy = copy.copy(params)
-            params_copy["appid"]="xxxxx"
+            params_copy["appid"] = "<hidden>"
+        else:
+            params_copy = params
 
-        return f"url: {url!r}, params: {params_copy!r}"
+        return f"url: {url}, params: {params_copy}"
 
     async def handle_request(self, method: str, short_url: str, data=None, params: dict = None, filter_func=lambda x: x):
         """
@@ -660,8 +665,7 @@ class EPV_AIM:
         :raise CyberarkException: Execution error
         :return: dictonary return by CyberArk
         """
-        #assert method.lower() in ("post", "delete", "get", "patch")
-        assert method.lower() in ("get")
+        assert method.lower() in "get"
 
         url, head = self.get_url(short_url)
         session = self.get_session()
@@ -669,9 +673,11 @@ class EPV_AIM:
 
         async with self.__sema:
             async with session.request(method, url, headers=head, params=params, **self.request_params) as req:
+                # if req.status == 404:
+                #     raise CyberarkException(f"Error 404 : Endpoint {url} not found")
+
                 try:
                     resp_json = await req.json()
-
                     if req.status == 200:
                         if "Content" not in resp_json:
                             raise CyberarkAPIException(req.status, "INVALID_JSON", "Could not find the password ('Content')" , EPV_AIM.handle_error_detail_info(url, params))

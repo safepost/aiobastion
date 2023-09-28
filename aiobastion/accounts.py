@@ -1194,7 +1194,7 @@ class Account:
     async def get_secret_aim(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], reason: str = None):
         """ **This function support list of PrivilegedAccount as argument**
 
-        This function update the secret attribut of the PrivilegedAccount with the password returned by the AIM Web service
+        This function update the secret attribute of the PrivilegedAccount with the password returned by the AIM Web service
         If the account is not found, the secret is set to None.
 
         :param account: A PrivilegedAccount object, or a list of PrivilegedAccount objects
@@ -1252,5 +1252,5 @@ class Account:
             raise AiobastionException(
                     "Missing AIM information to perform AIM authentication, see documentation")
 
-        return await self.epv.AIM.get_secret_detail(self, **kwargs)
+        return await self.epv.AIM.get_secret_detail(**kwargs)
 

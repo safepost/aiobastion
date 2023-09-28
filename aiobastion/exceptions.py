@@ -33,6 +33,12 @@ class CyberarkAPIException(Exception):
     pass
 
 
+class AiobastionConfigurationException(Exception):
+    """
+    This exception is raised when a required field in configuration was not provided
+    """
+    pass
+
 class AiobastionException(Exception):
     """
     This exception is raised when a function does not have correct parameters
