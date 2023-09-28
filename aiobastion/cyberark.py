@@ -568,6 +568,7 @@ class EPV_AIM:
 
         return addr, head
 
+
     # Context manager
     async def __aenter__(self):
         self.get_session()
@@ -585,8 +586,11 @@ class EPV_AIM:
                 self.session = aiohttp.ClientSession()
 
         if self.__sema is None:
-            if self.epv.__sema:
-                self.__sema = self.epv.__sema
+            # This statement is wrong:
+            #    if self.epv.__sema:
+            #        self.__sema = self.epv.__sema
+            if self.epv._EPV__sema:
+                self.__sema = self.epv._EPV__sema
             else:
                 self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
 
@@ -596,7 +600,7 @@ class EPV_AIM:
         try:
             if self.session:
                 # Are we using the epv.session, if so don't close it
-                if self.epv.session and self.epv.session != self.session:
+                if self.epv.session is None or (self.epv.session and self.epv.session != self.session):
                     await self.session.close()
         except (CyberarkException, AttributeError):
             pass
@@ -640,10 +644,12 @@ class EPV_AIM:
 
     @staticmethod
     def handle_error_detail_info(url: str = None, params: dict = None):
-        # Mask the appid attribute, if you are a security maniac
-        params_copy = copy.copy(params)
+        # Mask the appid attribut, if you are a security maniac
         if "appid" in params:
+            params_copy = copy.copy(params)
             params_copy["appid"] = "<hidden>"
+        else:
+            params_copy = params
 
         return f"url: {url}, params: {params_copy}"
 
@@ -659,7 +665,7 @@ class EPV_AIM:
         :raise CyberarkException: Execution error
         :return: dictonary return by CyberArk
         """
-        assert method.lower() in "get"
+        assert method.lower() == "get"
 
         url, head = self.get_url(short_url)
         session = self.get_session()
@@ -694,5 +700,6 @@ class EPV_AIM:
 
                             raise CyberarkAPIException(req.status, "HTTP_ERR_CODE", http_error.phrase, details)
                 except (KeyError, ValueError, ContentTypeError) as err:
+                    #http_error = HTTPStatus(req.status)
                     details = EPV_AIM.handle_error_detail_info(url, params)
                     raise CyberarkException(f"HTTP error {req.status}: {str(err)} || Additional Details : {details}")
