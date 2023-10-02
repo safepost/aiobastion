@@ -11,13 +11,10 @@ class Config:
     CYBERARK_DEFAULT_RETENTION = 10
 
     def __init__(self, configfile):
-        self.configfile = configfile
-
         # Global section Initialisation
         self.AIM = None
         self.Connection = None
         self.CPM = ""
-        self.custom = None
         self.customIPField = None
         self.Label = None
         self.retention = None
@@ -43,11 +40,11 @@ class Config:
         for k in list(configuration.keys()):
             keyname = k.lower()
 
-            if keyname not in [ "aim", "connection", "cpm", "custom", "customipfield", "label", "pvwa", "retention"]:
+            if keyname not in [ "aim", "connection", "cpm", "customipfield", "label", "pvwa", "retention"]:
                 import warnings
 
-                #raise AiobastionConfigurationException(f"Unknown section '{k}' in {self.configfile}")
-                warnings.warn(f"aiobastion - Unknown section '{k}' in {self.configfile}")
+                #raise AiobastionConfigurationException(f"Unknown section '{k}' in configuration file")
+                warnings.warn(f"aiobastion - Unknown section '{k}' in configuration file")
                 continue
 
             if k != keyname:
@@ -68,12 +65,10 @@ class Config:
             self.CPM = configuration["cpm"]
         if "label" in configuration:
             self.label = configuration["label"]
-        if "custom" in configuration:
-            self.custom = configuration["custom"]
         if "customipfield" in configuration:
             self.customIPField = configuration["customipfield"]
         if "retention" in configuration:
-            self.retention = self._to_integer("retention", configuration["retention"])
+            self.retention = Config._to_integer("retention", configuration["retention"])
 
 
     def _read_section_connection(self, configuration):
@@ -91,13 +86,13 @@ class Config:
             elif keyname == "username":
                 self.username = configuration[k]
             else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'connection' in {self.configfile}")
+                raise AiobastionConfigurationException(f"Unknown attribute '{k}' for section 'connection' in configuration file")
 
 
         # user_search dictionary Validation
         if self.user_search:
             if not isinstance(self.user_search, dict):
-                raise AiobastionConfigurationException(f"Malformed attribute 'user_search' within section 'connection' in {self.configfile}: {self.user_search!r}")
+                raise AiobastionConfigurationException(f"Malformed attribute 'user_search' within section 'connection' in configuration file: {self.user_search!r}")
 
             # Check user_search parameter name
             _getPassword_request_parm = [ "safe", "folder", "object",  "username", "address", "database", "policyid", "reason"
@@ -106,7 +101,7 @@ class Config:
             for k in self.user_search:
                 keyname = k.lower()
                 if keyname not in _getPassword_request_parm:
-                    raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'connection/user_search' in {self.configfile}")
+                    raise AiobastionConfigurationException(f"Unknown attribute '{k}' for section 'connection/user_search' in configuration file")
 
                 if k != keyname:
                     self.user_search[keyname] = self.user_search.pop(k)
@@ -121,21 +116,21 @@ class Config:
             if keyname == "host":
                 self.PVWA = configuration[k]
             elif keyname == "timeout":
-                self.timeout = self._to_integer("PVWA/" + k, configuration[k])
+                self.timeout = Config._to_integer("PVWA/" + k, configuration[k])
             elif keyname == "maxtasks" or keyname == "max_concurrent_tasks":
-                self.max_concurrent_tasks = self._to_integer("PVWA/" + k, configuration[k])
+                self.max_concurrent_tasks = Config._to_integer("PVWA/" + k, configuration[k])
                 synonyme_max_concurrent_tasks += 1
             elif keyname == "verify" or keyname == "ca":
                 self.PVWA_CA = configuration[k]
                 synonyme_PVWA_CA += 1
             else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'PVWA' in {self.configfile}")
+                raise AiobastionConfigurationException(f"Unknown attribute '{k}' for section 'PVWA' in configuration file")
 
         if synonyme_PVWA_CA > 1:
-            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'ca', 'verify' within section 'PVWA' in {self.configfile}. Specify only one of them.")
+            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'ca', 'verify' in section 'PVWA'. Specify only one of them.")
 
         if synonyme_max_concurrent_tasks > 1:
-            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'maxtasks', 'max_concurrent_tasks' within section 'PVWA' in {self.configfile}. Specify only one of them.")
+            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'maxtasks', 'max_concurrent_tasks' in section 'PVWA'. Specify only one of them.")
 
 
     def _read_section_aim(self, configuration):
@@ -158,21 +153,21 @@ class Config:
             if keyname in ["appid", "cert", "host", "key"]:
                 configuration_aim[keyname] = configuration[k]
             elif keyname == "timeout":
-                configuration_aim[keyname] = self._to_integer("AIM/" + k, configuration[k])
+                configuration_aim[keyname] = Config._to_integer("AIM/" + k, configuration[k])
             elif keyname in  ["maxtasks", "max_concurrent_tasks"]:
-                configuration_aim["max_concurrent_tasks"] = self._to_integer("AIM/" + k, configuration[k])
+                configuration_aim["max_concurrent_tasks"] = Config._to_integer("AIM/" + k, configuration[k])
                 synonyme_max_concurrent_tasks += 1
             elif keyname in ["ca", "verify"] :
                 configuration_aim["verify"] = configuration[k]
                 synonyme_verify += 1
             else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'AIM' in {self.configfile}")
+                raise AiobastionConfigurationException(f"Unknown attribute '{k}' for section 'AIM' in configuration file")
 
         if synonyme_verify > 1:
-            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'ca', 'verify' within section 'AIM'. Specify only one of them.")
+            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'ca', 'verify' in section 'AIM'. Specify only one of them.")
 
         if synonyme_max_concurrent_tasks > 1:
-            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'maxtasks', 'max_concurrent_tasks' within section 'AIM' in {self.configfile}. Specify only one of them.")
+            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'maxtasks', 'max_concurrent_tasks' in section 'AIM'. Specify only one of them.")
 
 
         self.AIM = configuration_aim
@@ -192,11 +187,13 @@ class Config:
             self.AIM["verify"]  = self.PVWA_CA
 
 
-    def _to_integer(self, section_key, val):
+
+    @staticmethod
+    def _to_integer(section_key, val):
         try:
             v = int(val)
         except ValueError:
-            raise AiobastionConfigurationException(f"Invalid integer within '{section_key}' in {self.configfile}: {val!r}")
+            raise AiobastionConfigurationException(f"Invalid integer '{section_key}' in configuration file: {val!r}")
 
         return v
 

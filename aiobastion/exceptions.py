@@ -37,7 +37,7 @@ class AiobastionConfigurationException(Exception):
     """
     This exception is raised when a required field in configuration was not provided
     """
-
+    pass
 
 class AiobastionException(Exception):
     """
@@ -52,7 +52,6 @@ class ChallengeResponseException(Exception):
     this exception is raised on login when the user need to authenticate again with passcode
     """
     pass
-
 
 class CyberarkAIMnotFound(Exception):
     """
