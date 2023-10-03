@@ -672,34 +672,45 @@ class EPV_AIM:
         params.setdefault('appid', self.appid)
 
         async with self.__sema:
-            async with session.request(method, url, headers=head, params=params, **self.request_params) as req:
-                # if req.status == 404:
-                #     raise CyberarkException(f"Error 404 : Endpoint {url} not found")
+            try:
+                async with session.request(method, url, headers=head, params=params, **self.request_params) as req:
+                    # if req.status == 404:
+                    #     raise CyberarkException(f"Error 404 : Endpoint {url} not found")
 
-                try:
-                    resp_json = await req.json()
-                    if req.status == 200:
-                        if "Content" not in resp_json:
-                            raise CyberarkAPIException(req.status, "INVALID_JSON", "Could not find the password ('Content')" , EPV_AIM.handle_error_detail_info(url, params))
+                    try:
+                        resp_json = await req.json()
+                        if req.status == 200:
+                            if "Content" not in resp_json:
+                                raise CyberarkAPIException(req.status, "INVALID_JSON", "Could not find the password ('Content')" , EPV_AIM.handle_error_detail_info(url, params))
 
-                        return filter_func(resp_json)
-                    else:
-                        # This is a error
-                        if "Details" in resp_json:
-                            details = resp_json["Details"]
+                            return filter_func(resp_json)
                         else:
-                            details =  EPV_AIM.handle_error_detail_info(url, params)
-
-                        if "ErrorCode" in resp_json and "ErrorMsg" in resp_json:
-                            if resp_json["ErrorCode"] == "APPAP004E":
-                                raise CyberarkAIMnotFound(req.status, resp_json["ErrorCode"], resp_json["ErrorMsg"], details)
+                            # This is a error
+                            if "Details" in resp_json:
+                                details = resp_json["Details"]
                             else:
-                                raise CyberarkAPIException(req.status, resp_json["ErrorCode"], resp_json["ErrorMsg"], details)
-                        else:
-                            http_error = HTTPStatus(req.status)
+                                details =  EPV_AIM.handle_error_detail_info(url, params)
 
-                            raise CyberarkAPIException(req.status, "HTTP_ERR_CODE", http_error.phrase, details)
-                except (KeyError, ValueError, ContentTypeError) as err:
-                    #http_error = HTTPStatus(req.status)
-                    details = EPV_AIM.handle_error_detail_info(url, params)
-                    raise CyberarkException(f"HTTP error {req.status}: {str(err)} || Additional Details : {details}")
+                            if "ErrorCode" in resp_json and "ErrorMsg" in resp_json:
+                                if resp_json["ErrorCode"] == "APPAP004E":
+                                    raise CyberarkAIMnotFound(req.status, resp_json["ErrorCode"], resp_json["ErrorMsg"], details)
+                                else:
+                                    raise CyberarkAPIException(req.status, resp_json["ErrorCode"], resp_json["ErrorMsg"], details)
+                            else:
+                                http_error = HTTPStatus(req.status)
+
+                                raise CyberarkAPIException(req.status, "HTTP_ERR_CODE", http_error.phrase, details)
+
+                    except (json.decoder.JSONDecodeError):
+                        http_error = HTTPStatus(req.status)
+                        details = EPV_AIM.handle_error_detail_info(url, params)
+                        raise CyberarkAPIException(req.status, "HTTP_ERR_CODE", http_error.phrase, details)
+
+                    except (KeyError, ValueError, ContentTypeError) as err:
+                        #http_error = HTTPStatus(req.status)
+                        details = EPV_AIM.handle_error_detail_info(url, params)
+                        raise CyberarkException(f"HTTP error {req.status}: {str(err)} || Additional Details : {details}")
+
+            except aiohttp.ClientError as err:
+                details = EPV_AIM.handle_error_detail_info(url, params)
+                raise CyberarkException(f"HTTP error: {str(err)} || Additional Details : {details}")
