@@ -98,10 +98,22 @@ class PrivilegedAccount:
         return self.to_dict()[key]
 
     def __eq__(self, other):
-        return self.to_dict() == other.to_dict()
+        # Check by ID is the best way
+        if self.id != "" and other.id != "":
+            return self.id == other.id
+        # Else we check by name and safeName (Cyberark prevent different objects to have the same name in the same safe)
+        else:
+            return (self.safeName == other.safeName) and (self.name == other.name)
+
+        # return self.to_dict() == other.to_dict()
 
     def __ne__(self, other):
-        return self.to_dict() != other.to_dict()
+        # Check by ID is the best way
+        if self.id != "" and other.id != "":
+            return self.id != other.id
+        # Else we check by name and safeName (Cyberark prevents object to have the same name in the same safe)
+        else:
+            return (self.safeName != other.safeName) or (self.name != other.name)
 
     # End of mapping Protocol
 
