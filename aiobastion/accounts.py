@@ -695,31 +695,44 @@ class Account:
             {"op": "add", "path": "/secretManagement/manualManagementReason", "value": reason}
         ]
 
-        return await self._handle_acc_id_list(
+        _results = await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
             data
         )
+        # Single item
+        if isinstance(_results, dict):
+            return PrivilegedAccount(**_results)
+        # list
+        else:
+            return [PrivilegedAccount(**r) if isinstance(r, dict) else r for r in _results]
 
     async def resume_password_management(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """ This resume the account (or list) password management
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
-        :return: A boolean that indicates if the operation was successful.
+        :return: The list of updated accounts.
         :raises CyberarkException: If resuming failed.
         """
 
         data = [
             {"op": "replace", "path": "/secretManagement/automaticManagementEnabled", "value": True},
         ]
-        return await self._handle_acc_id_list(
+        _results = await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
             data
         )
+
+        # Single item
+        if isinstance(_results, dict):
+            return PrivilegedAccount(**_results)
+        # list
+        else:
+            return [PrivilegedAccount(**r) if isinstance(r, dict) else r for r in _results]
         # return await self.epv.handle_request("patch", f"API/Accounts/{account_id}", data=data)
 
     async def update_using_list(self, account, data) -> Union[PrivilegedAccount, List[PrivilegedAccount]]:
@@ -753,7 +766,9 @@ class Account:
         if isinstance(updated_accounts, dict):
             return PrivilegedAccount(**updated_accounts)
         else:
-            return [PrivilegedAccount(**u) for u in updated_accounts]
+            # Will return exception if met
+            return [PrivilegedAccount(**r) if isinstance(r, dict) else r for r in updated_accounts]
+            # return [PrivilegedAccount(**u) for u in updated_accounts]
 
     def detect_fc_path(self, fc: str):
         """
