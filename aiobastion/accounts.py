@@ -687,7 +687,7 @@ class Account:
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
         :param reason: The reason of disabling password management (defaults to empty string)
-        :return: A boolean that indicates if the operation was successful.
+        :return: The list of updated accounts, or exceptions
         :raises CyberarkException: If disabling failed.
         """
         data = [
@@ -713,7 +713,7 @@ class Account:
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
-        :return: The list of updated accounts.
+        :return: The list of updated accounts, or exceptions
         :raises CyberarkException: If resuming failed.
         """
 
