@@ -71,9 +71,40 @@ class PrivilegedAccount:
 
         return json_object
 
+    def to_dict(self):
+        """
+        Convert the PrivilegedAccount object to a python dict object
+
+        :return: a dict
+        """
+        return self.to_json()
+
     def __str__(self):
         strrepr = self.to_json()
         return str(strrepr)
+
+    # Mapping Protocol
+    def __iter__(self):
+        for key, value in self.to_dict():
+            yield key, value
+
+    def keys(self):
+        return list(self.to_dict().keys())
+
+    def items(self):
+        return list(self.to_dict().items())
+
+    def __getitem__(self, key):
+        return self.to_dict()[key]
+
+    def __eq__(self, other):
+        return self.to_dict() == other.to_dict()
+
+    def __ne__(self, other):
+        return self.to_dict() != other.to_dict()
+
+    # End of mapping Protocol
+
 
     def __repr__(self):
         # For Debugging, short account identification
