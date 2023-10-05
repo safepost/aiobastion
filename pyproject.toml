@@ -1,3 +1,56 @@
+[project]
+name = "aiobastion"
+version = "0.0.28"
+description = "Manage your Cyberark implementation"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+keywords = ["cyberark"]
+
+authors = [
+  {name = "Gautier Leveille", email = "gleveille@pm.me" }
+]
+
+maintainers = [
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "Topic :: System :: Systems Administration",
+  "Topic :: Utilities",
+
+  "License :: OSI Approved :: MIT License",
+
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+dependencies = [ # Optional
+  "pyyaml",
+  "aiohttp",
+]
+
+[project.optional-dependencies]
+dev = []
+test = ["coverage", "unittest"]
+
+[project.urls]
+"Homepage" = "https://github.com/labanquepostale/aiobastion"
+"Bug Reports" = "https://github.com/labanquepostale/aiobastion/issues"
+"Source" = "https://github.com/labanquepostale/aiobastion/"
+
+[project.scripts]
+
+[tool.setuptools]
+
 [build-system]
-requires = ["setuptools>=42"]
+requires = ["setuptools>=43.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
