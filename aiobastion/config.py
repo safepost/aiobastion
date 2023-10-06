@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import sys
 import yaml
 from .exceptions import AiobastionConfigurationException
+
 
 class Config:
     # Default value
@@ -38,15 +38,13 @@ class Config:
         with open(configfile, 'r') as config:
             configuration = yaml.safe_load(config)
 
-
         # Change global section name in lowercase
         for k in list(configuration.keys()):
             keyname = k.lower()
 
-            if keyname not in [ "aim", "connection", "cpm", "custom", "customipfield", "label", "pvwa", "retention"]:
+            if keyname not in ["aim", "connection", "cpm", "custom", "customipfield", "label", "pvwa", "retention"]:
                 import warnings
 
-                #raise AiobastionConfigurationException(f"Unknown section '{k}' in {self.configfile}")
                 warnings.warn(f"aiobastion - Unknown section '{k}' in {self.configfile}")
                 continue
 
@@ -75,13 +73,12 @@ class Config:
         if "retention" in configuration:
             self.retention = self._to_integer("retention", configuration["retention"])
 
-
     def _read_section_connection(self, configuration):
         for k in list(configuration.keys()):
             keyname = k.lower()
 
             if keyname == "appid":
-                self.appid    = configuration[k]
+                self.appid = configuration[k]
             elif keyname == "authtype":
                 self.authtype = configuration[k]
             elif keyname == "password":
@@ -91,22 +88,25 @@ class Config:
             elif keyname == "username":
                 self.username = configuration[k]
             else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'connection' in {self.configfile}")
-
+                raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'connection' "
+                                                       f"in {self.configfile}")
 
         # user_search dictionary Validation
         if self.user_search:
             if not isinstance(self.user_search, dict):
-                raise AiobastionConfigurationException(f"Malformed attribute 'user_search' within section 'connection' in {self.configfile}: {self.user_search!r}")
+                raise AiobastionConfigurationException(f"Malformed attribute 'user_search' within section "
+                                                       f"'connection' in {self.configfile}: {self.user_search!r}")
 
             # Check user_search parameter name
-            _getPassword_request_parm = [ "safe", "folder", "object",  "username", "address", "database", "policyid", "reason"
-                                        , "connectiontimeout", "query", "queryformat", "failrequestonpasswordchange" ]
+            _getPassword_request_parm = ["safe", "folder", "object",  "username", "address", "database", "policyid",
+                                         "reason", "connectiontimeout", "query", "queryformat",
+                                         "failrequestonpasswordchange" ]
 
             for k in self.user_search:
                 keyname = k.lower()
                 if keyname not in _getPassword_request_parm:
-                    raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'connection/user_search' in {self.configfile}")
+                    raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section "
+                                                           f"'connection/user_search' in {self.configfile}")
 
                 if k != keyname:
                     self.user_search[keyname] = self.user_search.pop(k)
@@ -132,21 +132,23 @@ class Config:
                 raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'PVWA' in {self.configfile}")
 
         if synonyme_PVWA_CA > 1:
-            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'ca', 'verify' within section 'PVWA' in {self.configfile}. Specify only one of them.")
+            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'ca', 'verify' within section 'PVWA' "
+                                                   f"in {self.configfile}. Specify only one of them.")
 
         if synonyme_max_concurrent_tasks > 1:
-            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'maxtasks', 'max_concurrent_tasks' within section 'PVWA' in {self.configfile}. Specify only one of them.")
-
+            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'maxtasks', 'max_concurrent_tasks' "
+                                                   f"within section 'PVWA' in {self.configfile}. "
+                                                   f"Specify only one of them.")
 
     def _read_section_aim(self, configuration):
         configuration_aim = {
-             "appid":                None       # Default = Connection (appid)
-            ,"cert":                 None
-            ,"host":                 None       # Default = PVWA (host)
-            ,"key":                  None
-            ,"max_concurrent_tasks": None       # Default = PVWA (max_concurrent_tasks)
-            ,"verify":               None       # Default = PVWA (PVWA_CA)
-            ,"timeout":              None       # Default = PVWA (timeout)
+            "appid":                None,       # Default = Connection (appid)
+            "cert":                 None,
+            "host":                 None,       # Default = PVWA (host)
+            "key":                  None,
+            "max_concurrent_tasks": None,       # Default = PVWA (max_concurrent_tasks)
+            "verify":               None,       # Default = PVWA (PVWA_CA)
+            "timeout":              None,       # Default = PVWA (timeout)
         }
 
         synonyme_verify = 0
@@ -159,21 +161,23 @@ class Config:
                 configuration_aim[keyname] = configuration[k]
             elif keyname == "timeout":
                 configuration_aim[keyname] = self._to_integer("AIM/" + k, configuration[k])
-            elif keyname in  ["maxtasks", "max_concurrent_tasks"]:
+            elif keyname in ["maxtasks", "max_concurrent_tasks"]:
                 configuration_aim["max_concurrent_tasks"] = self._to_integer("AIM/" + k, configuration[k])
                 synonyme_max_concurrent_tasks += 1
-            elif keyname in ["ca", "verify"] :
+            elif keyname in ["ca", "verify"]:
                 configuration_aim["verify"] = configuration[k]
                 synonyme_verify += 1
             else:
                 raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section 'AIM' in {self.configfile}")
 
         if synonyme_verify > 1:
-            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'ca', 'verify' within section 'AIM'. Specify only one of them.")
+            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'ca', 'verify' within section 'AIM'."
+                                                   f"Specify only one of them.")
 
         if synonyme_max_concurrent_tasks > 1:
-            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'maxtasks', 'max_concurrent_tasks' within section 'AIM' in {self.configfile}. Specify only one of them.")
-
+            raise AiobastionConfigurationException(f"Duplicate synonyme parameter: 'maxtasks', 'max_concurrent_tasks' "
+                                                   f"within section 'AIM' in {self.configfile}."
+                                                   f"Specify only one of them.")
 
         self.AIM = configuration_aim
 
@@ -183,14 +187,13 @@ class Config:
 
         # If not defined used PVWA definitions to complete initialization.
         if self.AIM["host"] is None:
-            self.AIM["host"]    = self.PVWA
+            self.AIM["host"] = self.PVWA
         if self.AIM["timeout"] is None:
             self.AIM["timeout"] = self.timeout
         if self.AIM["max_concurrent_tasks"] is None:
             self.AIM["max_concurrent_tasks"] =  self.max_concurrent_tasks
         if self.AIM["verify"] is None:
-            self.AIM["verify"]  = self.PVWA_CA
-
+            self.AIM["verify"] = self.PVWA_CA
 
     def _to_integer(self, section_key, val):
         try:
