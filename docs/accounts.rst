@@ -86,6 +86,8 @@ Password Actions
 .. autofunction:: verify
 .. autofunction:: get_secret
 .. autofunction:: get_password
+.. autofunction:: get_password_aim
+.. autofunction:: get_secret_aim
 .. autofunction:: get_ssh_key
 .. autofunction:: get_secret_versions
 .. autofunction:: set_password
