@@ -1194,8 +1194,8 @@ class Account:
     async def get_secret_aim(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], reason: str = None):
         """ **This function support list of PrivilegedAccount as argument**
 
-        This function update the secret attribute of the PrivilegedAccount with the password returned by the AIM Web service
-        If the account is not found, the secret is set to None.
+        | This function update the secret attribute of the PrivilegedAccount with the password returned by the AIM Web service
+        | If the account is not found, the secret is set to None.
 
         :param account: A PrivilegedAccount object, or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
@@ -1237,7 +1237,7 @@ class Account:
 
     async def get_password_aim(self, **kwargs):
         """
-        | Retrieve the Central Credential Provider (AIM) GetPassword Web Service information using kwargs criterias
+        Retrieve the Central Credential Provider (AIM) GetPassword Web Service information using kwargs criterias
 
         :param kwargs: any searchable key = value
             like UserName, Safe, Folder, Object (which is name), Address, Database, PolicyID, Reason, Query, QueryFormat, FailRequestOnPasswordChange, ...
