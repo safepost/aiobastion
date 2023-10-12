@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.27] - 2023-10-04
+## [0.0.28] - 2023-10-12
 ### Changes
+- Changing projet packaging to pyproject.toml
+- Implementing mapping protocol
 
+## [0.0.27] - 2023-10-04
 ### Bugfixes
 - resume_password_management and disable_password_management now return list of updated Accounts (instead of dict)
 
