@@ -124,7 +124,7 @@ def _filter_account(account: dict, filters: dict):
     """
     This function helps to ensure that search accounts match with requested accounts
 
-    :param account: one json cyberark repr of a privileged address
+    :param account: one json CyberArk repr of a privileged address
     :param filters: one dict like username: admin
     :return: check if content of privileged FC is exactly the content of the filter
     """
@@ -724,7 +724,7 @@ class Account:
     async def update_using_list(self, account, data) -> Union[PrivilegedAccount, List[PrivilegedAccount]]:
         """ **This function support list of PrivilegedAccount as argument**
 
-        | This function updates an account (or list) with the data list of changes. For more infos, check Cyberark doc.
+        | This function updates an account (or list) with the data list of changes. For more infos, check CyberArk doc.
         | Valid operations are : Replace, Remove or Add
 
         For example::
@@ -1029,7 +1029,7 @@ class Account:
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
-        :return: The activity dictionary as-is it is returned by Cyberark
+        :return: The activity dictionary as-is it is returned by CyberArk
         :raises CyberarkException: If call failed
         """
         activities = await self._handle_acc_id_list(
@@ -1060,7 +1060,7 @@ class Account:
             """
             Get the very last error for an activity dict
 
-            :param activity: The Cyberark activity dict
+            :param activity: The CyberArk activity dict
             :return: The last CPM error if any
             """
             for a in activity:
@@ -1203,6 +1203,7 @@ class Account:
         :raise CyberarkAIMnotFound: Account not found
         :raise CyberarkAPIException: HTTP error or CyberArk error
         :raise CyberarkException: If something else is something wrong
+        :raise AiobastionException: AIM configuration setup error
         """
         if self.epv.AIM is None:
             raise AiobastionException(
@@ -1237,20 +1238,30 @@ class Account:
 
     async def get_password_aim(self, **kwargs):
         """
-        Retrieve the Central Credential Provider (AIM) GetPassword Web Service information using kwargs criterias
+        | Retrieve secret password from the Central Credential Provider (AIM) GetPassword Web Service information using kwargs criterias
+        ℹ️ The following parameters are optionnal searchable keys, see CyberArk documentation in Developer/Central Credential Provider/Call the Central Credential Provider Web Service .../REST
 
-        :param kwargs: any searchable key = value
-            like UserName, Safe, Folder, Object (which is name), Address, Database, PolicyID, Reason, Query, QueryFormat, FailRequestOnPasswordChange, ...
+        :param username: User account name
+        :param safe: Safe where the account is stored.
+        :param object: Name of the account to retrieve (unique for a specific safe).
+        :param folder: Name of the folder property
+        :param Address: Address account property
+        :param database: Database account property
+        :param policyid: Policy account property
+        :param reason: The reason for retrieving the password. This reason will be audited in the Credential Provider audit log.
+        :param query: Defines a free query using account properties, including Safe, folder, and object. When this method is specified, all other search criteria (Safe/Folder/ Object/UserName/Address/PolicyID/Database) are ignored and only the account properties that are specified in the query are passed to the Central Credential Provider in the password request.
+        :param queryformat: Defines the query format, which can optionally use regular expressions. Possible values are: Exact or Regexp
+        :param failrequestonpasswordchange: Boolean, Whether or not an error will be returned if this web service is called when a password change process is underway.
         :return:  namedtuple of (secret, detail)
-            secret = password
-            detail = dictionary from the Central Credential Provider (AIM) GetPassword Web Service
+        |    secret = password
+        |    detail = dictionary from the Central Credential Provider (AIM) GetPassword Web Service
         :raise CyberarkAIMnotFound: Account not found
         :raise CyberarkAPIException: HTTP error or CyberArk error
-        :raise CyberarkException: If something else is something wrong
+        :raise CyberarkException: Runtime error
+        :raise AiobastionException: AIM configuration setup error
         """
         if self.epv.AIM is None:
             raise AiobastionException(
                     "Missing AIM information to perform AIM authentication, see documentation")
 
         return await self.epv.AIM.get_secret_detail(**kwargs)
-
