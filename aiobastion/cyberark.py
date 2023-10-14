@@ -22,9 +22,6 @@ from .safe import Safe
 from .system_health import SystemHealth
 from .users import User, Group
 from .utilities import Utilities
-import jzTrace
-import jzClass
-import logging                  # Gestion du journal d'execution
 
 class EPV:
     """
@@ -268,8 +265,6 @@ class EPV:
         :raise GetTokenException: Logon error
         :raise AiobastionException: AIM configuration setup error
         """
-        jzTrace.jzTrace_pprint(logging.INFO, "login_with_aim - Entrée", jzClass.jzClass_to_dict(self, explose_all=True, add_id=True))
-
         # Is AIM attribute defined ?
         if self.AIM:
             # IF AIM is not active, it is not too late to change the default configuration
@@ -293,8 +288,6 @@ class EPV:
                 # Valide AIM setup
                 self.AIM._validate_and_setup_ssl()
 
-                jzTrace.jzTrace_pprint(logging.INFO, "login_with_aim - EPV après modification - self.AIM", jzClass.jzClass_to_dict(self, explose_all=True, add_id=True))
-
             # Complete undefined parameters with AIM and PWVA attributes
             aim_host = (aim_host or self.AIM.host)
             appid = (appid or self.AIM.appid)
@@ -311,8 +304,6 @@ class EPV:
                         root_ca   = self.verify     # PVWA
                     else:
                         root_ca   = True
-
-            jzTrace.jzTrace_log_info(f"login_with_aim - aim_host={aim_host!r} appid={appid!r} cert_file={cert_file!r} cert_key={cert_key!r} timeout={timeout!r} max_concurrent_tasks={max_concurrent_tasks!r}")
 
             if (aim_host            and aim_host  != self.AIM.host)  or \
                (appid               and appid     != self.AIM.appid) or \
@@ -352,8 +343,6 @@ class EPV:
 
         if user_search is None and self.config and self.config.user_search:
             user_search = self.config.user_search
-
-        jzTrace.jzTrace_pprint(logging.INFO, "login_with_aim - EPV après initialisation", jzClass.jzClass_to_dict(self, explose_all=True, add_id=True))
 
         try:
             await self.login(username=username, password=None, auth_type=auth_type, user_search=user_search)
