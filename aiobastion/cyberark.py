@@ -4,12 +4,12 @@ import asyncio
 import json
 import ssl
 from typing import Tuple, Union
+from collections import namedtuple
 import copy
 
-import aiohttp
-from aiohttp import ContentTypeError
 from http import HTTPStatus
-from collections import namedtuple
+from aiohttp import ContentTypeError
+import aiohttp
 
 from .accountgroup import AccountGroup
 from .accounts import Account
@@ -32,9 +32,12 @@ class EPV:
         # PVWA initialization
         self.api_host = None                # CyberArk host
         self.authtype = "cyberark"          # CyberArk authentification type
-        self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS    # Number of parrallel task for PVWA and AIM
-        self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT                              # Communication timeout in seconds
-        self.verify = False                                                         # root certificate authority (CA)
+
+        # Number of parrallel task for PVWA and AIM
+        self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
+        # Communication timeout in seconds
+        self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
+        self.verify = False                 # root certificate authority (CA)
 
         self.request_params = None          # timeout & ssl setup
         self.__token = token                # CyberArk authorization token
@@ -50,16 +53,12 @@ class EPV:
 
         if configfile is None and serialized is None:
             raise AiobastionException("You must provide either configfile or serialized to init EPV")
-        if configfile is not None and serialized is not None:
-            raise AiobastionException("You must provide either configfile or serialized to init EPV, not both")
-
-        if configfile is not None:
+        elif configfile is not None and serialized is None:
             self._epv_config(configfile)
-
-        if serialized is not None:
+        elif serialized is not None and configfile is None:
             self._epv_serialize(serialized)
-
-        # self.session = requests.Session()
+        else:
+            raise AiobastionException("You must provide either configfile or serialized to init EPV, not both")
 
         self.user_list = None
 
@@ -98,7 +97,7 @@ class EPV:
 
     def _epv_serialize(self, serialized):
         if not isinstance(serialized, dict):
-            raise AiobastionException(f"Type error: Parameter 'serialized' must be a dictionary.")
+            raise AiobastionException("Type error: Parameter 'serialized' must be a dictionary.")
 
         # Validate dictionary key
         for k in serialized.keys():
@@ -147,7 +146,7 @@ class EPV:
         if "retention" in serialized:
             self.retention = serialized['retention']
 
-    def _validate_and_setup_ssl(self):
+    def validate_and_setup_ssl(self):
         if isinstance(self.verify, str):
             if not os.path.exists(self.verify):
                 raise AiobastionException(
@@ -159,12 +158,11 @@ class EPV:
             else:
                 self.request_params = {"timeout": self.timeout,
                       "ssl": ssl.create_default_context(cafile=self.verify)}
-        elif isinstance(self.verify, bool):
-            if self.verify:
-                self.request_params = {"timeout": self.timeout,
-                      "ssl": ssl.create_default_context()}
-            else: # None or False
-                self.request_params = {"timeout": self.timeout, "ssl": False}
+        elif self.verify: # True
+            self.request_params = {"timeout": self.timeout,
+                "ssl": ssl.create_default_context()}
+        else: # None or False
+            self.request_params = {"timeout": self.timeout, "ssl": False}
 
 
     # Context manager
@@ -187,8 +185,10 @@ class EPV:
                 if req.status != 200:
                     try:
                         error = await req.text()
-                    except Exception as err:
+                    except Exception as err:                                # pylint: disable=broad-exception-caught
                         error = f"Unable to get error message {err}"
+                        raise CyberarkException(error) from err
+
                     if req.status == 403:
                         raise CyberarkException("Invalid credentials ! ")
                     elif req.status == 409:
@@ -206,10 +206,10 @@ class EPV:
 
         except ChallengeResponseException:
             raise
-        except (ConnectionError, TimeoutError):
-            raise CyberarkException("Network problem connecting to PVWA")
+        except (ConnectionError, TimeoutError) as err:
+            raise CyberarkException("Network problem connecting to PVWA") from err
         except Exception as err:
-            raise CyberarkException(err)
+            raise CyberarkException(err) from err
 
     async def logoff(self):
         url, head = self.get_url("API/Auth/Logoff")
@@ -260,14 +260,15 @@ class EPV:
         :param auth_type: PVWA logon authenticafication method: CyberArk, Windows, LDAP or Radius
         :param user_search: Dictionary search parameters to uniquely identify the PVWA user
         | user_search dictionary may define any of the following keys:
-        |     {"safe": ..., "object": ..., "folder": ..., "address": ..., "database": ..., "policyid": ..., "failrequestonpasswordchange": ...}
+        |     {"safe": ..., "object": ..., "folder": ..., "address": ...,
+        |      "database": ..., "policyid": ..., "failrequestonpasswordchange": ...}
 
         :raise GetTokenException: Logon error
         :raise AiobastionException: AIM configuration setup error
         """
         # Is AIM attribute defined ?
         if self.AIM:
-            # IF AIM is not active, it is not too late to change the default configuration
+            # IF AIM is define but not active, it is not too late to change the default configuration
             if self.AIM.session is None:
                 # Override AIM attributes with the function parameters
                 if aim_host:
@@ -278,7 +279,7 @@ class EPV:
                     self.AIM.cert = cert_file
                 if cert_key:
                     self.AIM.key = cert_key
-                if (root_ca is not None):
+                if root_ca is not None:
                     self.AIM.verify = root_ca
                 if timeout:
                     self.AIM.timeout = timeout
@@ -286,7 +287,7 @@ class EPV:
                     self.AIM.max_concurrent_tasks = max_concurrent_tasks
 
                 # Valide AIM setup
-                self.AIM._validate_and_setup_ssl()
+                self.AIM.validate_and_setup_ssl()
 
             # Complete undefined parameters with AIM and PWVA attributes
             aim_host = (aim_host or self.AIM.host)
@@ -322,7 +323,7 @@ class EPV:
                                timeout=timeout, max_concurrent_tasks=max_concurrent_tasks)
 
             # Valide AIM setup
-            self.AIM._validate_and_setup_ssl()
+            self.AIM.validate_and_setup_ssl()
 
 
         # Check mandatory attributs
@@ -348,17 +349,19 @@ class EPV:
             await self.login(username=username, password=None, auth_type=auth_type, user_search=user_search)
 
         except (CyberarkAIMnotFound, CyberarkAPIException, CyberarkException, AiobastionException) as err:
-            raise GetTokenException(str(err))
+            raise GetTokenException(str(err)) from err
 
     async def login(self, username=None, password=None, auth_type="", user_search=None):
         """
         Authenticate the PVWA user to manage of the vault.
-        | If the password is not supply, the AIM interface must be define in the EPV initialization (configuration file or serialization)
+        | If the password is not supply, the AIM interface must be define in the EPV initialization (configuration file or serialization).
+        | You may also use the login_with_aim function instead of the login function which give more flexibility.
 
         :param username: Name of the PVWA user
         :param password: Password of the PVWA user
         :param auth_type: logon authenticafication method: CyberArk, Windows, LDAP or Radius
-        :param user_search: Dictionary search parameters to uniquely identify the PVWA user
+        :param user_search: Search parameters to uniquely identify the PVWA user
+        :type user_search: Dictionary
         |     user_search dictionary may define any of the following keys:
         |         safe, object, folder, address, database, policyid, failrequestonpasswordchange
         |         We recommend, if necessary, **safe** and **object** keys to uniquely identify the PVWA user
@@ -377,7 +380,8 @@ class EPV:
         if username is None:
             if self.config is None or self.config.username is None:
                 raise AiobastionException(
-                    "Username must be provided on login call or in configuration file. Or you must configure the AIM section.")
+                    "Username must be provided on login call or in configuration file."
+                    " You may also configure the AIM section.")
             username = self.config.username
 
         if not auth_type:
@@ -386,7 +390,7 @@ class EPV:
             else:
                 auth_type = "cyberark"
 
-        self._validate_and_setup_ssl()
+        self.validate_and_setup_ssl()
 
         if password is None:
             if self.config and self.config.password:
@@ -395,10 +399,11 @@ class EPV:
             else:
                 if not self.AIM:
                     raise AiobastionException(
-                        "Password must be provided on login call or in configuration file. You may configure the AIM section or call the login_with_aim function.")
+                        "Password must be provided on login call or in configuration file."
+                        " You may configure the AIM section or call the login_with_aim function.")
 
                 # Valide AIM setup
-                self.AIM._validate_and_setup_ssl()
+                self.AIM.validate_and_setup_ssl()
 
                 params = {"UserName": username}
 
@@ -418,19 +423,19 @@ class EPV:
                     # Get password form AIM
                     password = await self.AIM.get_secret(**params)
                 except (CyberarkAIMnotFound, CyberarkAPIException, CyberarkException) as err:
-                    raise GetTokenException(str(err))
+                    raise GetTokenException(str(err)) from err
 
 
         try:
             self.__token = await self.__login_cyberark(username, password, auth_type)
             # update the session
             await self.close_session()
-        except ChallengeResponseException:
-            # User should enter passcode now
-            raise
+        # except ChallengeResponseException:
+        #    # User should enter passcode now
+        #     raise
 
         except CyberarkException as err:
-            raise GetTokenException(str(err))
+            raise GetTokenException(str(err)) from err
 
     def get_session(self):
         if self.__token is None and self.session is None:
@@ -540,19 +545,19 @@ class EPV:
                                 return response
                             else:
                                 return True
-                        except:
-                            raise
+                        #except:
+                        #    raise
                 else:
                     if req.status == 404:
                         raise CyberarkException(f"404 error with URL {url}")
                     elif req.status == 401:
-                        raise CyberarkException(f"You are not logged, you need to login first")
+                        raise CyberarkException("You are not logged, you need to login first")
                     elif req.status == 405:
                         raise CyberarkException("Your PVWA version does not support this function")
                     try:
                         content = await req.json(content_type=None)
-                    except (KeyError, ValueError, ContentTypeError):
-                        raise CyberarkException(f"Error with CyberArk status code {str(req.status)}")
+                    except (KeyError, ValueError, ContentTypeError) as err:
+                        raise CyberarkException(f"Error with CyberArk status code {str(req.status)}") from err
 
                     if "Details" in content:
                         details = content["Details"]
@@ -560,7 +565,8 @@ class EPV:
                         details = ""
 
                     if "ErrorCode" in content and "ErrorMessage" in content:
-                        raise CyberarkAPIException(req.status, content["ErrorCode"], content["ErrorMessage"], details)
+                        raise CyberarkAPIException(req.status, content["ErrorCode"],
+                                                   content["ErrorMessage"], details)
                     else:
                         raise CyberarkAPIException(req.status, "NO_ERR_CODE", content)
             # except Exception as err:
@@ -581,10 +587,11 @@ class EPV_AIM:
     Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
     """
 
-    def __init__(self, host: str = None, appid: str = None, cert: str = None, key: str = None, verify: Union[str, bool] = None,
+    def __init__(self, host: str = None, appid: str = None, cert: str = None, key: str = None,
+                 verify: Union[str, bool] = None,
                  timeout: int = Config.CYBERARK_DEFAULT_TIMEOUT,
-                 max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS, serialized:dict = None,
-                 epv: EPV = None):
+                 max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS,
+                 serialized:dict = None, epv: EPV = None):
 
         self.host = host
         self.appid = appid
@@ -616,7 +623,7 @@ class EPV_AIM:
         if self.max_concurrent_tasks is None:
             self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
 
-    def _validate_and_setup_ssl(self):
+    def validate_and_setup_ssl(self):
         if self.session:
             return
 
@@ -625,7 +632,8 @@ class EPV_AIM:
             v = getattr(self, attr_name, None)
 
             if v is None:
-                raise AiobastionException(f"Missing AIM mandatory parameter '{attr_name}'. Required paramters host, appid, cert, key.")
+                raise AiobastionException(f"Missing AIM mandatory parameter '{attr_name}'."
+                                          " Required parameters: host, appid, cert, key.")
 
         if not os.path.exists(self.cert):
             raise AiobastionException(f"Parameter 'cert' in AIM: Public certificate file not found: {self.cert!r}")
@@ -647,7 +655,7 @@ class EPV_AIM:
             else:
                 ssl_context = ssl.create_default_context(cafile=self.verify)
                 ssl_context.load_cert_chain(self.cert, self.key)
-        else:  # True or False
+        else:  # None, True or False
             ssl_context = ssl.create_default_context()
             ssl_context.load_cert_chain(self.cert, self.key)
 
@@ -719,8 +727,8 @@ class EPV_AIM:
             # This statement is wrong:
             #    if self.epv.__sema:
             #        self.__sema = self.epv.__sema
-            if self.epv._EPV__sema:
-                self.__sema = self.epv._EPV__sema
+            if self.epv._EPV__sema:                         # pylint: disable=protected-access
+                self.__sema = self.epv._EPV__sema           # pylint: disable=protected-access
             else:
                 self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
 
@@ -732,8 +740,9 @@ class EPV_AIM:
                 # Are we using the epv.session, if so don't close it
                 if self.epv.session is None or (self.epv.session and self.epv.session != self.session):
                     await self.session.close()
-        except (CyberarkException, AttributeError):
+        except (CyberarkException, AttributeError) as err:
             pass
+
         self.session = None
         self.__sema = None
 
@@ -741,7 +750,8 @@ class EPV_AIM:
         """
         This function allow to search using one or more parameters and return list of address id
         :param kwargs: any searchable key = value
-                  like:  UserName, Safe, Folder, Object (which is name), Address, Database, PolicyID, Reason, Query, QueryFormat, FailRequestOnPasswordChange, ...
+        |   like:  UserName, Safe, Folder, Object (which is name),
+        |          Address, Database, PolicyID, Reason, Query, QueryFormat, FailRequestOnPasswordChange, ...
         :raise CyberarkAIMnotFound: Account not found
         :raise CyberarkAPIException: HTTP error or CyberArk error
         :raise CyberarkException: Execution error
@@ -755,12 +765,27 @@ class EPV_AIM:
     async def get_secret_detail(self, **kwargs):
         """
         Retrieve the secret from the GetPassword Web Service Central Credential Provider (AIM)
-        :param kwargs: any searchable key = value
-                  keys:  username, safe, folder, object, address, database, policyid, reason, Query, ...
+        ℹ️ The following parameters are optionnal searchable keys, see CyberArk documentation in Developer/Central Credential Provider/Call the Central Credential Provider Web Service .../REST
+
+        :param username: User account name
+        :param safe: Safe where the account is stored.
+        :param object: Name of the account to retrieve (unique for a specific safe).
+        :param folder: Name of the folder property
+        :param address: Address account property
+        :param database: Database account property
+        :param policyid: Policy account property
+        :param reason: The reason for retrieving the password. This reason will be audited in the Credential Provider audit log.
+        :param query: Defines a free query using account properties, including Safe, folder, and object. When this method is specified, all other search criteria (Safe/Folder/ Object/UserName/Address/PolicyID/Database) are ignored and only the account properties that are specified in the query are passed to the Central Credential Provider in the password request.
+        :param queryformat: Defines the query format, which can optionally use regular expressions. Possible values are: Exact or Regexp
+        :param failrequestonpasswordchange: Boolean, Whether or not an error will be returned if this web service is called when a password change process is underway.
+        :return:  namedtuple of (secret, detail)
+        |    secret = password
+        |    detail = dictionary from the Central Credential Provider (AIM) GetPassword Web Service
         :raise CyberarkAIMnotFound: Account not found
         :raise CyberarkAPIException: HTTP error or CyberArk error
-        :raise CyberarkException: Execution error
-        :return:  namedtuple of (secret, detail) or None
+        :raise CyberarkException: Runtime error
+        :raise AiobastionException: AIM configuration setup error
+        :return:  namedtuple of (secret, detail)
             secret = password
             detail = dictionary from the Central Credential Provider (AIM) GetPassword Web Service
         """
@@ -790,7 +815,7 @@ class EPV_AIM:
         :param filter_func:
         :raise CyberarkAIMnotFound: Account not found
         :raise CyberarkAPIException: HTTP error or CyberArk error
-        :raise CyberarkException: Execution error
+        :raise CyberarkException: Runtime error
         :return: dictonary return by CyberArk
         """
         assert method.lower() == "get"
@@ -838,17 +863,17 @@ class EPV_AIM:
 
                                 raise CyberarkAPIException(req.status, "HTTP_ERR_CODE", http_error.phrase, details)
 
-                    except json.decoder.JSONDecodeError:
+                    except json.decoder.JSONDecodeError as err:
                         http_error = HTTPStatus(req.status)
                         details = EPV_AIM.handle_error_detail_info(url, params_new)
-                        raise CyberarkAPIException(req.status, "HTTP_ERR_CODE", http_error.phrase, details)
+                        raise CyberarkAPIException(req.status, "HTTP_ERR_CODE", http_error.phrase, details) from err
 
                     except (KeyError, ValueError, ContentTypeError) as err:
                         # http_error = HTTPStatus(req.status)
                         details = EPV_AIM.handle_error_detail_info(url, params_new)
                         raise CyberarkException(
-                            f"HTTP error {req.status}: {str(err)} || Additional Details : {details}")
+                            f"HTTP error {req.status}: {str(err)} || Additional Details : {details}") from err
 
             except aiohttp.ClientError as err:
                 details = EPV_AIM.handle_error_detail_info(url, params_new)
-                raise CyberarkException(f"HTTP error: {str(err)} || Additional Details : {details}")
+                raise CyberarkException(f"HTTP error: {str(err)} || Additional Details : {details}") from err
