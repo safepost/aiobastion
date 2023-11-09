@@ -243,32 +243,39 @@ class EPV:
     async def login_with_aim(self, aim_host: str = None, appid: str = None, username: str = None, cert_file: str = None,
                              cert_key: str = None, root_ca=None, timeout: int = None, max_concurrent_tasks: int = None,
                              user_search: dict = None, auth_type=None):
-        """
-        Complete AIM configuration and logon to CyberArk PVWA.
+        """ Authenticate the PVWA user using AIM interface to get the secret (password) in CyberArk.
 
-        | ℹ️ The following parameters are optional. If a parameter is not set, it will be obtained from EPV initialization (configuration file or serialization).
-        | ⚠️ Any specified parameter from the login_with_aim function will override the EPV definition (AIM and PVWA).
+        We only support client certificate authentication to the AIM
 
-        :param aim_host: AIM CyberArk host
-        :param appid: AIM Unique ID of the application
-        :param username: PVWA Name of the user who is logging in to the Vault (PVWA username)
-        :param cert_file: AIM Filename of the public certificat
-        :param cert_key: AIM Filename of the private key certificat
-        :param root_ca: Filename of the ROOT certificate authority (CA) or True to valide certificate authority
-        :param timeout: Maximum wait time in seconds before generating a timeout
-        :param max_concurrent_tasks: Maximum number of parallel task
-        :param auth_type: PVWA logon authenticafication method: CyberArk, Windows, LDAP or Radius
-        :param user_search: Dictionary search parameters to uniquely identify the PVWA user
-        | user_search dictionary may define any of the following keys:
-        |     {"safe": ..., "object": ..., "folder": ..., "address": ...,
-        |      "database": ..., "policyid": ..., "failrequestonpasswordchange": ...}
+        | ℹ️ The following parameters are optional. If a parameter is not set, it will be obtained
+            from *EPV* initialization (configuration file or serialization).
+
+        | ⚠️ Any specified parameter from the *login_with_aim* function will override the *EPV_AIM*
+            definition.
+
+        :param aim_host: *AIM* CyberArk host
+        :param appid: *AIM* Application ID
+        :param cert_file: *AIM* Filename public certificat
+        :param cert_key: *AIM* Filename private key certificat
+        :param root_ca: *AIM* Directory or filename of the ROOT certificate authority (CA)
+        :param timeout: *AIM* Maximum wait time in seconds before generating a timeout (default 30 seconds)
+        :param max_concurrent_tasks: *AIM* Maximum number of parallel task (default 10)
+        :param username: *PVWA* Name of the user who is logging in to the Vault (PVWA username)
+        :param auth_type: *PVWA* logon authenticafication method: CyberArk, Windows, LDAP or Radius
+        :param user_search: *PVWA* Search parameters to uniquely identify the PVWA user (optional).
+        :type user_search: *PVWA* Dictionary
+
+        |     **user_search** dictionary may define any of the following keys:
+        |         safe, object, folder, address, database, policyid, failrequestonpasswordchange.
+        |         We recommend, if necessary, **safe** and **object** keys to uniquely identify
+                  the PVWA user.  Refer to  `CyberArk Central Credential Provider - REST web service`_.
 
         :raise GetTokenException: Logon error
         :raise AiobastionException: AIM configuration setup error
         """
         # Is AIM attribute defined ?
         if self.AIM:
-            # IF AIM is define but not active, it is not too late to change the default configuration
+            # IF AIM is active, it is not too late to change the default configuration
             if self.AIM.session is None:
                 # Override AIM attributes with the function parameters
                 if aim_host:
@@ -352,22 +359,26 @@ class EPV:
             raise GetTokenException(str(err)) from err
 
     async def login(self, username=None, password=None, auth_type="", user_search=None):
-        """
-        Authenticate the PVWA user to manage of the vault.
-        | If the password is not supply, the AIM interface must be define in the EPV initialization (configuration file or serialization).
-        | You may also use the login_with_aim function instead of the login function which give more flexibility.
+        """ Authenticate the PVWA user to manage of the vault.
+
+        | If the password is not supply, the AIM interface must be define in the EPV initialization
+            (configuration file or serialization).  You may also use the login_with_aim function
+            instead of the login function which give more flexibility.
 
         :param username: Name of the PVWA user
         :param password: Password of the PVWA user
         :param auth_type: logon authenticafication method: CyberArk, Windows, LDAP or Radius
-        :param user_search: Search parameters to uniquely identify the PVWA user
+        :param user_search: Search parameters to uniquely identify the PVWA user (optional).
         :type user_search: Dictionary
-        |     user_search dictionary may define any of the following keys:
-        |         safe, object, folder, address, database, policyid, failrequestonpasswordchange
-        |         We recommend, if necessary, **safe** and **object** keys to uniquely identify the PVWA user
+
+        |     **user_search** dictionary may define any of the following keys:
+        |         safe, object, folder, address, database, policyid, failrequestonpasswordchange.
+        |         We recommend, if necessary, **safe** and **object** keys to uniquely identify
+                  the PVWA user.  Refer to  `CyberArk Central Credential Provider - REST web service`_.
 
         :raise GetTokenException: Logon error
         :raise AiobastionException: AIM configuration setup error
+        :raise ChallengeResponseException: User should enter passcode now
         """
 
         if await self.check_token():
@@ -431,9 +442,8 @@ class EPV:
             # update the session
             await self.close_session()
         # except ChallengeResponseException:
-        #    # User should enter passcode now
+        #     # User should enter passcode now
         #     raise
-
         except CyberarkException as err:
             raise GetTokenException(str(err)) from err
 
@@ -578,14 +588,13 @@ AIM_secret_resp = namedtuple('AIM_secret_resp', ['secret', 'detail'])
 
 
 class EPV_AIM:
+    """
+    Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
+    """
     _serialized_fields = ["host", "appid", "cert", "key", "verify", "timeout", "max_concurrent_tasks"]
     _getPassword_request_parm = ["safe", "folder", "object", "username", "address", "database",
                                  "policyid", "reason", "connectiontimeout", "query", "queryformat",
                                  "failrequestonpasswordchange"]
-
-    """
-    Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
-    """
 
     def __init__(self, host: str = None, appid: str = None, cert: str = None, key: str = None,
                  verify: Union[str, bool] = None,
@@ -751,7 +760,8 @@ class EPV_AIM:
         This function allow to search using one or more parameters and return list of address id
         :param kwargs: any searchable key = value
         |   like:  UserName, Safe, Folder, Object (which is name),
-        |          Address, Database, PolicyID, Reason, Query, QueryFormat, FailRequestOnPasswordChange, ...
+        |          Address, Database, PolicyID, Reason, Query, QueryFormat,
+                   FailRequestOnPasswordChange, ...
         :raise CyberarkAIMnotFound: Account not found
         :raise CyberarkAPIException: HTTP error or CyberArk error
         :raise CyberarkException: Execution error
@@ -765,7 +775,7 @@ class EPV_AIM:
     async def get_secret_detail(self, **kwargs):
         """
         Retrieve the secret from the GetPassword Web Service Central Credential Provider (AIM)
-        ℹ️ The following parameters are optionnal searchable keys, see CyberArk documentation in Developer/Central Credential Provider/Call the Central Credential Provider Web Service .../REST
+        ℹ️ The following parameters are optionnal searchable keys. Refer to  `CyberArk Central Credential Provider - REST web service`_.
 
         :param username: User account name
         :param safe: Safe where the account is stored.
@@ -774,10 +784,17 @@ class EPV_AIM:
         :param address: Address account property
         :param database: Database account property
         :param policyid: Policy account property
-        :param reason: The reason for retrieving the password. This reason will be audited in the Credential Provider audit log.
-        :param query: Defines a free query using account properties, including Safe, folder, and object. When this method is specified, all other search criteria (Safe/Folder/ Object/UserName/Address/PolicyID/Database) are ignored and only the account properties that are specified in the query are passed to the Central Credential Provider in the password request.
-        :param queryformat: Defines the query format, which can optionally use regular expressions. Possible values are: Exact or Regexp
-        :param failrequestonpasswordchange: Boolean, Whether or not an error will be returned if this web service is called when a password change process is underway.
+        :param reason: The reason for retrieving the password. This reason will be audited in
+            the Credential Provider audit log.
+        :param query: Defines a free query using account properties, including Safe, folder, and object.
+            When this method is specified, all other search criteria
+            (Safe/Folder/ Object/UserName/Address/PolicyID/Database) are ignored and only the
+            account properties that are specified in the query are passed to the Central
+            Credential Provider in the password request.
+        :param queryformat: Defines the query format, which can optionally use regular expressions.
+            Possible values are: *Exact* or *Regexp*.
+        :param failrequestonpasswordchange: Boolean, Whether or not an error will be returned if
+            this web service is called when a password change process is underway.
         :return:  namedtuple of (secret, detail)
         |    secret = password
         |    detail = dictionary from the Central Credential Provider (AIM) GetPassword Web Service
@@ -810,7 +827,8 @@ class EPV_AIM:
         """
         Function that handles AIM requests to the API
         :param method: "get"
-        :param params: dictonary parameters for CyberArk like Safe, Object, UserName, Address, Reason, Query, ...
+        :param params: dictonary parameters for CyberArk like Safe, Object, UserName, Address,
+            Reason, Query, ...
         :param short_url: piece of URL after AIMWebService/api/
         :param filter_func:
         :raise CyberarkAIMnotFound: Account not found

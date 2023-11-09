@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import yaml
+import warnings
 from .exceptions import AiobastionConfigurationException
 
 
@@ -42,9 +43,8 @@ class Config:
         for k in list(configuration.keys()):
             keyname = k.lower()
 
-            if keyname not in ["aim", "connection", "cpm", "custom", "customipfield", "label", "pvwa", "retention"]:
-                import warnings
-
+            if keyname not in ["aim", "connection", "cpm", "custom",
+                               "customipfield", "label", "pvwa", "retention"]:
                 warnings.warn(f"aiobastion - Unknown section '{k}' in {self.configfile}")
                 continue
 
@@ -102,7 +102,7 @@ class Config:
                                          "reason", "connectiontimeout", "query", "queryformat",
                                          "failrequestonpasswordchange" ]
 
-            for k in self.user_search:
+            for k in list(self.user_search.keys()):
                 keyname = k.lower()
                 if keyname not in _getPassword_request_parm:
                     raise AiobastionConfigurationException(f"Unknown attribute '{k}' within section "
@@ -199,7 +199,8 @@ class Config:
         try:
             v = int(val)
         except ValueError:
-            raise AiobastionConfigurationException(f"Invalid integer within '{section_key}' in {self.configfile}: {val!r}")
+            raise AiobastionConfigurationException(f"Invalid integer within '{section_key}'"
+                                                   f" in {self.configfile}: {val!r}")
 
         return v
 
@@ -360,8 +361,10 @@ def validate_ip(s):
 def flatten(A):
     rt = []
     for i in A:
-        if isinstance(i,list): rt.extend(flatten(i))
-        else: rt.append(i)
+        if isinstance(i,list):
+            rt.extend(flatten(i))
+        else:
+            rt.append(i)
     return rt
 
 def permissions(profile: str) -> dict:
