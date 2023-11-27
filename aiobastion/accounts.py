@@ -71,7 +71,6 @@ class PrivilegedAccount:
 
         return json_object
 
-
     def __str__(self):
         strrepr = self.to_json()
         return str(strrepr)
@@ -124,7 +123,7 @@ def _filter_account(account: dict, filters: dict):
     """
     This function helps to ensure that search accounts match with requested accounts
 
-    :param account: one json cyberark repr of a privileged address
+    :param account: one json CyberArk repr of a privileged address
     :param filters: one dict like username: admin
     :return: check if content of privileged FC is exactly the content of the filter
     """
@@ -336,17 +335,18 @@ class Account:
             self.search_account_by(username=rec_acc_username, address=address))
 
         if len(acc) > 1:
-            raise CyberarkException("More than one address %s with address %s was found !" %
-                                    (acc_username, address))
+            raise CyberarkException(f"More than one address {acc_username} "
+                                    f"with address {address} was found !")
         if len(acc) == 0:
-            raise CyberarkException("The account %s with address %s was not found !" % (acc_username, address))
+            raise CyberarkException(f"The account {acc_username} with address {address} "
+                                    "was not found !")
 
         if len(rec_acc) > 1:
-            raise CyberarkException("More than one reconciliation address %s with address %s was found !" %
-                                    (rec_acc_username, address))
+            raise CyberarkException(f"More than one reconciliation address {rec_acc_username} "
+                                    f"with address {address} was found !")
         if len(rec_acc) == 0:
-            raise CyberarkException("The reconciliation address %s with address %s was not found !" %
-                                    (rec_acc_username, address))
+            raise CyberarkException(f"The reconciliation address {rec_acc_username} "
+                                    f"with address {address} was not found !")
 
         return await self.link_reconciliation_account(acc[0], rec_acc[0])
 
@@ -613,8 +613,9 @@ class Account:
 
         try:
             params = {"search": " ".join(kwargs.values())}
-        except TypeError:
-            raise AiobastionException(f"You can't search on a list here ({kwargs.values()}), provide a string instead")
+        except TypeError as err:
+            raise AiobastionException(f"You can't search on a list here ({kwargs.values()}), "
+                                      "provide a string instead") from err
 
         if search is not None:
             params["search"] += f" {search}"
@@ -724,7 +725,7 @@ class Account:
     async def update_using_list(self, account, data) -> Union[PrivilegedAccount, List[PrivilegedAccount]]:
         """ **This function support list of PrivilegedAccount as argument**
 
-        | This function updates an account (or list) with the data list of changes. For more infos, check Cyberark doc.
+        | This function updates an account (or list) with the data list of changes. For more infos, check CyberArk doc.
         | Valid operations are : Replace, Remove or Add
 
         For example::
@@ -1029,7 +1030,7 @@ class Account:
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
-        :return: The activity dictionary as-is it is returned by Cyberark
+        :return: The activity dictionary as-is it is returned by CyberArk
         :raises CyberarkException: If call failed
         """
         activities = await self._handle_acc_id_list(
@@ -1060,7 +1061,7 @@ class Account:
             """
             Get the very last error for an activity dict
 
-            :param activity: The Cyberark activity dict
+            :param activity: The CyberArk activity dict
             :return: The last CPM error if any
             """
             for a in activity:
@@ -1194,15 +1195,17 @@ class Account:
     async def get_secret_aim(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], reason: str = None):
         """ **This function support list of PrivilegedAccount as argument**
 
-        | This function update the secret attribute of the PrivilegedAccount with the password returned by the AIM Web service
-        | If the account is not found, the secret is set to None.
+        | This function update the secret attribute of the PrivilegedAccount with the password
+          returned by the **AIM Web service**. If the account is not found, the secret is set to None.
 
         :param account: A PrivilegedAccount object, or a list of PrivilegedAccount objects
+        :param reason: The reason for retrieving the password. This reason will be audited in the Credential
+            Provider audit log. (optional)
         :type account: PrivilegedAccount, list
         :return: PrivilegedAccount Object updated, if the password is not found the secret will be None
-        :raise CyberarkAIMnotFound: Account not found
         :raise CyberarkAPIException: HTTP error or CyberArk error
-        :raise CyberarkException: If something else is something wrong
+        :raise CyberarkException: Runtime error
+        :raise AiobastionException: AIM configuration setup error
         """
         if self.epv.AIM is None:
             raise AiobastionException(
@@ -1219,12 +1222,12 @@ class Account:
         if not isinstance(account, PrivilegedAccount):
             raise AiobastionException("You must provide a valid PrivilegedAccount.")
 
-        params={"Object": account.name }
+        params={"object": account.name }
 
         if reason:
-            params["Reason"] = reason
+            params["reason"] = reason
         if account.safeName:
-            params["SafeName"] = account.safeName
+            params["safe"] = account.safeName
 
         try:
             account.secret = await self.epv.AIM.get_secret(**params)
@@ -1237,20 +1240,43 @@ class Account:
 
     async def get_password_aim(self, **kwargs):
         """
-        Retrieve the Central Credential Provider (AIM) GetPassword Web Service information using kwargs criterias
+        | Retrieve secret password from the Central Credential Provider (**AIM**) GetPassword
+          Web Service information.
 
-        :param kwargs: any searchable key = value
-            like UserName, Safe, Folder, Object (which is name), Address, Database, PolicyID, Reason, Query, QueryFormat, FailRequestOnPasswordChange, ...
+        ℹ️ The following parameters are optional searchable keys, see CyberArk documentation in
+           Developer/Central Credential Provider/Call the Central Credential Provider Web Service .../REST
+
+        :param username: User account name
+        :param safe: Safe where the account is stored.
+        :param object: Name of the account to retrieve (unique for a specific safe).
+        :param folder: Name of the folder property
+        :param address: Address account property
+        :param database: Database account property
+        :param policyid: Policy account property
+        :param reason: The reason for retrieving the password. This reason will be audited in the Credential
+            Provider audit log.
+        :param query: Defines a free query using account properties, including Safe, folder, and object.
+            When this method is specified, all other search criteria
+            (Safe/Folder/ Object/UserName/Address/PolicyID/Database) are ignored and only the
+            account properties that are specified in the query are passed to the Central
+            Credential Provider in the password request.
+        :param queryformat: Defines the query format, which can optionally use regular expressions.
+            Possible values are: Exact or Regexp
+        :param failrequestonpasswordchange: Boolean, Whether or not an error will be returned if
+            this web service is called when a password change process is underway.
         :return:  namedtuple of (secret, detail)
-            secret = password
-            detail = dictionary from the Central Credential Provider (AIM) GetPassword Web Service
+
+        |            secret = password
+        |            detail = dictionary from the Central Credential Provider (AIM) GetPassword Web
+                               Service.
+
         :raise CyberarkAIMnotFound: Account not found
         :raise CyberarkAPIException: HTTP error or CyberArk error
-        :raise CyberarkException: If something else is something wrong
+        :raise CyberarkException: Runtime error
+        :raise AiobastionException: AIM configuration setup error
         """
         if self.epv.AIM is None:
             raise AiobastionException(
                     "Missing AIM information to perform AIM authentication, see documentation")
 
         return await self.epv.AIM.get_secret_detail(**kwargs)
-

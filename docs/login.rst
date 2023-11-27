@@ -1,250 +1,71 @@
-
 Login to the Vault
 ==================
-There is several ways to login to the Vault:
+aiobastion and CyberArk
+-----------------------
+
+.. _CyberArk Central Credential Provider - REST web service: https://docs.cyberark.com/AAM-CP/Latest/en/Content/CCP/Calling-the-Web-Service-using-REST.htm
+.. _CyberArk Privileged Access Manager REST API: https://docs.cyberark.com/PAS/Latest/en/Content/WebServices/Implementing%20Privileged%20Account%20Security%20Web%20Services%20.htm
+
+
+There are 2 different CyberArk API used in **aiobastion**:
+
+* Password Vault Web Access (refer in this documentation as *PVWA*)
+    * The Password Vault Web Access (PVWA) enables both end users and administrators to access and manage privileged accounts from any local or remote location through a web client.
+      This is the main reason why **aiobastion** has been made.
+
+    * To use the interface you will need to set up a PWVA user in CyberArk (refer as the *PVWA user*).  This user will be allowed to access part or all the different components of CyberArk like
+
+        * Manage account: Retrieve, list (search), add, update, rename, unlock, get secret (password), ...
+        * Manage safe: Create, delete, update safe, safe members and backup safe
+        * Monitor audit log and safe member
+        * and more
+    * Depending on your CyberArk security setup, you may not be able to access the **secret (password)** of an account with your *PVWA user*.
+      This is where you may have to use the AIM interface.
+
+For more information see `CyberArk Privileged Access Manager REST API`_ .
+
+* Central Credential Provider web service (refer in this documentation as *AIM*)
+    * The AIM API is the interface to get the secret (password) from one account at a time. The query has to return a unique account.
+        * To use the interface you will need to set up an application user (applID) in CyberArk (refer as the *AIM user*) and for security reason **you must define a client certificate authentication to the AIM** (this is an aiobastion requirement).
+
+For more information see `CyberArk Central Credential Provider - REST web service`_.
+
+Connect to PVWA scenario
+-------------------------------
+
+There are several ways to login to the Vault:
 
 * Using a configuration file (recommended approach)
-    * Using a configuration file and a known login / password (or OTP) to perform login
-    * Using a configuration file and get a login / password through AAM (or AIM)
-* Defining all information directly in the code
+* Using the serialization, information directly in your code (EPV *serialized* parameter)
+* For partial initialization with a configuration file or with a serialization, you need to call one of the following:
 
-Defining all information directly in the code
--------------------------------------------------
-First define the dict with all the infos you want, then perform a login
-
-.. code-block:: python
-
-    api_config = {
-        "api_host": "pvwa.mycompany.com", # (required) API host (eg the PVWA host)
-        "authtype": "LDAP", # (optional) Defaults is Cyberark. Acceptable values : Cyberark, Windows, LDAP or Radius
-        "max_concurrent_tasks": 10, # (optional) Defaults is 10
-        "timeout": 30, #(seconds) (optional), timeout for requests to PVWA, default = 30
-        "retention": 10, #(days) (optional), days of retention for objects in safe, default = 10
-        "cpm": "PasswordManager", # (optional), CPM to assign to safes, default = "" (no CPM)
-        "verify": "C:/Folder/PVWA_Root_CA.pem", # (optional), set if you want to add additional ca certs
-        "AIM": { # (optional), serialization of AIM object, Defaults to None
-            "host": "aim.mycompany.com", # (required if AIM is defined) AIM host
-            "appid": "Automation_Application", # (required if AIM is defined) Your AppID
-            "Cert": "C:/Folder/AIM_Cert.pem", # (required if AIM is defined) Certificate to authenticate with
-            "Key": "C:/Folder/AIM_private_key", # (required if AIM is defined) Private Key of your cert
-            "Verify": "C:/Folder/AIM_Root_CA.pem" # (optional) Define a specific CA cert for AIM
-        },
-    }
-
-    vault = aiobastion.EPV(serialized = api_config)
-
-    # Define login and password
-    login = input("Login: ")
-    password = input("Password: ")
-
-    # Login to the PVWA
-    try:
-        await vault.login(login, password)
-    except GetTokenException as err:
-        print(f"An error occured while login : {err}")
-        await vault.close_session()
-        raise
-
-    # Working with PVWA
-    async with vault as epv:
-        # For example, listing all safes
-        safes = await epv.safe.list()
-        for s in safes:
-            print(s)
-
-If you need to authenticate with RADIUS challenge / response mode, you need to catch the ChallengeResponseException and re-login with passcode :
-
-.. code-block:: python
-
-    pvwa_host = 'pam-host'
-    authtype = 'Radius'
-    username = 'username'
-    password = getpass.getpass()
-
-    config = {'api_host': pvwa_host}
-
-    try:
-        await vault.login(username, password, authtype)
-    except ChallengeResponseException:
-        passcode = input("Enter passcode: ")
-        await vault.login(username, passcode, authtype)
-    except GetTokenException:
-        # handle failure here
-        await vault.close_session()
-        raise
+    * `login function`_ to specify missing PVWA information like username, password, authentification method & PVWA user search information.
+    * `login_with_aim function`_ to specify missing AIM information and the PVWA username, password, authentification method & PVWA user search information.
 
 
-
-
-Define a configuration file
-----------------------------
-Defining a configuration file is the first step to allow you to connect to PVWA and start using this module.
-
-You have different choices in order to login:
- - :ref:`Specify a login / password that can perform API calls hardcoded in a config file <pvwa_login>`
- - :ref:`Use a minimal configuration file and specify the username and the password in your code<pvwa_login_nopasswd>`
- - :ref:`Use an account stored in the Vault that you will retrieve with AIM (AAM) using a certificate<aim_login>`
-
-
-.. _pvwa_login:
-
-Login with PVWA and specified login and password
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: yaml
-
-    Label: Production Vault
-    Connection:
-      Username: admin_restapi
-      Password: sup3rs3cur3
-      Authtype:
-    PVWA:
-      Host: "pvwa.acme.fr"
-      CA: "C:/Folder/PVWA_Root_CA.pem"
-
-.. _pvwa_login_nopasswd:
-
-Login with PVWA and specify user or password later
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A minimal file only defines a PVWA host
-
-.. code-block:: yaml
-
-    PVWA:
-      Host: "pvwa.acme.fr"
-
-.. _aim_login:
-
-Login with AIM
-~~~~~~~~~~~~~~~~
-Example file for connecting through AIM
-
-.. code-block:: yaml
-
-    Label: Production Vault
-    Connection:
-      Username: admin_restapi
-    PVWA: 
-      Host: "pvwa.acme.fr"
-    AIM:
-      Host: "aim.acme.fr"
-      AppID: "Automation"
-      Cert: "C:/Folder/cert.pem"
-      Key: "C:/Folder/key.pem"
-
-Lookup for a specific user to login with
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-By default when you use the the AIM to perform a logon through the PVWA, it will search for the username you specified in all your safes to retrieve the password.
-If you have multiple username corresponding to it, it will fail forcing you to have unique username.
-
-To achieve this, you can use the User_Search directive in configuration file inside the Connection section:
-
-.. code-block:: yaml
-
-    # None of those are mandatory, you can pick only one if it suits your needs, or combine multiple fields.
-    Connection:
-        Username: admin
-        User_Search:
-            Safe:   "mysafe"
-            object: "Application-xxx_admin_rest_api-server1"
-            Folder: "Myfolder"
-            Address: "host_25"
-
-
-
-Additional configuration options for AIM
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: yaml
-
-    timeout: 30 #(seconds) optional, timeout for requests to PVWA, default = 30
-    retention: 10 #(days) optional, days of retention for objects in safe, default = 10
-    CPM: "PasswordManager" #optional, CPM to assign to safes, default = "" (no CPM)
-    CA: "C:/Folder/AIM_Root_CA.pem" #optional, set if you want to add additional ca certs
-
-Full file sample
-~~~~~~~~~~~~~~~~~~~~
-.. code-block:: yaml
-
-    Label: Demo Vault
-    Connection:
-        Username:
-        Password:
-        AuthType:
-        User_Search:
-            Object:
-            Safe:
-    PVWA:
-        Host:
-        Timeout:
-        MaxTasks:
-        Verify:
-    AIM:
-        Host:    "pvwa.acme.fr"  (Default PVWA: host)
-        AppID:   "appid_prod"        (Default Connection: applid)
-        Cert:    "C:\\Folder\\AIM_file.crt"
-        key:     "C:\\Folder\\AIM_file.key"
-        Verify:  "C:\\Folder\\PVWA_Root_ca.pem"  (Default PVWA: CA)
-        timeout: 45       (Default PVWA: timeout)
-        max_concurrent_tasks: 13  (Default PVWA: max_concurrent_tasks)
-
-    CPM:
-    Custom:
-    retention:
-
-
-
-
-Connect to the PVWA
----------------------
 
 Connect with context manager
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Once defined, use either context manager to login if you don't need to specify login / password
-
-.. code-block:: python
-
-    production_vault = aiobastion.EPV("../path/to/config")
-        async with production_vault as epv:
-            # do something, eg:
-            print(await epv.safe.list())
-
-
-
-Connect with login call
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Or if you need to explicitly login you can call the login function
-
-.. note::
-
-    The login function accept 3 arguments: username, password and authtype
-    The authtype can be either Cyberark Windows Ldap or Radius
-
+Once *aiobastion.EPV* is set up, use the context manager to login and logoff automatically.
 
 .. code-block:: python
 
-    production_vault = aiobastion.EPV("../path/to/config")
-    await production_vault.login("Administrator", "Cyberark1", "Cyberark")
+    epv_env = aiobastion.EPV("/path/aiobastion_prod_config.yml")
 
-    production_vault.login(
-        async with production_vault as epv:
-            # do something, eg:
-            print(await epv.safe.list())
+    async with epv_env as epv:
+        # do something, e.g.:
+        print(await epv.safe.list())
 
 
-Logging with AIM call
-~~~~~~~~~~~~~~~~~~~~~~~~
-You can also login with AIM using the login_with_aim function if you chose to don't put the infos on the config file :
+Scenario #1 Login with a configuration file only (recommended approach)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This is the easiest way to login the PVWA user.
+Define all the information needed in the configuration file and you are ready to go.
 
-.. py:function:: login_with_aim(aim_host, appid, username, cert_file: str, cert_key: str, root_ca=False):
-    :async:
+* The configuration file has a *password* field in the *connection* section.  This way you don't need to use the AIM interface but be sure you're configuration file is in a secure place.
+* For security reason, i would suggest configuring the AIM API.  It is longer but it's worth it.
 
-We only support client certificate authentication to the AIM
-
-
-A real life example
-~~~~~~~~~~~~~~~~~~~~~~~
+See `Configuration file definition` for more information.
 
 .. code-block:: python
 
@@ -252,17 +73,397 @@ A real life example
     import asyncio
 
     async def main():
-        production_vault = aiobastion.EPV("../confs/config_prod.yml")
-        await production_vault.login("Administrator", "Cyberark1", "Cyberark")
-        async with production_vault as epv:
+        epv_env = aiobastion.EPV("/path/aiobastion_prod_config.yml")
+
+        async with epv_env as epv:
+            # do something, e.g.:
             print(await epv.safe.list())
 
     if __name__ == '__main__':
         asyncio.run(main())
 
 
-Serialization
--------------
+Scenario #2 Login with a configuration file and ask user and password
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sometimes you need to ask the username and password in your code.
+
+.. code-block:: python
+
+    import aiobastion
+    import asyncio
+    import getpass
+
+    def initialize_pvwa():
+        # Define login and password
+        epv_env = aiobastion.EPV("/path/aiobastion_prod_config.yml")
+
+        username = input("Enter CyberArk user: ")
+        password = getpass.getpass("Enter CyberArk Password: ")
+
+        # Login to the PVWA
+        try:
+            await epv_env.login(username, password)
+        except GetTokenException as err:
+            print(f"An error occured while login : {err}")
+            await epv_env.close_session()
+            raise
+
+        return epv_env
+
+
+    async def somework(epv_env):
+        # Working with PVWA
+        async with epv_env as epv:
+            # For example, listing all safes
+            safes = await epv.safe.list()
+            for s in safes:
+                print(s)
+
+    if __name__ == '__main__':
+        epv_env = initialize_pvwa()
+        asyncio.run(somework(epv_env))
+
+
+Scenario #3 Login with serialization with AIM & login function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In this example, you don't need a configuration file.  You will get the *PVWA user* password using the AIM interface.
+
+* First, define a python dictionary to initialize the interface for PVWA and AIM.
+* Call the `login function`_ to login the *PVWA user*.
+
+You can use the `Serialization tools`_ to extract the EPV serialization at any time after being set up.
+
+.. code-block:: python
+
+    import aiobastion
+    import asyncio
+
+    def initialize_pvwa():
+        # To use AIM serialization, you may specify the following information
+        aim_config = {
+            "host":  "aim.mycompany.com",               # (required) AIM host
+            "appid":  "Automation_Application",         # (required) AIM Application ID
+            "Cert":   r"C:\Folder\AIM_Cert.pem",        # (required) AIM Filename public certificate
+            "Key":    r"C:\Folder\AIM_private_key",     # (required) AIM Filename Private Key certificate
+            "Verify": r"C:\Folder\AIM_Root_CA.pem"      # (optional) Directory or filename of the ROOT certificate authority (CA)
+            "max_concurrent_tasks": 10,                 # (optional) AIM Maximum number of parallel task (default 10)
+            "timeout": 30                               # (optional) AIM Maximum wait time in seconds before generating a timeout (default 30 seconds)
+            }
+
+        # PVWA serialization definition, you may specify the following information
+        pvwa_config = {
+            "api_host": "pvwa.mycompany.com",           # (required) API host (eg the PVWA host)
+            "authtype": "LDAP",                         # (optional) Defaults is Cyberark. Acceptable values : Cyberark, Windows, LDAP or Radius
+            "cpm": "PasswordManager",                   # (optional) CPM to assign to safes, default = "" (no CPM)
+            "max_concurrent_tasks": 10,                 # (optional) Maximum number of parallel task (default 10)
+            "retention": 10,                            # (optional) Days of retention for objects in safe, default = 10
+            "timeout": 30,                              # (optional) Maximum wait time in seconds before generating a timeout (default 30 seconds)
+            "verify": r"C:\Folder\PVWA_Root_CA.pem",    # (optional) set if you want to add additional ROOT ca certs
+            "AIM": aim_config                           # (optional) if AIM API is not needed
+            }
+
+        epv_env  = aiobastion.EPV(serialized=pvwa_config)
+        username = 'PVWAUSER001'
+
+        # If PVWA username is unique
+        pvwa_user_search = None
+
+        # Or, if PVWA username is not unique, you must specify the user_search parameter.
+        pvwa_user_search = {
+            "safe":   "production_safe",
+            "object": "Operating System-WinDomain-LDAP-PVWAUSER001"
+            }
+
+        try:
+            await epv_env.login(username=username, user_search=search_user)
+
+        except GetTokenException as err:
+            # handle failure here
+            await epv_env.close_session()
+            print(f"Unexpected error: {err}")
+            raise
+
+        return epv_env
+
+    async def somework(epv_env):
+        # Working with PVWA
+        async with epv_env as epv:
+            # For example, listing all safes
+            safes = await epv.safe.list()
+            for s in safes:
+                print(s)
+
+    if __name__ == '__main__':
+        epv_env = initialize_pvwa()
+        asyncio.run(somework(epv_env))
+
+
+Scenario #4 Login with serialization with AIM & login_with_aim function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In this example, you don't need a configuration file.  You will get the *PVWA user* password using the AIM interface.  We will use the login_with_aim to setup most AIM definition.
+
+* First, define a python dictionary to initialize the interface for PVWA.
+* Call the `login_with_AIM function`_ to login the *PVWA user*.
+    * Most parameters are optional. If a parameter is not set, it will be obtained from *EPV* initialization.
+    * Any specified parameter from the *login_with_aim* function will override the *EPV.AIM* definition.
+
+You can use the `Serialization tools`_ to extract the EPV serialization at any time after being set up.
+
+For demonstration purpose, AIM serialization is not define here. Otherwise refer to `Scenario #3 Login with serialization with AIM & login function`_
+
+.. code-block:: python
+
+    import aiobastion
+    import asyncio
+
+    def initialize_pvwa():
+        # For demonstration purpose, AIM serialization is not set here
+        aim_config = None
+
+        # PVWA serialization definition, you may specify the following information
+        pvwa_config = {
+            "api_host": "pvwa.mycompany.com",           # (required) API host (eg the PVWA host)
+            "authtype": "LDAP",                         # (optional) Defaults is Cyberark. Acceptable values : Cyberark, Windows, LDAP or Radius
+            "cpm": "PasswordManager",                   # (optional) CPM to assign to safes, default = "" (no CPM)
+            "max_concurrent_tasks": 10,                 # (optional) Maximum number of parallel task (default 10)
+            "retention": 10,                            # (optional) Days of retention for objects in safe, default = 10
+            "timeout": 30,                              # (optional) Maximum wait time in seconds before generating a timeout (default 30 seconds)
+            "verify": r"C:\Folder\PVWA_Root_CA.pem",    # (optional) set if you want to add additional ROOT ca certs
+            "AIM": aim_config
+            }
+
+        epv_env  = aiobastion.EPV(serialized=pvwa_config)
+        username = 'PVWAUSER001'
+
+        # If PVWA username is unique
+        pvwa_user_search = None
+
+        # Or, If PVWA username is not unique, you must specify the user_search parameter.
+        pvwa_user_search = {
+            "safe":   "production_safe",
+            "object": "Operating System-WinDomain-LDAP-PVWAUSER001"
+            }
+
+        try:
+            await epv_env.login_with_aim(
+                aim_host="aim.mycompany.com",
+                appid="Automation_Application",
+                cert_file=r"C:\Folder\AIM_Cert.pem",
+                cert_key=r"C:\Folder\AIM_private_key",
+                root_ca=r"C:\Folder\AIM_Root_CA.pem",
+                # timeout= 30,
+                # max_concurrent_tasks= 10,
+                # auth_type="LDAP",
+                username=username,
+                user_search=pvwa_user_search)
+        except GetTokenException as err:
+            # handle failure here
+            await epv_env.close_session()
+            print(f"Unexpected error: {err}")
+            raise
+
+        return epv_env
+
+    async def somework(epv_env):
+        # Working with PVWA
+        async with epv_env as epv:
+            # For example, listing all safes
+            safes = await epv.safe.list()
+            for s in safes:
+                print(s)
+
+    if __name__ == '__main__':
+        epv_env = initialize_pvwa()
+        asyncio.run(somework(epv_env))
+
+
+Scenario #5 Login authentication with RADIUS account
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you need to authenticate with RADIUS challenge / response mode, you need to catch the ChallengeResponseException and re-login with passcode :
+
+.. code-block:: python
+
+    import aiobastion
+    import asyncio
+    # import getpass
+
+    def initialize_pvwa():
+        pvwa_host = "pvwa.mycompany.com"
+        authtype = "Radius"
+        username = "PVWAUSER001"
+        password = getpass.getpass()
+
+        pvwa_config = {'api_host': pvwa_host}
+
+        epv_env  = aiobastion.EPV(serialized=pvwa_config)
+
+        try:
+            await epv_env.login(username=username, password=password, auth_type=authtype)
+        except ChallengeResponseException:
+            passcode = input("Enter passcode: ")
+            await epv_env.login(username, passcode, authtype)
+        except GetTokenException:
+            # handle failure here
+            await epv_env.close_session()
+            raise
+
+        return epv_env
+
+    async def somework(epv_env):
+        # Working with PVWA
+        async with epv_env as epv:
+            # For example, listing all safes
+            safes = await epv.safe.list()
+            for s in safes:
+                print(s)
+
+    if __name__ == '__main__':
+        epv_env = initialize_pvwa()
+        asyncio.run(somework(epv_env))
+
+
+Configuration file definition
+-----------------------------
+Defining a configuration file is the first step to allow you to connect to PVWA and start using this module.
+
+All sections name and field attributes **are no longer case sensitive**.
+
+The configuration file contains the following sections:
+
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+| Section       | Type      | Description                                                                                                          +
++===============+===========+======================================================================================================================+
+| connection    | Required  | PVWA user information                                                                                                +
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+| pvwa          | Required  | PVWA Request management information                                                                                  +
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+| aim           | Optional  | Specify the AIM Request management information (EPV.AIM)                                                             +
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+| cpm           | Optional  | CPM user name managing the new safe (EPV.cpm)                                                                        +
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+| custom        | Optional  | Customer section (EPV.config.custom)                                                                                 +
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+| label         | Optional  | Configuration name for information only (EPV.config.label)                                                           +
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+| retention     | Optional  | For safe creation, the number of retained versions of every password that is stored in the Safe. (EPV.retention)     +
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+
+CONNECTION section / field definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++---------------+-------------------------+---------------------------------------------------------------------------------------------------+
+| Field         | Type                    | Description                                                                                       +
++===============+=========================+===================================================================================================+
+| applid        | Required if AIM is used | AIM Application ID                                                                                +
++---------------+-------------------------+---------------------------------------------------------------------------------------------------+
+| authtype      | Required                | logon authenticafication method: CyberArk, Windows, LDAP or Radius (default cyberark)             +
++---------------+-------------------------+---------------------------------------------------------------------------------------------------+
+| password      | Optional                | Password of the PVWA user.                                                                        +
+|               |                         | If AIM is not used or the field is not specified, you must call the you must call                 +
+|               |                         | the `login function`_ or `login_with_aim function`_                                               +
++---------------+-------------------------+---------------------------------------------------------------------------------------------------+
+| user_search   | Optional                | Search parameters to uniquely identify the PVWA user.                                             +
++---------------+-------------------------+---------------------------------------------------------------------------------------------------+
+| username      | Optional                | PVWA user name.                                                                                   +
+|               |                         | If AIM is not used or the field is not specified, you must call the you must call                 +
+|               |                         | the `login function`_ or `login_with_aim function`_                                               +
++---------------+-------------------------+---------------------------------------------------------------------------------------------------+
+
+PVWA section / field definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| Field                | Type                    | Description                                                                                +
++======================+=========================+============================================================================================+
+| host                 | Required                | PVWA host name                                                                             +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| timeout              | Optional                | PVWA Maximum wait time in seconds before generating a timeout (default 30 seconds).        +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| max_concurrent_tasks | Optional                | PVWA Maximum number of parallel task (default 10).                                         +
++----------------------+-------------------------+                                                                                            +
+| maxtasks             | Optional, deprecated    +                                                                                            +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| verify               | Optional                | PVWA Directory or filename of the ROOT certificate authority (CA).                         +
++----------------------+-------------------------+                                                                                            +
+| ca                   | Optional, deprecated    +                                                                                            +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+
+AIM section / field definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| Field                | Type                    | Description                                                                                +
++======================+=========================+============================================================================================+
+| appid                | Required                | AIM host name. If not define use the *applid* from the CONNECTION section.                 +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| cert                 | Required                | AIM Filename public certificate                                                            +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| key                  | Required                | AIM Filename private key certificate                                                       +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| host                 | Required                | AIM CyberArk host name. If not define use the host from the PVWA section.                  +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| max_concurrent_tasks | Optional                | AIM Maximum number of parallel task (default 1).                                           +
++----------------------+-------------------------+ If not define use the *max_concurrent_tasks* from the PVWA section.                        +
+| maxtasks             | Optional, deprecated    +                                                                                            +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| verify               | Optional                | AIM Directory or filename of the ROOT certificate authority (CA).                          +
++----------------------+-------------------------+ If not define use the *verify* from the PVWA section.                                      +
+| ca                   | Optional, deprecated    +                                                                                            +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| timeout              | Optional                | AIM Maximum wait time in seconds before generating a timeout (default 30 seconds)          +
++                      |                         | If not define use the *timeout* from the PVWA section.                                     +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+
+
+A complete configuration file definition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: yaml
+
+    label: Production Demo
+    connection:
+        username:   "PVWAUSER001"
+        password:   ""
+        authtype:   "cyberark"
+        user_search:
+            object: "Operating System-WinDomain-LDAP-PVWAUSER001"
+            safe:   "mysafe"
+            folder: "Myfolder"
+            address: "host_25"
+
+    pvwa:
+        host:                 "pvwa.mycompany.com"
+        timeout:              45
+        max_concurrent_tasks: 12
+        verify:               "C:\\Folder\\PVWA_Root_ca.pem"
+    AIM:
+        host:    "pvwa.acme.fr"
+        appid:   "appid_prod"
+        cert:    "C:\\Folder\\AIM_file.crt"
+        key:     "C:\\Folder\\AIM_file.key"
+        verify:  "C:\\Folder\\PVWA_Root_ca.pem"
+        timeout: 45
+        max_concurrent_tasks: 13
+
+    CPM: ""
+    retention:  10
+    custom:
+        custom1: "info 1"
+        custom2: "info 2"
+
+
+A minimal configuration file definition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A minimal file only defines a PVWA host.  You must call the `login function`_ or `login_with_aim function`_.
+
+.. code-block:: yaml
+
+    PVWA:
+      Host: "pvwa.mycompany.com"
+
+
+EPV Functions references
+------------------------
+.. currentmodule:: aiobastion.cyberark.EPV
+
+Serialization tools
+~~~~~~~~~~~~~~~~~~~
 EPV objects can be serialized using "to_json" function, then deserialized using constructor.
 This helps if you need to manage users session client side for example (token is kept in a cookie)
 For security reasons, login and password are not stored in serialized object so you can't relogin after a timeout with a serialized object.
@@ -270,8 +471,17 @@ However, since your token is valid you can use it.
 
 .. code-block:: python
 
-    epv = EPV("configfile")
+    epv = EPV("/path/aiobastion_prod_config.yml)
     json_epv = epv.to_json()
 
     epv = EPV(serialized=json_epv)
     epv.do_something()
+
+
+login function
+~~~~~~~~~~~~~~
+.. autofunction:: login
+
+login_with_aim function
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: login_with_aim

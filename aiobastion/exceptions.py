@@ -16,7 +16,7 @@ class GetTokenException(Exception):
 
 class CyberarkAPIException(Exception):
     """
-    This exception is raised when Cyberark API result is not 200, 201 or 204
+    This exception is raised when CyberArk API result is not 200, 201 or 204
     It provides - when possible - err_message and details
     """
     def __init__(self, http_status, err_code, err_message, details=" "):
@@ -49,13 +49,13 @@ class AiobastionException(Exception):
 
 class ChallengeResponseException(Exception):
     """
-    this exception is raised on login when the user need to authenticate again with passcode
+    This exception is raised on login when the user need to authenticate again with passcode
     """
     pass
 
 class CyberarkAIMnotFound(Exception):
     """
-    this exception is raised when AIM has not found the specified account (HTTP 404)
+    This exception is raised when AIM has not found the specified account (HTTP 404)
     """
     def __init__(self, http_status, err_code, err_message, details=" "):
         self.http_status = http_status
@@ -64,7 +64,7 @@ class CyberarkAIMnotFound(Exception):
         self.details = details
 
     def __str__(self):
-        error = f"HTTP {self.http_status}, {self.err_code} : {self.err_message}"
+        error = f"Account not found. HTTP {self.http_status}, {self.err_code} : {self.err_message}"
         if self.details != "":
             error += f" || Additional Details : {self.details}"
         return error
