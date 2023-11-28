@@ -214,16 +214,16 @@ class TestAccount(IsolatedAsyncioTestCase):
     async def test_disable_secret_management(self):
         account = await self.get_random_account()
         ret = await self.vault.account.disable_password_management(account)
-        self.assertFalse(ret["secretManagement"]["automaticManagementEnabled"])
+        self.assertFalse(ret.secretManagement["automaticManagementEnabled"])
 
         # undo
         ret = await self.vault.account.resume_password_management(account)
-        self.assertTrue(ret["secretManagement"]["automaticManagementEnabled"])
+        self.assertTrue(ret.secretManagement["automaticManagementEnabled"])
 
     async def test_resume_secret_management(self):
         account = await self.get_random_account()
         ret = await self.vault.account.resume_password_management(account)
-        self.assertTrue(ret["secretManagement"]["automaticManagementEnabled"])
+        self.assertTrue(ret.secretManagement["automaticManagementEnabled"])
 
     async def test_get_password(self):
         account = await self.get_random_account()

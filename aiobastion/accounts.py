@@ -71,9 +71,52 @@ class PrivilegedAccount:
 
         return json_object
 
+    def to_dict(self):
+        """
+        Convert the PrivilegedAccount object to a python dict object
+
+        :return: a dict
+        """
+        return self.to_json()
+
     def __str__(self):
         strrepr = self.to_json()
         return str(strrepr)
+
+    # Mapping Protocol
+    def __iter__(self):
+        for key, value in self.to_dict():
+            yield key, value
+
+    def keys(self):
+        return list(self.to_dict().keys())
+
+    def items(self):
+        return list(self.to_dict().items())
+
+    def __getitem__(self, key):
+        return self.to_dict()[key]
+
+    def __eq__(self, other):
+        # Check by ID is the best way
+        if self.id != "" and other.id != "":
+            return self.id == other.id
+        # Else we check by name and safeName (Cyberark prevent different objects to have the same name in the same safe)
+        else:
+            return (self.safeName == other.safeName) and (self.name == other.name)
+
+        # return self.to_dict() == other.to_dict()
+
+    def __ne__(self, other):
+        # Check by ID is the best way
+        if self.id != "" and other.id != "":
+            return self.id != other.id
+        # Else we check by name and safeName (Cyberark prevents object to have the same name in the same safe)
+        else:
+            return (self.safeName != other.safeName) or (self.name != other.name)
+
+    # End of mapping Protocol
+
 
     def __repr__(self):
         # For Debugging, short account identification
@@ -687,7 +730,7 @@ class Account:
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
         :param reason: The reason of disabling password management (defaults to empty string)
-        :return: A boolean that indicates if the operation was successful.
+        :return: The list of updated accounts, or exceptions
         :raises CyberarkException: If disabling failed.
         """
         data = [
@@ -695,31 +738,44 @@ class Account:
             {"op": "add", "path": "/secretManagement/manualManagementReason", "value": reason}
         ]
 
-        return await self._handle_acc_id_list(
+        _results = await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
             data
         )
+        # Single item
+        if isinstance(_results, dict):
+            return PrivilegedAccount(**_results)
+        # list
+        else:
+            return [PrivilegedAccount(**r) if isinstance(r, dict) else r for r in _results]
 
     async def resume_password_management(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """ This resume the account (or list) password management
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
-        :return: A boolean that indicates if the operation was successful.
+        :return: The list of updated accounts, or exceptions
         :raises CyberarkException: If resuming failed.
         """
 
         data = [
             {"op": "replace", "path": "/secretManagement/automaticManagementEnabled", "value": True},
         ]
-        return await self._handle_acc_id_list(
+        _results = await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
             await self.get_account_id(account),
             data
         )
+
+        # Single item
+        if isinstance(_results, dict):
+            return PrivilegedAccount(**_results)
+        # list
+        else:
+            return [PrivilegedAccount(**r) if isinstance(r, dict) else r for r in _results]
         # return await self.epv.handle_request("patch", f"API/Accounts/{account_id}", data=data)
 
     async def update_using_list(self, account, data) -> Union[PrivilegedAccount, List[PrivilegedAccount]]:
@@ -753,7 +809,9 @@ class Account:
         if isinstance(updated_accounts, dict):
             return PrivilegedAccount(**updated_accounts)
         else:
-            return [PrivilegedAccount(**u) for u in updated_accounts]
+            # Will return exception if met
+            return [PrivilegedAccount(**r) if isinstance(r, dict) else r for r in updated_accounts]
+            # return [PrivilegedAccount(**u) for u in updated_accounts]
 
     def detect_fc_path(self, fc: str):
         """
