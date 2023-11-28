@@ -403,6 +403,9 @@ class EPV:
 
         self.validate_and_setup_ssl()
 
+        if self.AIM and self.AIM.handle_request is None:
+            self.AIM.validate_and_setup_ssl()
+
         if password is None:
             if self.config and self.config.password:
                 password = self.config.password
@@ -680,7 +683,8 @@ class EPV_AIM:
         if not isinstance(params, dict):
             error_str = "parameter is not a dictionary"
         else:
-            for k in params:
+            # Must be a list of keys to modify the dictionary key (not the dictionary itself)
+            for k in list(params.keys()):
                 key_lower = k.lower()
 
                 if key_lower not in EPV_AIM._getPassword_request_parm:
@@ -700,6 +704,9 @@ class EPV_AIM:
             self.__sema = sema
 
         if not self.session:
+            if self.request_params is None:
+                self.validate_and_setup_ssl()
+
             self.session = session
 
     def to_json(self):
@@ -727,6 +734,9 @@ class EPV_AIM:
 
     def get_session(self):
         if self.session is None:
+            if self.request_params is None:
+                self.validate_and_setup_ssl()
+
             if self.epv.session:
                 self.session = self.epv.session
             else:
