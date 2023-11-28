@@ -1,8 +1,11 @@
+Examples
+============
+
 Account manipulation
-=======================
+-------------------------
 
 Creating accounts
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 To create an account, simply create a "PrivilegedAccount" object and then add it to a safe.
 
@@ -30,3 +33,11 @@ To create an account, simply create a "PrivilegedAccount" object and then add it
             print(f"An error as occured while trying to add account in safe : {str(err)}")
 
 
+Resume password management accounts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    async with vault as epv:
+        admin_unix_accounts = await epv.account.search_account_by(platform="UnixSSH", username="admin")
+        await epv

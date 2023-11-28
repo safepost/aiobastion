@@ -14,7 +14,7 @@ Welcome to aiobastion's documentation!
    users
    utilities
    examples
-
+   compatibility
 
 
 
