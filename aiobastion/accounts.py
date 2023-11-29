@@ -1276,7 +1276,7 @@ class Account:
                     tasks.append(self.get_secret_aim(acc, reason))
             return await asyncio.gather(*tasks)
 
-        # Treat a single account
+        # Deal with a single account
         if not isinstance(account, PrivilegedAccount):
             raise AiobastionException("You must provide a valid PrivilegedAccount.")
 

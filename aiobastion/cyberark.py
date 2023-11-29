@@ -272,6 +272,7 @@ class EPV:
 
         :raise GetTokenException: Logon error
         :raise AiobastionException: AIM configuration setup error
+        :raise CyberarkException: Runtime error
         """
         # Is AIM attribute defined ?
         if self.AIM:

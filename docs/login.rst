@@ -31,7 +31,7 @@ For more information see `CyberArk Privileged Access Manager REST API`_ .
 For more information see `CyberArk Central Credential Provider - REST web service`_.
 
 Connect to PVWA scenario
--------------------------------
+------------------------
 
 There are several ways to login to the Vault:
 
@@ -45,13 +45,14 @@ There are several ways to login to the Vault:
 
 
 Connect with context manager
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Once *aiobastion.EPV* is set up, use the context manager to login and logoff automatically.
 
 .. code-block:: python
 
     epv_env = aiobastion.EPV("/path/aiobastion_prod_config.yml")
 
+    # Automatic login using configuration setup
     async with epv_env as epv:
         # do something, e.g.:
         print(await epv.safe.list())
@@ -65,7 +66,7 @@ Define all the information needed in the configuration file and you are ready to
 * The configuration file has a *password* field in the *connection* section.  This way you don't need to use the AIM interface but be sure you're configuration file is in a secure place.
 * For security reason, i would suggest configuring the AIM API.  It is longer but it's worth it.
 
-See `Configuration file definition` for more information.
+See `Define a configuration file` for more information.
 
 .. code-block:: python
 
@@ -93,7 +94,7 @@ Sometimes you need to ask the username and password in your code.
     import asyncio
     import getpass
 
-    def initialize_pvwa():
+    async def initialize_pvwa():
         # Define login and password
         epv_env = aiobastion.EPV("/path/aiobastion_prod_config.yml")
 
@@ -110,18 +111,21 @@ Sometimes you need to ask the username and password in your code.
 
         return epv_env
 
+    async def somework(epv):
+        # For example, listing all safes
+        safes = await epv.safe.list()
+        for s in safes:
+            print(s)
 
-    async def somework(epv_env):
+    async def main():
+        epv_env = await initialize_pvwa()
+
         # Working with PVWA
         async with epv_env as epv:
-            # For example, listing all safes
-            safes = await epv.safe.list()
-            for s in safes:
-                print(s)
+            await somework(epv)
 
     if __name__ == '__main__':
-        epv_env = initialize_pvwa()
-        asyncio.run(somework(epv_env))
+        asyncio.run(main())
 
 
 Scenario #3 Login with serialization with AIM & login function
@@ -138,7 +142,7 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
     import aiobastion
     import asyncio
 
-    def initialize_pvwa():
+    async def initialize_pvwa():
         # To use AIM serialization, you may specify the following information
         aim_config = {
             "host":  "aim.mycompany.com",               # (required) AIM host
@@ -185,17 +189,20 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
 
         return epv_env
 
-    async def somework(epv_env):
-        # Working with PVWA
+    async def somework(epv):
+        # For example, listing all safes
+        safes = await epv.safe.list()
+        for s in safes:
+            print(s)
+
+    async def main():
+        epv_env = await initialize_pvwa()
+
         async with epv_env as epv:
-            # For example, listing all safes
-            safes = await epv.safe.list()
-            for s in safes:
-                print(s)
+            await somework(epv)
 
     if __name__ == '__main__':
-        epv_env = initialize_pvwa()
-        asyncio.run(somework(epv_env))
+        asyncio.run(main())
 
 
 Scenario #4 Login with serialization with AIM & login_with_aim function
@@ -216,7 +223,7 @@ For demonstration purpose, AIM serialization is not define here. Otherwise refer
     import aiobastion
     import asyncio
 
-    def initialize_pvwa():
+    async def initialize_pvwa():
         # For demonstration purpose, AIM serialization is not set here
         aim_config = None
 
@@ -264,17 +271,21 @@ For demonstration purpose, AIM serialization is not define here. Otherwise refer
 
         return epv_env
 
-    async def somework(epv_env):
-        # Working with PVWA
-        async with epv_env as epv:
+    async def somework(epv):
             # For example, listing all safes
             safes = await epv.safe.list()
             for s in safes:
                 print(s)
 
+    async def main():
+        epv_env = await initialize_pvwa()
+
+        # Working with PVWA
+        async with epv_env as epv:
+            await somework(epv)
+
     if __name__ == '__main__':
-        epv_env = initialize_pvwa()
-        asyncio.run(somework(epv_env))
+        asyncio.run(main())
 
 
 Scenario #5 Login authentication with RADIUS account
@@ -287,7 +298,7 @@ If you need to authenticate with RADIUS challenge / response mode, you need to c
     import asyncio
     # import getpass
 
-    def initialize_pvwa():
+    async async def initialize_pvwa():
         pvwa_host = "pvwa.mycompany.com"
         authtype = "Radius"
         username = "PVWAUSER001"
@@ -309,26 +320,88 @@ If you need to authenticate with RADIUS challenge / response mode, you need to c
 
         return epv_env
 
-    async def somework(epv_env):
+    async def somework(epv):
+        # For example, listing all safes
+        safes = await epv.safe.list()
+        for s in safes:
+            print(s)
+
+    async def main():
+        epv_env = await initialize_pvwa()
+
         # Working with PVWA
         async with epv_env as epv:
-            # For example, listing all safes
-            safes = await epv.safe.list()
-            for s in safes:
-                print(s)
+            await somework(epv)
 
     if __name__ == '__main__':
-        epv_env = initialize_pvwa()
-        asyncio.run(somework(epv_env))
+        asyncio.run(main())
 
 
-Configuration file definition
------------------------------
+Connect to AIM only
+-------------------
+In rare cases, you may want to connect only with the AIM interface (without PVWA).
+
+.. code-block:: python
+
+    import aiobastion
+    import asyncio
+
+    def initialize_aim():
+        # To use AIM serialization, you may specify the following information
+        aim_config = {
+            "host":  "aim.mycompany.com",               # (required) AIM host
+            "appid":  "Automation_Application",         # (required) AIM Application ID
+            "cert":   r"C:\Folder\AIM_Cert.pem",        # (required) AIM Filename public certificate
+            "key":    r"C:\Folder\AIM_private_key",     # (required) AIM Filename Private Key certificate
+            "verify": r"C:\Folder\AIM_Root_CA.pem"      # (optional) Directory or filename of the ROOT certificate authority (CA)
+            "max_concurrent_tasks": 13,                 # (optional) AIM Maximum number of parallel task (default 10)
+            "timeout": 60                               # (optional) AIM Maximum wait time in seconds before generating a timeout (default 30 seconds)
+            }
+
+        aim_env  = aiobastion.cyberark.EPV_AIM(serialized=aim_config)
+
+        return aim_env
+
+
+    async def aim_somework(aim_env):
+        try:
+            # Extract secret (password) and account information in a dictionary
+            secret_dict = await aim_env.get_secret_detail(
+                reason="Extract-utility.py, prepare safe migration",
+                object="Administror",
+                safe="production-safe")
+
+            print("password: ", secret_dict["Content"])
+            print(secret_dict)
+
+        except aiobastion.exceptions.CyberarkAIMnotFound as err:
+            print(f"Account not found: {extract_parms!r}")
+
+        except (aiobastion.exceptions.CyberarkAPIException,
+                aiobastion.exceptions.CyberarkException,
+                aiobastion.exceptions.AiobastionException) as err:
+            print(f"Unexcepted error: {err}")
+            raise
+
+
+    async def main():
+        aim_env = initialize_aim()
+
+        # Working with AIM
+        async with aim_env:
+            await aim_somework(aim_env)
+
+    if __name__ == '__main__':
+        asyncio.run(main())
+
+
+Define a configuration file
+---------------------------
 Defining a configuration file is the first step to allow you to connect to PVWA and start using this module.
 
 All sections name and field attributes **are no longer case sensitive**.
 
-The configuration file contains the following sections:
+The configuration file contains the following main sections:
 
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
 | Section       | Type      | Description                                                                                                          +
@@ -399,7 +472,7 @@ AIM section / field definitions
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | host                 | Required                | AIM CyberArk host name. If not define use the host from the PVWA section.                  +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
-| max_concurrent_tasks | Optional                | AIM Maximum number of parallel task (default 1).                                           +
+| max_concurrent_tasks | Optional                | AIM Maximum number of parallel task (default 10).                                          +
 +----------------------+-------------------------+ If not define use the *max_concurrent_tasks* from the PVWA section.                        +
 | maxtasks             | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
@@ -432,6 +505,7 @@ A complete configuration file definition
         timeout:              45
         max_concurrent_tasks: 12
         verify:               "C:\\Folder\\PVWA_Root_ca.pem"
+
     AIM:
         host:    "pvwa.acme.fr"
         appid:   "appid_prod"
@@ -441,7 +515,7 @@ A complete configuration file definition
         timeout: 45
         max_concurrent_tasks: 13
 
-    CPM: ""
+    CPM: "cpm_user"
     retention:  10
     custom:
         custom1: "info 1"
