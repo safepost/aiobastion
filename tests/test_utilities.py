@@ -9,6 +9,7 @@ from aiobastion.accounts import PrivilegedAccount
 import tests
 import time
 
+
 class TestUtilities(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.CONFIG)
@@ -50,3 +51,13 @@ class TestUtilities(IsolatedAsyncioTestCase):
 
             print(f"Took {end - start} for {i} requests")
 
+
+class TestPlatformUtilies(IsolatedAsyncioTestCase):
+
+    async def test_count_platform(self):
+        print("we're good")
+        qualif = aiobastion.EPV(tests.AIM_CONFIG)
+
+        async with qualif:
+            await qualif.utils.platform.count_platforms()
+            print("we're in")
