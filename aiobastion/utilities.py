@@ -192,51 +192,6 @@ class Utilities:
                 results.append(acc.name)
         return results
 
-    async def stack_tasks(self, list_of_address: list, function, **args):
-        task_list = []
-        for address in list_of_address:
-            task_list.append(function(address=address, epv=self.epv, **args))
-        return await asyncio.gather(*task_list)
-
-    # not tested yet but works for sure :)
-    async def stack_with_concurrency(self, list_of_address:list, function, max_tasks=10, return_exceptions=False, **args):
-        """
-        Quickly apply concurrently a function to a list of address
-
-        :param list_of_address: list of address to apply the function on
-        :param function: the function
-        :param max_tasks: max concurrent tasks
-        :param return_exception: whether the function will return Exception as normal return, or raise
-        :param args: dict of args of the function
-        :return: list of return in the order of adresses
-        """
-        semaphore = asyncio.Semaphore(max_tasks)
-
-        async def sem_fun(fun, **a):
-            async with semaphore:
-                return await fun(**a)
-
-        return await asyncio.gather(*(
-            sem_fun(function, adress=address, epv=self.epv, **args) for address in list_of_address),
-                                    return_exceptions=return_exceptions)
-
-    # add a semaphore to any task
-    async def gather_with_concurrency(self, n: int, *tasks, return_exceptions=False):
-        """
-        Gather a list of coros with concurrency
-
-        :param n: Number of max coros launched at the same time
-        :param tasks: task1, task2, ...  , tasksn (if you have a list then prefix it with a * )
-        :param return_exceptions: if set to True, exceptions are returned as regular results, instead of being raised
-        :return: List of results in the same order as the tasks
-        """
-        semaphore = asyncio.Semaphore(n)
-
-        async def sem_task(task):
-            async with semaphore:
-                return await task
-        return await asyncio.gather(*(sem_task(task) for task in tasks), return_exceptions=return_exceptions)
-
     async def clone_address(self, address: str, replace: dict, update_name=True):
         """
         Find all accounts with an address, and clone them with new parameters
