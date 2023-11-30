@@ -23,6 +23,8 @@ def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_n
 class Utilities:
     def __init__(self, epv):
         self.epv = epv
+        self.platform = self.Platform(epv)
+
 
     async def cpm_change_failed_accounts(self, address, username_filter: list = None):
         """
@@ -226,3 +228,35 @@ class Utilities:
         new_account = clone_privileged_account(account, replace, update_name)
 
         return await self.epv.account.add_account_to_safe(new_account)
+
+    class Platform:
+        def __init__(self, epv):
+            self.epv = epv
+
+        async def count_platforms(self):
+            """
+            Will count number of accounts linked to all platform
+            Headers : ID,Platform Name,PlatformID,Type,IsActive,AccountsCount,CC1,CC2,CC3,CC4,...
+            """
+            all_pf = await self.epv.platform.get_target_platforms()
+
+            count = []
+            pf_id = [p["PlatformID"] for p in all_pf]
+            for _p in pf_id:
+                count.append(self.epv.account.search_account_by(platform=_p))
+            counted = await asyncio.gather(*count)
+            nb_element = {}
+
+            for a, b in zip(pf_id, counted):
+                nb_element[a] = len(b)
+
+            for pf in all_pf:
+                plateform_id = pf["PlatformID"]
+                uuid = await self.epv.platform.get_target_platform_unique_id(plateform_id)
+                comps = await self.epv.platform.get_target_platform_connection_components(uuid)
+                comps = ",".join([p['PSMConnectorID'] for p in comps if p['Enabled']])
+                return(
+                    f"{pf['ID']},{pf['Name']},{pf['PlatformID']},{pf['SystemType']},{pf['Active']},{nb_element[pf['PlatformID']]},{comps},")
+
+        async def connection_component_usage(self):
+            pass

@@ -22,6 +22,7 @@ from .safe import Safe
 from .system_health import SystemHealth
 from .users import User, Group
 from .utilities import Utilities
+from .session_management import SessionManagement
 
 class EPV:
     """
@@ -69,6 +70,7 @@ class EPV:
         # utilities
         self.account = Account(self)
         self.platform = Platform(self)
+        self.session_management = SessionManagement(self)
         self.safe = Safe(self)
         self.user = User(self)
         self.group = Group(self)
