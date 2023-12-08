@@ -157,7 +157,7 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
         # PVWA serialization definition, you may specify the following information
         pvwa_config = {
             "api_host": "pvwa.mycompany.com",           # (required) API host (eg the PVWA host)
-            "authtype": "LDAP",                         # (optional) Defaults is Cyberark. Acceptable values : Cyberark, Windows, LDAP or Radius
+            "authtype": "LDAP",                         # (optional) Defaults is Cyberark. Acceptable values : Cyberark, Windows, LDAP or RADIUS
             "cpm": "PasswordManager",                   # (optional) CPM to assign to safes, default = "" (no CPM)
             "max_concurrent_tasks": 10,                 # (optional) Maximum number of parallel task (default 10)
             "retention": 10,                            # (optional) Days of retention for objects in safe, default = 10
@@ -230,7 +230,7 @@ For demonstration purpose, AIM serialization is not define here. Otherwise refer
         # PVWA serialization definition, you may specify the following information
         pvwa_config = {
             "api_host": "pvwa.mycompany.com",           # (required) API host (eg the PVWA host)
-            "authtype": "LDAP",                         # (optional) Defaults is Cyberark. Acceptable values : Cyberark, Windows, LDAP or Radius
+            "authtype": "LDAP",                         # (optional) Defaults is Cyberark. Acceptable values : Cyberark, Windows, LDAP or RADIUS
             "cpm": "PasswordManager",                   # (optional) CPM to assign to safes, default = "" (no CPM)
             "max_concurrent_tasks": 10,                 # (optional) Maximum number of parallel task (default 10)
             "retention": 10,                            # (optional) Days of retention for objects in safe, default = 10
@@ -300,7 +300,7 @@ If you need to authenticate with RADIUS challenge / response mode, you need to c
 
     async async def initialize_pvwa():
         pvwa_host = "pvwa.mycompany.com"
-        authtype = "Radius"
+        authtype = "RADIUS"
         username = "PVWAUSER001"
         password = getpass.getpass()
 
@@ -366,21 +366,24 @@ In rare cases, you may want to connect only with the AIM interface (without PVWA
     async def aim_somework(aim_env):
         try:
             # Extract secret (password) and account information in a dictionary
+            username = "Administror"
+            user_safe = "production-safe"
+
             secret_dict = await aim_env.get_secret_detail(
-                reason="Extract-utility.py, prepare safe migration",
-                object="Administror",
-                safe="production-safe")
+                reason="Extract-utility.py; prepare safe migration",
+                object=username,
+                safe=user_safe)
 
             print("password: ", secret_dict["Content"])
             print(secret_dict)
 
         except aiobastion.exceptions.CyberarkAIMnotFound as err:
-            print(f"Account not found: {extract_parms!r}")
+            print(f"Account {username} not found in safe {user_safe}: {err}")
 
         except (aiobastion.exceptions.CyberarkAPIException,
                 aiobastion.exceptions.CyberarkException,
                 aiobastion.exceptions.AiobastionException) as err:
-            print(f"Unexcepted error: {err}")
+            print(f"Unexcepted error: {str(err)}")
             raise
 
 
@@ -406,19 +409,23 @@ The configuration file contains the following main sections:
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
 | Section       | Type      | Description                                                                                                          +
 +===============+===========+======================================================================================================================+
-| connection    | Required  | PVWA user information                                                                                                +
+| connection    | Required  | PVWA user login information.                                                                                         +
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
-| pvwa          | Required  | PVWA Request management information                                                                                  +
+| pvwa          | Required  | PVWA Request management information.                                                                                 +
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
-| aim           | Optional  | Specify the AIM Request management information (EPV.AIM)                                                             +
+| aim           | Optional  | Specify the AIM Request management information (EPV.AIM).                                                            +
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
-| cpm           | Optional  | CPM user name managing the new safe (EPV.cpm)                                                                        +
+| cpm           | Optional  | CPM user name managing the new safe (EPV.cpm).                                                                       +
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
-| custom        | Optional  | Customer section (EPV.config.custom)                                                                                 +
+| custom        | Optional  | Customer section (EPV.config.custom).                                                                                +
+|               |           |                                                                                                                      +
+|               |           | This section is not used by aiobastion.                                                                              +
+|               |           |                                                                                                                      +
+|               |           | It is available to custom to add their own information if necessary.                                                 +
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
-| label         | Optional  | Configuration name for information only (EPV.config.label)                                                           +
+| label         | Optional  | Configuration name for information only (EPV.config.label).                                                          +
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
-| retention     | Optional  | For safe creation, the number of retained versions of every password that is stored in the Safe. (EPV.retention)     +
+| retention     | Optional  | For safe creation, the number of retained versions of every password that is stored in the Safe (EPV.retention).     +
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
 
 CONNECTION section / field definitions
@@ -428,17 +435,28 @@ CONNECTION section / field definitions
 +===============+=========================+===================================================================================================+
 | applid        | Required if AIM is used | AIM Application ID                                                                                +
 +---------------+-------------------------+---------------------------------------------------------------------------------------------------+
-| authtype      | Required                | logon authenticafication method: CyberArk, Windows, LDAP or Radius (default cyberark)             +
+| authtype      | Required                | logon authenticafication method (default Cyberark):                                               +
+|               |                         |                                                                                                   +
+|               |                         |  - Cyberark                                                                                       +
+|               |                         |  - Windows                                                                                        +
+|               |                         |  - LDAP                                                                                           +
+|               |                         |  - RADIUS                                                                                         +
 +---------------+-------------------------+---------------------------------------------------------------------------------------------------+
 | password      | Optional                | Password of the PVWA user.                                                                        +
-|               |                         | If AIM is not used or the field is not specified, you must call the you must call                 +
+|               |                         |                                                                                                   +
+|               |                         | If AIM is not used or the field is not specified, you must call                                   +
+|               |                         |                                                                                                   +
+|               |                         | the `login function`_ or `login_with_aim function`_                                               +
++---------------+-------------------------+---------------------------------------------------------------------------------------------------+
+| username      | Optional                | PVWA user name.                                                                                   +
+|               |                         |                                                                                                   +
+|               |                         | If AIM is not used or the field is not specified, you must call                                   +
+|               |                         |                                                                                                   +
 |               |                         | the `login function`_ or `login_with_aim function`_                                               +
 +---------------+-------------------------+---------------------------------------------------------------------------------------------------+
 | user_search   | Optional                | Search parameters to uniquely identify the PVWA user.                                             +
-+---------------+-------------------------+---------------------------------------------------------------------------------------------------+
-| username      | Optional                | PVWA user name.                                                                                   +
-|               |                         | If AIM is not used or the field is not specified, you must call the you must call                 +
-|               |                         | the `login function`_ or `login_with_aim function`_                                               +
+|               |                         |                                                                                                   +
+|               |                         | For more information see `CyberArk Central Credential Provider - REST web service`_.              +
 +---------------+-------------------------+---------------------------------------------------------------------------------------------------+
 
 PVWA section / field definitions
@@ -446,7 +464,7 @@ PVWA section / field definitions
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | Field                | Type                    | Description                                                                                +
 +======================+=========================+============================================================================================+
-| host                 | Required                | PVWA host name                                                                             +
+| host                 | Required                | PVWA host name.                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | timeout              | Optional                | PVWA Maximum wait time in seconds before generating a timeout (default 30 seconds).        +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
@@ -454,7 +472,14 @@ PVWA section / field definitions
 +----------------------+-------------------------+                                                                                            +
 | maxtasks             | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
-| verify               | Optional                | PVWA Directory or filename of the ROOT certificate authority (CA).                         +
+| verify               | Optional                | PVWA Directory or filename of the ROOT certificate authority (CA) (default False).         +
+|                      |                         |                                                                                            +
+|                      |                         | Possible value:                                                                            +
+|                      |                         |                                                                                            +
+|                      |                         |   -  False:         No SSL (not recommended)                                               +
+|                      |                         |   -  True:          Use system SSL                                                         +
+|                      |                         |   -  <directory>:   CA certificates to trust for certificate verification (capath)         +
+|                      |                         |   -  <filename>:    CA certificates to trust for certificate verification (cafile)         +
 +----------------------+-------------------------+                                                                                            +
 | ca                   | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
@@ -473,14 +498,23 @@ AIM section / field definitions
 | host                 | Required                | AIM CyberArk host name. If not define use the host from the PVWA section.                  +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | max_concurrent_tasks | Optional                | AIM Maximum number of parallel task (default 10).                                          +
+|                      |                         |                                                                                            +
 +----------------------+-------------------------+ If not define use the *max_concurrent_tasks* from the PVWA section.                        +
 | maxtasks             | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
-| verify               | Optional                | AIM Directory or filename of the ROOT certificate authority (CA).                          +
-+----------------------+-------------------------+ If not define use the *verify* from the PVWA section.                                      +
+| verify               | Optional                | PVWA Directory or filename of the ROOT certificate authority (CA) (default True).          +
+|                      |                         |                                                                                            +
+|                      |                         | Possible values:                                                                           +
+|                      |                         |                                                                                            +
+|                      |                         |   - True:          Use system SSL                                                          +
+|                      |                         |   - <directory>:   (capath) CA certificates to trust for certificate verification          +
+|                      |                         |   - <filename>:    (cafile) CA certificates to trust for certificate verification          +
+|                      |                         |   - False:         Is not allowed. Switch to True.                                         +
++----------------------+-------------------------+                                                                                            +
 | ca                   | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
-| timeout              | Optional                | AIM Maximum wait time in seconds before generating a timeout (default 30 seconds)          +
+| timeout              | Optional                | AIM Maximum wait time in seconds before generating a timeout (default 30 seconds).         +
+|                      |                         |                                                                                            +
 +                      |                         | If not define use the *timeout* from the PVWA section.                                     +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 
