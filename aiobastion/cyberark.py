@@ -274,6 +274,7 @@ class EPV:
 
         :raise GetTokenException: Logon error
         :raise AiobastionException: AIM configuration setup error
+        :raise CyberarkException: Runtime error
         """
         # Is AIM attribute defined ?
         if self.AIM:
@@ -739,7 +740,7 @@ class EPV_AIM:
             if self.request_params is None:
                 self.validate_and_setup_ssl()
 
-            if self.epv.session:
+            if self.epv and self.epv.session:
                 self.session = self.epv.session
             else:
                 self.session = aiohttp.ClientSession()
@@ -748,7 +749,7 @@ class EPV_AIM:
             # This statement is wrong:
             #    if self.epv.__sema:
             #        self.__sema = self.epv.__sema
-            if self.epv._EPV__sema:                         # pylint: disable=protected-access
+            if self.epv and self.epv._EPV__sema:            # pylint: disable=protected-access
                 self.__sema = self.epv._EPV__sema           # pylint: disable=protected-access
             else:
                 self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
@@ -759,7 +760,7 @@ class EPV_AIM:
         try:
             if self.session:
                 # Are we using the epv.session, if so don't close it
-                if self.epv.session is None or (self.epv.session and self.epv.session != self.session):
+                if self.epv is None or self.epv.session is None or (self.epv.session and self.epv.session != self.session):
                     await self.session.close()
         except (CyberarkException, AttributeError) as err:
             pass
