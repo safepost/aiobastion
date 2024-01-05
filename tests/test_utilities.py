@@ -55,9 +55,16 @@ class TestUtilities(IsolatedAsyncioTestCase):
 class TestPlatformUtilies(IsolatedAsyncioTestCase):
 
     async def test_count_platform(self):
-        print("we're good")
         qualif = aiobastion.EPV(tests.AIM_CONFIG)
 
         async with qualif:
-            await qualif.utils.platform.count_platforms()
-            print("we're in")
+            for c in await qualif.utils.platform.count_platforms():
+                print(c)
+
+    async def test_connection_component_usage(self):
+        qualif = aiobastion.EPV(tests.AIM_CONFIG)
+
+        async with qualif:
+            for c in await qualif.utils.platform.connection_component_usage():
+                print(c)
+

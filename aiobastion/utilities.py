@@ -250,13 +250,42 @@ class Utilities:
             for a, b in zip(pf_id, counted):
                 nb_element[a] = len(b)
 
+            result = []
             for pf in all_pf:
                 plateform_id = pf["PlatformID"]
                 uuid = await self.epv.platform.get_target_platform_unique_id(plateform_id)
                 comps = await self.epv.platform.get_target_platform_connection_components(uuid)
                 comps = ",".join([p['PSMConnectorID'] for p in comps if p['Enabled']])
-                return(
+                result.append(
                     f"{pf['ID']},{pf['Name']},{pf['PlatformID']},{pf['SystemType']},{pf['Active']},{nb_element[pf['PlatformID']]},{comps},")
 
+            return result
+
         async def connection_component_usage(self):
-            pass
+            """
+            Will return a list of used connection component
+            """
+
+            all_cc = await self.epv.session_management.get_all_connection_components()
+            all_pf = await self.epv.platform.get_target_platforms()
+
+            con_comp = {a['ID']: [] for a in all_cc["PSMConnectors"]}
+
+            for pf in all_pf:
+                plateform_id = pf["PlatformID"]
+                uuid = await self.epv.platform.get_target_platform_unique_id(plateform_id)
+                comps = await self.epv.platform.get_target_platform_connection_components(uuid)
+                for _c in comps:
+                    if _c["Enabled"]:
+                        cc_name = _c["PSMConnectorID"]
+                        if cc_name in con_comp:
+                            con_comp[cc_name].append(pf['PlatformID'])
+                        else:
+                            print(f"Warning for {cc_name} in {pf['PlatformID']} => {_c}")
+                            con_comp[cc_name] = [pf['PlatformID']]
+
+            result = []
+            for conn, pfs in con_comp.items():
+                result.append(f"{conn},{len(pfs)},{','.join(pfs)}")
+
+            return result
