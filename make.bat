@@ -3,6 +3,8 @@
 pushd %~dp0
 
 REM Command file for aiobastion publication
+REM To execute this script you need twine (pip install twine) and build (pip install build)
+
 
 if "%PYTHON%" == "" (
 	set PYTHON=py

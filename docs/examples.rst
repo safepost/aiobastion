@@ -40,4 +40,4 @@ Resume password management accounts
 
     async with vault as epv:
         admin_unix_accounts = await epv.account.search_account_by(platform="UnixSSH", username="admin")
-        await epv
+        await epv.account.resume_password_management(admin_unix_accounts)
