@@ -39,7 +39,7 @@ class TestApplication(IsolatedAsyncioTestCase):
 
         platforms = await self.vault.platform.get_target_platforms(periodicVerify=True)
         for pf in platforms:
-            self.assertTrue(pf["PeriodicVerify"])
+            self.assertTrue(pf["CredentialsManagementPolicy"]["Verification"]["PerformAutomatic"])
 
         platforms = await self.vault.platform.get_target_platforms(manualVerify=True)
         for pf in platforms:

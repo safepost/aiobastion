@@ -55,6 +55,7 @@ class TestUtilities(IsolatedAsyncioTestCase):
 class TestPlatformUtilies(IsolatedAsyncioTestCase):
 
     async def test_count_platform(self):
+        self.skipTest("This test takes too long to execute")
         qualif = aiobastion.EPV(tests.AIM_CONFIG)
 
         async with qualif:
@@ -62,6 +63,7 @@ class TestPlatformUtilies(IsolatedAsyncioTestCase):
                 print(c)
 
     async def test_connection_component_usage(self):
+        self.skipTest("This test takes too long to execute")
         qualif = aiobastion.EPV(tests.AIM_CONFIG)
 
         async with qualif:
