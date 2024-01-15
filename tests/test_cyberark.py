@@ -11,7 +11,11 @@ class TestEPV(IsolatedAsyncioTestCase):
         await self.vault.login()
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        try:
+            await self.vault.logoff()
+        except:
+            # test_logoff 
+            pass
 
     async def test_logoff(self):
         await self.vault.logoff()

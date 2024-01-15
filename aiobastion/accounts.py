@@ -682,7 +682,7 @@ class Account:
             "has_next_page": has_next_page
         }
 
-    async def connect_using_PSM(self, account, connection_component):
+    async def connect_using_PSM(self, account, connection_component, reason: str = ""):
         """ This function returns a file content (bytes) which is the equivalent RDP file of the “Connect” button
 
         For example::
@@ -707,6 +707,7 @@ class Account:
 
         :param account: PrivilegedAccount or account_id
         :param connection_component: the connection component to connect with
+        :param reason: the reason that is required to request access to this account
         :return: file_content
         :raises CyberarkAPIException:  if an error occured
         """
@@ -714,6 +715,7 @@ class Account:
         url, head = self.epv.get_url(f"API/Accounts/{account_id}/PSMConnect")
         head["Accept"] = 'RDP'
         body = {"ConnectionComponent": connection_component}
+        if reason: body["Reason"] = reason
 
         async with aiohttp.ClientSession(headers=head) as session:
             async with session.post(url, json=body, **self.epv.request_params) as req:
@@ -919,12 +921,13 @@ class Account:
         else:
             raise AiobastionException("There is no CPM version for this account")
 
-    async def get_secret_version(self, account: PrivilegedAccount, version: int):
+    async def get_secret_version(self, account: PrivilegedAccount, version: int, reason: str = None):
         """
         Get the version of a password
 
         :param account: a PrivilegedAccount object
         :param version: the version ID (that you can find with get_secret_versions). The higher is the most recent.
+        :param reason: The reason that is required to retrieve the password
         :return: the secret
         :raises CyberarkException: if the version was not found
         """
@@ -932,26 +935,31 @@ class Account:
             raise AiobastionException("The version must be a non-zero natural integer")
 
         data = {"Version": version}
+        if reason: data["Reason"] = reason
         account_id = await self.get_account_id(account)
 
         url = f"API/Accounts/{account_id}/Password/Retrieve"
 
         return await self.epv.handle_request("post", url, data=data)
 
-    async def get_password(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
+    async def get_password(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]], reason: str = None):
         """
         | Retrieve the password of an address
         | ✅ Use get_secret instead if you want to retrieve password or ssh_key
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
+        :param reason: The reason that is required to retrieve the password
         :return: Account password value  (or list of passwords)
         :raises CyberarkException: If retrieve failed
         """
+        data = {}
+        if reason: data = {"Reason": reason}
         return await self._handle_acc_id_list(
             "post",
             lambda account_id: f"API/Accounts/{account_id}/Password/Retrieve",
-            await self.get_account_id(account)
+            await self.get_account_id(account),
+            data = data
         )
 
 
@@ -971,17 +979,21 @@ class Account:
             await self.get_account_id(account)
         )
 
-    async def get_secret_versions(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
+    async def get_secret_versions(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]], reason: str = None):
         """
         Retrieve the secret versions
 
         :param account: Privileged Account or address id
+        :param reason: The reason that is required to retrieve the password
         :return: Account password value
         """
+        data = {}
+        if reason: data = {"Reason": reason}
         versions = await self._handle_acc_id_list(
             "get",
             lambda account_id: f"API/Accounts/{account_id}/Secret/Versions/",
-            await self.get_account_id(account)
+            await self.get_account_id(account),
+            data = data
         )
 
         if isinstance(versions, list):

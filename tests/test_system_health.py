@@ -11,7 +11,7 @@ class TestSystemHealth(IsolatedAsyncioTestCase):
         await self.vault.login()
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        await self.vault.logoff()
 
     async def test_summary(self):
         summary = await self.vault.system_health.summary()
