@@ -13,7 +13,7 @@ class TestApplication(IsolatedAsyncioTestCase):
         await self.vault.login()
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        await self.vault.logoff()
 
 
     async def get_random_platform(self, n=1):

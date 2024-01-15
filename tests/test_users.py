@@ -15,7 +15,7 @@ class TestUsers(IsolatedAsyncioTestCase):
         self.test_usr = "bastion_std_usr"
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        await self.vault.logoff()
 
 
     async def get_random_account(self, n=1):

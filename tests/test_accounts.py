@@ -8,6 +8,7 @@ import aiobastion
 import tests
 from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound
 from aiobastion.accounts import PrivilegedAccount
+from aiobastion.accountgroup import  PrivilegedAccountGroup
 from aiobastion import EPV
 from typing import List, Union
 
@@ -28,8 +29,7 @@ class TestAccount(IsolatedAsyncioTestCase):
         self.test_safe = "sample-it-dept"
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
-        # await self.vault.logoff()
+        await self.vault.logoff()
 
     async def get_random_account(self, n=1) -> Union[PrivilegedAccount,List[PrivilegedAccount]]:
         accounts = await self.vault.account.search_account_by(
@@ -208,7 +208,14 @@ class TestAccount(IsolatedAsyncioTestCase):
             # You are not Vault Admin
             self.assertIn("PASWS041E", str(err))
 
-        rdp_file = await self.vault.account.connect_using_PSM(account.id, cc)
+        try:
+            rdp_file = await self.vault.account.connect_using_PSM(account.id, cc)
+        except CyberarkAPIException as err:
+            if "Missing mandatory parameter - Reason" in str(err):
+                print("Get PSM Connect failed due to reason not provided, try again with reason")
+                rdp_file = await self.vault.account.connect_using_PSM(account.id, cc, "random reason")
+            else:
+                raise
         self.assertIsInstance(rdp_file, bytes)
 
     async def test_disable_secret_management(self):
@@ -226,13 +233,22 @@ class TestAccount(IsolatedAsyncioTestCase):
         self.assertTrue(ret.secretManagement["automaticManagementEnabled"])
 
     async def test_get_password(self):
-        account = await self.get_random_account()
-        ret = await self.vault.account.get_password(account)
-        self.assertIsInstance(ret, str)
+        async def _get_password(reason):
+            account = await self.get_random_account()
+            ret = await self.vault.account.get_password(account, reason)
+            self.assertIsInstance(ret, str)
+ 
+            account = await self.get_random_account(15)
+            ret = await self.vault.account.get_password(account, reason)
+            self.assertIsInstance(ret, list)
 
-        account = await self.get_random_account(15)
-        ret = await self.vault.account.get_password(account)
-        self.assertIsInstance(ret, list)
+        try:
+            await _get_password(None)
+        except CyberarkAPIException as err:
+            if "Missing mandatory parameter - Reason" in str(err):
+                await _get_password("random reason")
+            else:
+                raise
 
         # account = await self.get_random_account()
         # await self.vault.account.set_password(account, 'tutu"tata134!*$$^ABC')
@@ -246,7 +262,7 @@ class TestAccount(IsolatedAsyncioTestCase):
         ret = await self.vault.account.set_password(account, new_password)
         self.assertTrue(ret)
 
-        get_password = await self.vault.account.get_password(account)
+        get_password = await self.vault.account.get_password(account, "random reason")
         self.assertEqual(new_password, get_password)
 
     async def test_delete(self):
@@ -269,6 +285,16 @@ class TestAccount(IsolatedAsyncioTestCase):
         account = await self.get_random_account()
         # Deleting group membership in case of the account is already in a group
         await self.vault.account.del_account_group_membership(account)
+
+        account_group = PrivilegedAccountGroup("sample_group_name", "sample_group", self.test_safe)
+
+        try:
+            await self.vault.accountgroup.add_privileged_account_group(account_group)
+        except CyberarkAPIException as err:
+            if err.http_status == 409:
+                print("Group (sample_group_name) was already added before")
+            else:
+                raise
 
         ret = await self.vault.account.add_member_to_group(account, "sample_group_name")
         self.assertTrue("AccountId" in ret)
@@ -396,22 +422,32 @@ class TestAccount(IsolatedAsyncioTestCase):
             await self.vault.account.restore_last_cpm_version_by_cpm(account, "CPM")
 
     async def test_get_password_version(self):
-        account = await self.get_random_account()
-        # Generate versions
-        versions = []
-        for v in range(1, 5):
-            generated = secrets.token_hex(44) + "ac12AB$$"
-            await self.vault.account.set_password(account, generated)
-            versions.append(generated)
-
-        all_versions = await self.vault.account.get_secret_versions(account)
-        version_id = reversed(sorted([v["versionID"] for v in all_versions]))
-
-        for v, z in zip(version_id, reversed(versions)):
-            self.assertEqual(z, await self.vault.account.get_secret_version(account, v))
+        async def _get_password_version(reason):
+            account = await self.get_random_account()
+            # Generate versions
+            versions = []
+            for v in range(1, 5):
+                generated = secrets.token_hex(44) + "ac12AB$$"
+                await self.vault.account.set_password(account, generated)
+                versions.append(generated)
+         
+            all_versions = await self.vault.account.get_secret_versions(account, reason)
+            version_id = reversed(sorted([v["versionID"] for v in all_versions]))
+         
+            for v, z in zip(version_id, reversed(versions)):
+                self.assertEqual(z, await self.vault.account.get_secret_version(account, v, reason))
+        try:
+            await _get_password_version(None)
+        except CyberarkAPIException as err:
+            if "Missing mandatory parameter - Reason" in str(err):
+                await _get_password_version("random reason")
+            else:
+                raise
 
 
     async def test_get_password_aim(self):
+        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
+            self.skipTest("AIM_CONFIG is not set in init file")
         account = await self.get_random_account()
 
         # Generating new password and ensuring it respect security policy
@@ -429,6 +465,8 @@ class TestAccount(IsolatedAsyncioTestCase):
             await self.vault.account.get_password_aim(address="not_exist")
 
     async def test_get_secret_aim(self):
+        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
+            self.skipTest("AIM_CONFIG is not set in init file")
         account = await self.get_random_account(50)
 
         retrieved_password = await self.vault.account.get_secret(account[15])

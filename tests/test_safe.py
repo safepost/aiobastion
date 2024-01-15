@@ -14,7 +14,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.test_usr = "bastion_std_usr"
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        await self.vault.logoff()
 
 
     async def get_random_account(self, n=1):
@@ -65,6 +65,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.assertTrue(ret)
 
     async def test_add_member(self):
+
         with self.assertRaises(CyberarkAPIException):
             ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, "tutu")
 
@@ -132,7 +133,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.assertIn(self.api_user, members)
 
     async def test_is_member_of(self):
-        self.assertTrue(self.vault.safe.is_member_of(self.test_safe, self.api_user))
+        self.assertTrue(await self.vault.safe.is_member_of(self.test_safe, self.api_user))
 
     async def test_get_permissions(self):
         ret = await self.vault.safe.get_permissions(self.test_safe, self.api_user)
@@ -162,7 +163,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         try:
             ret = await self.vault.safe.rename(safe_to_rename, new_name)
         except AiobastionException:
-            pass
+            raise
         self.assertIn(new_name, [s["safeName"] for s in await self.vault.safe.search(new_name)])
         # undo
         ret = await self.vault.safe.rename(new_name, safe_to_rename)
