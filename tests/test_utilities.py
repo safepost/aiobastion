@@ -18,8 +18,8 @@ class TestUtilities(IsolatedAsyncioTestCase):
         self.test_safe = "sample-it-dept"
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
-        # await self.vault.logoff()
+        # await self.vault.close_session()
+        await self.vault.logoff()
 
     async def get_random_account(self, n=1):
         accounts = await self.vault.account.search_account_by(
