@@ -100,7 +100,7 @@ class Platform:
             if platform["PlatformID"] == platformID or platform["Name"] == platformID:
                 return platform["ID"]
 
-    async def del_target_plaform(self, pfid):
+    async def del_target_platform(self, pfid):
         """
         Delete target platform using ID
         You can get ID using get_target_platform_details
@@ -109,6 +109,16 @@ class Platform:
         :return: Boolean
         """
         return await self.epv.handle_request("delete", f"API/Platforms/Targets/{str(pfid)}")
+
+    async def deactivate_target_platform(self, pfid: int):
+        """
+        Deactivate target platform using Unique ID (integer)
+        You can get ID using get_target_platform_details
+
+        :param pfid: Unique Platform ID of the platform
+        :return: Boolean
+        """
+        return await self.epv.handle_request("post", f"API/Platforms/Targets/{str(pfid)}/deactivate")
 
     async def export_platform(self, pfid: str, outdir: str):
         """
