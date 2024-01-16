@@ -192,7 +192,7 @@ class EPV:
                 if req.status != 200:
                     try:
                         error = await req.text()
-                    except Exception as err:  # pylint: disable=broad-exception-caught
+                    except Exception as err:                                # pylint: disable=broad-exception-caught
                         error = f"Unable to get error message {err}"
                         raise CyberarkException(error) from err
 
