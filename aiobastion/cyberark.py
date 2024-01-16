@@ -40,7 +40,7 @@ class EPV:
         self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
         self.verify = False                 # root certificate authority (CA)
 
-        self.request_params = None          # timeout & ssl setup
+        self.request_params = {"timeout": self.timeout, "ssl": False}          # timeout & ssl setupn default value
         self.__token = token                # CyberArk authorization token
 
         # AIM Communication initialization
@@ -163,8 +163,8 @@ class EPV:
         elif self.verify: # True
             self.request_params = {"timeout": self.timeout,
                 "ssl": ssl.create_default_context()}
-        else: # None or False
-            self.request_params = {"timeout": self.timeout, "ssl": False}
+        # else: # None or False
+        #     self.request_params = {"timeout": self.timeout, "ssl": False}
 
 
     # Context manager
