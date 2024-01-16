@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support to provide "Reason" when retrieving passwords
 - Update documentation for testing
 
+## [0.0.30] - 2024-16-01
+### Changes
+- Adding platform deactivation
+
+### Bugfixes
+- Typo in platform suppression
+- request_params not initialized when checking token
+
 ## [0.0.29] - 2024-11-01
 ### Changes
 - Adding AIM related functions get_password_aim and get_secret_aim
