@@ -15,6 +15,7 @@ Welcome to aiobastion's documentation!
    utilities
    examples
    compatibility
+   faq
 
 
 
