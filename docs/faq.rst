@@ -81,7 +81,7 @@ Here's an example of serialization / deserialization:
     # Save your session in json
     epv_json = epv_session.to_json()
 
-    # Pass information to another program the wait you want
+    # Pass information to another program the way you want
 
     # Other program:
     # Utility function to rebuild EPV object from serialized session
