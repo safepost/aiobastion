@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import os.path
 import asyncio
 import json
@@ -24,12 +25,17 @@ from .users import User, Group
 from .utilities import Utilities
 from .session_management import SessionManagement
 
+
 class EPV:
     """
     Class that represent the connection, or future connection, to the Vault.
     """
 
     def __init__(self, configfile: str = None, serialized: dict = None, token: str = None):
+        # Logging stuff
+        logger: logging.Logger = logging.getLogger("aiobastion")
+        self.logger = logger
+
         # PVWA initialization
         self.api_host = None                # CyberArk host
         self.authtype = "cyberark"          # CyberArk authentification type
@@ -112,7 +118,8 @@ class EPV:
                 "retention",
                 "timeout",
                 "token",
-                "verify"]:
+                "verify",
+            ]:
                 raise AiobastionException(f"Unknown serialized field: {k} = {serialized[k]!r}")
 
         # PVWA definition
@@ -364,7 +371,7 @@ class EPV:
     async def login(self, username=None, password=None, auth_type="", user_search=None):
         """ Authenticate the PVWA user to manage of the vault.
 
-        | If the password is not supply, the AIM interface must be define in the EPV initialization
+        | If the password is not supply, the AIM interface must be defined in the EPV initialization
             (configuration file or serialization).  You may also use the login_with_aim function
             instead of the login function which give more flexibility.
 
@@ -454,9 +461,11 @@ class EPV:
             raise GetTokenException(str(err)) from err
 
     def get_session(self):
+        self.logger.debug(f"Getting aiobastion session ({self.session})")
         if self.__token is None and self.session is None:
             head = {"Content-type": "application/json", "Authorization": "None"}
             self.session = aiohttp.ClientSession(headers=head)
+            self.logger.debug(f"Building session ID : {self.session}")
         elif self.__token is None and self.session is not None:
             # This should never happen
             return self.session
@@ -464,8 +473,11 @@ class EPV:
             head = {'Content-type': 'application/json',
                     'Authorization': self.__token}
             self.session = aiohttp.ClientSession(headers=head)
+            self.logger.debug(f"Building session ID (token is known) : {self.session}")
+
         elif self.session.closed:
             # This should never happen, but it's a security in case of unhandled exceptions
+            self.logger.debug("Never happens scenario happened (Session closed but not None)")
             head = {'Content-type': 'application/json',
                     'Authorization': self.__token}
             self.session = aiohttp.ClientSession(headers=head)
@@ -479,6 +491,7 @@ class EPV:
         return self.session
 
     async def close_session(self):
+        self.logger.debug("Closing session")
         try:
             if self.AIM:
                 await self.AIM.close_session()
@@ -509,7 +522,7 @@ class EPV:
             "cpm": self.cpm,
             "retention": self.retention,
             "max_concurrent_tasks": self.max_concurrent_tasks,
-            "token": self.__token
+            "token": self.__token,
         }
 
         # AIM Communication
