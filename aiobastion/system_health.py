@@ -10,8 +10,8 @@ class SystemHealth:
     async def details(self, component_id):
         """
 
-        @param component_id: PVWA, SessionManagement, CPM, PTA or AIM
-        @return:
+        :param component_id: PVWA, SessionManagement, CPM, PTA or AIM
+        :return:
         """
         url = f"API//ComponentsMonitoringDetails/{component_id}/"
 

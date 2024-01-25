@@ -1,3 +1,4 @@
+import asyncio
 import random
 import secrets
 import unittest
@@ -29,7 +30,11 @@ class TestAccount(IsolatedAsyncioTestCase):
         self.test_safe = "sample-it-dept"
 
     async def asyncTearDown(self):
-        await self.vault.logoff()
+        # Do we have this problem ? https://github.com/aio-libs/aiohttp/issues/1925
+        await self.vault.close_session()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        # await self.vault.logoff()
 
     async def get_random_account(self, n=1) -> Union[PrivilegedAccount,List[PrivilegedAccount]]:
         accounts = await self.vault.account.search_account_by(
@@ -237,7 +242,7 @@ class TestAccount(IsolatedAsyncioTestCase):
             account = await self.get_random_account()
             ret = await self.vault.account.get_password(account, reason)
             self.assertIsInstance(ret, str)
- 
+
             account = await self.get_random_account(15)
             ret = await self.vault.account.get_password(account, reason)
             self.assertIsInstance(ret, list)
@@ -430,10 +435,10 @@ class TestAccount(IsolatedAsyncioTestCase):
                 generated = secrets.token_hex(44) + "ac12AB$$"
                 await self.vault.account.set_password(account, generated)
                 versions.append(generated)
-         
+
             all_versions = await self.vault.account.get_secret_versions(account, reason)
             version_id = reversed(sorted([v["versionID"] for v in all_versions]))
-         
+
             for v, z in zip(version_id, reversed(versions)):
                 self.assertEqual(z, await self.vault.account.get_secret_version(account, v, reason))
         try:

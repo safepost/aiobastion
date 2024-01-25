@@ -158,8 +158,8 @@ class TestSafe(IsolatedAsyncioTestCase):
 
     async def test_rename_safe(self):
         # s = await self.get_random_safe(1)
-        safe_to_rename = "BSA-SYS-PTT-R"
-        new_name = "BSA-SYS-PTT-R-RENAMED"
+        safe_to_rename = "RENAME_ME"
+        new_name = "I_AM_RENAMED"
         try:
             ret = await self.vault.safe.rename(safe_to_rename, new_name)
         except AiobastionException:

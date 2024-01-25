@@ -309,7 +309,7 @@ class Safe:
         params["offset"] = (page - 1) * size_of_page
         try:
             search_results = await self.epv.handle_request("get", "API/Safes", params=params,
-                                                   filter_func=lambda x: x)
+                                                           filter_func=lambda x: x)
         except CyberarkAPIException as err:
             if err.err_code == "CAWS00001E":
                 raise AiobastionException("Please don't list safes with a user member of PSMMaster (Cyberark bug)")
