@@ -449,12 +449,16 @@ class EPV:
         try:
             self.__token = await self.__login_cyberark(username, password, auth_type)
             # update the session
-            await self.close_session()
+            # await self.close_session()
         # except ChallengeResponseException:
         #     # User should enter passcode now
         #     raise
         except CyberarkException as err:
             raise GetTokenException(str(err)) from err
+        finally:
+            # update or clean the session
+            await self.close_session()
+
 
     def get_session(self):
         self.logger.debug(f"Getting aiobastion session ({self.session})")
