@@ -18,7 +18,6 @@ class TestSessionManagement(IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.vault.close_session()
 
-
     async def test_get_all_connection_components(self):
         all_cc = await self.vault.session_management.get_all_connection_components()
-        print(all_cc)
+        self.assertGreater(all_cc["Total"], 5)

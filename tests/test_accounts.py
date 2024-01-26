@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import random
 import secrets
 import unittest
@@ -454,6 +455,7 @@ class TestAccount(IsolatedAsyncioTestCase):
         if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
             self.skipTest("AIM_CONFIG is not set in init file")
         account = await self.get_random_account()
+        logging.debug(f"Account : {account}")
 
         # Generating new password and ensuring it respect security policy
         new_password = secrets.token_hex(44) + "ac12AB$$"
