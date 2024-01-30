@@ -10,6 +10,7 @@ class Config:
     CYBERARK_DEFAULT_TIMEOUT = 30
     CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS = 10
     CYBERARK_DEFAULT_RETENTION = 10
+    CYBERARK_DEFAULT_VERIFY = False
 
     def __init__(self, configfile):
         self.configfile = configfile
@@ -34,7 +35,7 @@ class Config:
         self.PVWA = None
         self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
         self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
-        self.PVWA_CA = False
+        self.PVWA_CA = Config.CYBERARK_DEFAULT_VERIFY
 
         with open(configfile, 'r') as config:
             configuration = yaml.safe_load(config)
