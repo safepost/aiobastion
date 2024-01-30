@@ -43,8 +43,8 @@ class EPV:
         self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
         # Communication timeout in seconds
         self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
-        self.keep_cookies = False           # Whether to keep cookies between API calls
-        self.verify = Config.CYBERARK_DEFAULT_VERIFY                 # root certificate authority (CA)
+        self.verify = Config.CYBERARK_DEFAULT_VERIFY  # root certificate authority (CA)
+        self.keep_cookies = False   # Whether to keep cookies between API calls
 
         self.request_params = {"timeout": self.timeout, "ssl": False}          # timeout & ssl setupn default value
         self.__token = token                # CyberArk authorization token
@@ -133,7 +133,8 @@ class EPV:
                 "token",
                 "keep_cookies",
                 "verify",
-                "custom"]:
+                "custom",
+            ]:
                 raise AiobastionException(f"Unknown serialized field: {k} = {serialized[k]!r}")
 
         # PVWA definition
