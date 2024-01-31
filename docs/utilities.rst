@@ -123,33 +123,3 @@ clone_account
     :param replace: dict with replace ex {"address": "new_address", "safeName": "new_safe"}
     :param update_name: automatic update of the name
     :return: Boolean telling if the account was created
-
-Tasks manipulation
----------------------
-gather_with_concurrency
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. py:function:: gather_with_concurrency(n, *tasks, return_exceptions=False):
-    :async:
-
-    Gather a list of coroutines with concurrency
-
-    :param n: Number of max corountines launched at the same time (semaphore)
-    :param tasks: task1, task2, ..., tasksn (if you have a list then prefix it with \*)
-    :param return_exceptions: if set to True, exceptions are returned as regular results, instead of being raised
-    :return: List of results in the same order as the tasks
-
-stack_with_concurrency
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. py:function:: stack_with_concurrency(list_of_address:list, function, max_tasks=10, return_exceptions=False, **args)
-    :async:
-
-
-    Quickly apply concurrently a function to a list of address
-
-    :param list_of_address: list of address to apply the function on
-    :param function: the function
-    :param max_tasks: max concurrent tasks
-    :param return_exception: whether the function will return Exception as normal return, or raise
-    :param args: dict of args of the function
-    :return: list of return in the order of adresses
