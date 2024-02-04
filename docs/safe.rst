@@ -121,6 +121,16 @@ list
 
     :return: A list of safes names
 
+get_safe_details
+~~~~~~~~~~
+.. py:function:: get_safe_details(safename: str)
+    :async:
+
+    Get details of a given safe. We do a direct query instead of a search for efficiency.
+
+    :param safename: Name of the safe
+    :return: A dict of the safe details
+
 get_permissions
 ~~~~~~~~~~~~~~~~~~~
 .. py:function:: get_permissions(safename: str, username: str)
