@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import re
-from typing import List, Union, AsyncIterator, AsyncGenerator
+from typing import List, Union, AsyncIterator
+
 import aiohttp
 
 from .config import validate_ip, flatten
@@ -338,7 +339,7 @@ class Account:
                                           reconcile_account: PrivilegedAccount):
         """
         | This function links the account (or the list of accounts) to the given reconcile account
-        | ⚠️ The "reconcile" Account is supposed to have an index of 3
+        | ⚠️ The "reconcile" Account index is default to 3
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
@@ -346,13 +347,13 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed
         """
-        return await self.link_account(account, reconcile_account, 3)
+        return await self.link_account(account, reconcile_account, self.epv.RECONCILE_ACCOUNT_INDEX)
 
     async def link_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
                                  logon_account: PrivilegedAccount):
         """
         | This function links the account (or the list of accounts) to the given logon account
-        | ⚠️ The "logon" Account is supposed to have an index of 2
+        | ⚠️ The "logon" Account index is default to 2, you can change it by setting custom:LOGON_ACCOUNT_INDEX in the config
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
@@ -361,7 +362,7 @@ class Account:
         :raises CyberarkException: If link failed
         """
         #TODO check the index of logon account at platform level !
-        return await self.link_account(account, logon_account, 2)
+        return await self.link_account(account, logon_account, self.epv.LOGON_ACCOUNT_INDEX)
 
     async def link_reconcile_account_by_address(self, acc_username, rec_acc_username, address):
         """ This function links the account with the given username and address to the reconciliation account with
@@ -396,7 +397,7 @@ class Account:
     async def remove_reconcile_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """
         | This function unlinks the reconciliation account of the given account (or the list of accounts)
-        | ⚠️ The "reconcile" Account is supposed to have an index of 3
+        | ⚠️ The "reconcile" Account index is default to 3
 
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
@@ -404,23 +405,24 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed:
         """
-        return await self.unlink_account(account, 3)
+        return await self.unlink_account(account, self.epv.RECONCILE_ACCOUNT_INDEX)
 
     async def remove_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """
         | This function unlinks the logon account of the given account (or the list of accounts)
-        | ⚠️ The "logon" Account is supposed to have an index of 2
+        | ⚠️ The "logon" Account index is default to 2, you can change it by setting custom:LOGON_ACCOUNT_INDEX in the config
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed:
         """
-        return await self.unlink_account(account, 2)
+        return await self.unlink_account(account, self.epv.LOGON_ACCOUNT_INDEX)
 
     async def unlink_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
                              extra_password_index: int):
         """ This function unlinks the account of the given account (or the list of accounts)
+        | ⚠️ Double check the linked account index on your platform.
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list

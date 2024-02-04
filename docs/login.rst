@@ -150,6 +150,7 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
             "Cert":   r"C:\Folder\AIM_Cert.pem",        # (required) AIM Filename public certificate
             "Key":    r"C:\Folder\AIM_private_key",     # (required) AIM Filename Private Key certificate
             "Verify": r"C:\Folder\AIM_Root_CA.pem"      # (optional) Directory or filename of the ROOT certificate authority (CA)
+            "keep_cookies": False,                      # (optional) whether to keep cookies between calls, set to true if API host is behind a load balancer
             "max_concurrent_tasks": 10,                 # (optional) AIM Maximum number of parallel task (default 10)
             "timeout": 30                               # (optional) AIM Maximum wait time in seconds before generating a timeout (default 30 seconds)
             }
@@ -163,6 +164,7 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
             "retention": 10,                            # (optional) Days of retention for objects in safe, default = 10
             "timeout": 30,                              # (optional) Maximum wait time in seconds before generating a timeout (default 30 seconds)
             "verify": r"C:\Folder\PVWA_Root_CA.pem",    # (optional) set if you want to add additional ROOT ca certs
+            "keep_cookies": False,                      # (optional) whether to keep cookies between calls, set to true if API host is behind a load balancer
             "AIM": aim_config                           # (optional) if AIM API is not needed
             }
 
@@ -483,6 +485,9 @@ PVWA section / field definitions
 +----------------------+-------------------------+                                                                                            +
 | ca                   | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| keep_cookies         | Optional                | Keep cookies from login and send in subsequent API calls (default Fasle). You may need to  +
+|                      |                         | You may need to set to True when a load-balancer is present.                               |
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 
 AIM section / field definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -515,7 +520,10 @@ AIM section / field definitions
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | timeout              | Optional                | AIM Maximum wait time in seconds before generating a timeout (default 30 seconds).         +
 |                      |                         |                                                                                            +
-+                      |                         | If not define use the *timeout* from the PVWA section.                                     +
+|                      |                         | If not define use the *timeout* from the PVWA section.                                     +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| keep_cookies         | Optional                | Keep cookies from login and send in subsequent API calls (default Fasle). You may need to  +
+|                      |                         | You may need to set to True when a load-balancer is present.                               |
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 
 
@@ -593,3 +601,7 @@ login function
 login_with_aim function
 ~~~~~~~~~~~~~~~~~~~~~~~
 .. autofunction:: login_with_aim
+
+handle_request function
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autofunction:: handle_request

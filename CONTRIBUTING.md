@@ -36,7 +36,7 @@ If you wish to contribute with code the workflow is :
 - Then, generate some accounts with mockaroo and the following schemas : https://www.mockaroo.com/b41fedb0. See "Troubleshoot"
   section of some cleanup to avoid issues.
 - Create the associated safes : sample-it-dept,sample-iaadmins,sample-coolteam
-- Create safe "BSA-SYS-PTT-R", and grant user "admin_bot" (see below) to the "Safe Management" permissions (for safe
+- Create safe "RENAME_ME", and grant user "admin_bot" (see below) to the "Safe Management" permissions (for safe
   rename testing)
 - Import the data (with bulk upload)
 - Create the configuration file for your testing Vault
