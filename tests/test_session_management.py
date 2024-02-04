@@ -1,4 +1,5 @@
 import asyncio
+import os
 import random
 import secrets
 import unittest
@@ -10,6 +11,7 @@ import tests
 import time
 
 
+@unittest.skipIf(not os.path.exists(tests.AIM_CONFIG), "AIM Config File does Not Exist")
 class TestSessionManagement(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.AIM_CONFIG)

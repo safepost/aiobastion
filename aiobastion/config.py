@@ -6,6 +6,7 @@ from .exceptions import AiobastionConfigurationException
 
 
 class Config:
+    """Parse a config file into an object"""
     # Default value
     CYBERARK_DEFAULT_TIMEOUT = 30
     CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS = 10
@@ -36,6 +37,7 @@ class Config:
         self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
         self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
         self.PVWA_CA = Config.CYBERARK_DEFAULT_VERIFY
+        self.keep_cookies = False
 
         with open(configfile, 'r') as config:
             configuration = yaml.safe_load(config)
@@ -126,6 +128,8 @@ class Config:
             elif keyname == "maxtasks" or keyname == "max_concurrent_tasks":
                 self.max_concurrent_tasks = self._to_integer("PVWA/" + k, configuration[k])
                 synonyme_max_concurrent_tasks += 1
+            elif keyname == "keep_cookies":
+                self.keep_cookies = bool(configuration[k])
             elif keyname == "verify" or keyname == "ca":
                 self.PVWA_CA = configuration[k]
                 synonyme_PVWA_CA += 1
@@ -148,6 +152,7 @@ class Config:
             "host":                 None,       # Default = PVWA (host)
             "key":                  None,
             "max_concurrent_tasks": None,       # Default = PVWA (max_concurrent_tasks)
+            "keep_cookies":         False,      # Default = False
             "verify":               None,       # Default = PVWA (PVWA_CA)
             "timeout":              None,       # Default = PVWA (timeout)
         }
@@ -162,6 +167,8 @@ class Config:
                 configuration_aim[keyname] = configuration[k]
             elif keyname == "timeout":
                 configuration_aim[keyname] = self._to_integer("AIM/" + k, configuration[k])
+            elif keyname == "keep_cookies":
+                configuration_aim[keyname] = bool(configuration[k])
             elif keyname in ["maxtasks", "max_concurrent_tasks"]:
                 configuration_aim["max_concurrent_tasks"] = self._to_integer("AIM/" + k, configuration[k])
                 synonyme_max_concurrent_tasks += 1

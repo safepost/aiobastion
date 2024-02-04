@@ -39,17 +39,22 @@ class EPV:
         self.api_host = None  # CyberArk host
         self.authtype = "cyberark"  # CyberArk authentification type
 
-        # Number of parrallel task for PVWA and AIM
+        # Number of parallel task for PVWA and AIM
         self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
         # Communication timeout in seconds
         self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
-        self.verify = Config.CYBERARK_DEFAULT_VERIFY  # root certificate authority (CA)
+        self.keep_cookies = False           # Whether to keep cookies between API calls
+        self.verify = Config.CYBERARK_DEFAULT_VERIFY                 # root certificate authority (CA)
 
         self.request_params = {"timeout": self.timeout, "ssl": False}          # timeout & ssl setupn default value
         self.__token = token                # CyberArk authorization token
 
         # AIM Communication initialization
         self.AIM = None  # EPV_AIM definition
+
+        # Linked accounts index defaults, can be overriden by configs
+        self.LOGON_ACCOUNT_INDEX = 2        # This really should be 1, but keep as 2 for backward compatibility
+        self.RECONCILE_ACCOUNT_INDEX = 3    # You SHOULD NOT change this, except for backward compatibility
 
         # Other section initialization
         self.configfile = configfile  # Name of the configuration file
@@ -70,6 +75,7 @@ class EPV:
 
         # Session management
         self.session = None
+        self.cookies = None
         self.__sema = None
 
         # utilities
@@ -84,6 +90,11 @@ class EPV:
         self.system_health = SystemHealth(self)
         self.utils = Utilities(self)
 
+    def _epv_set_linked_account_index(self, custom):
+        if custom is not None:
+            if custom['LOGON_ACCOUNT_INDEX']: self.LOGON_ACCOUNT_INDEX = int(custom['LOGON_ACCOUNT_INDEX']) # noqa:
+            if custom['RECONCILE_ACCOUNT_INDEX']: self.RECONCILE_ACCOUNT_INDEX = int(custom['RECONCILE_ACCOUNT_INDEX']) # noqa:
+
     def _epv_config(self, configfile):
         self.config = Config(configfile)
 
@@ -92,6 +103,7 @@ class EPV:
         self.authtype = self.config.authtype
         self.max_concurrent_tasks = self.config.max_concurrent_tasks
         self.timeout = self.config.timeout
+        self.keep_cookies = self.config.keep_cookies
         self.verify = self.config.PVWA_CA
 
         # AIM Communication
@@ -101,6 +113,8 @@ class EPV:
         # Other definition
         self.cpm = self.config.CPM
         self.retention = self.config.retention
+
+        self._epv_set_linked_account_index(self.config.custom)
 
     def _epv_serialize(self, serialized):
         if not isinstance(serialized, dict):
@@ -117,8 +131,9 @@ class EPV:
                 "retention",
                 "timeout",
                 "token",
+                "keep_cookies",
                 "verify",
-            ]:
+                "custom"]:
                 raise AiobastionException(f"Unknown serialized field: {k} = {serialized[k]!r}")
 
         # PVWA definition
@@ -130,10 +145,15 @@ class EPV:
             self.max_concurrent_tasks = serialized['max_concurrent_tasks']
         if "timeout" in serialized:
             self.timeout = serialized["timeout"]
+        if "keep_cookies" in serialized:
+            self.keep_cookies = bool(serialized["keep_cookies"])
         if "verify" in serialized:
             self.verify = serialized["verify"]
         if "token" in serialized:
             self.__token = serialized['token']
+        if "custom" in serialized:
+            self.custom = serialized['custom']
+            self._epv_set_linked_account_index(self.custom)
 
         # AIM Communication
         if "AIM" in serialized:
@@ -145,7 +165,7 @@ class EPV:
                 getattr(self, "max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS))
             serialized_aim.setdefault("timeout", getattr(self, "timeout", Config.CYBERARK_DEFAULT_TIMEOUT))
             serialized_aim.setdefault("verify", getattr(self, "verify", Config.CYBERARK_DEFAULT_VERIFY))
-
+            serialized_aim.setdefault("keep_cookies", getattr(self, "keep_cookies", False))
             self.AIM = EPV_AIM(serialized=serialized_aim)
 
         # Other definition
@@ -212,8 +232,15 @@ class EPV:
                         raise CyberarkException(error)
 
                 tok = await req.text()
+                # Copy the cookies to insert into later sessions
+                if self.keep_cookies:
+                    self.cookies = session.cookie_jar.filter_cookies(f"https://{self.api_host}")  # type: ignore
+                    for cookie in self.cookies:
+                        self.cookies[cookie]['domain'] = self.api_host
                 # Closing session because now we are connected and we need to update headers which can be done
-                # only by recreating a new session (or passing the headers on each request)
+                # only by recreating a new session (or passing the headers on each request). However, since the session
+                # token is only recognized by the PVWA instance that issued the token, load-balancers need to enable session
+                # stickiness which is often done with cookies.
                 await session.close()
                 return tok.replace('"', '')
 
@@ -227,11 +254,13 @@ class EPV:
     async def logoff(self):
         url, head = self.get_url("API/Auth/Logoff")
         async with aiohttp.ClientSession() as session:
+            self.cookies and session.cookie_jar.update_cookies(self.cookies)
             async with session.post(url, headers=head, **self.request_params) as req:
                 if req.status != 200:
                     raise CyberarkException("Error disconnecting to PVWA with code : %s" % str(req.status))
         await self.close_session()
         self.__token = None
+        self.cookies = None
 
         return True
 
@@ -544,7 +573,8 @@ class EPV:
     async def handle_request(self, method: str, short_url: str, data=None, params: dict = None,
                              filter_func=lambda x: x):
         """
-        Function that handles requests to the API
+        Function that handles requests to the API. This is a low-level function, and you most likely wouldn't need to
+        call it. If you do, there is the opportunity to enhance other modules.
         :param filter_func:
         :param params:
         :param method:
@@ -576,8 +606,7 @@ class EPV:
                                 return response
                             else:
                                 return True
-                        # except:
-                        #    raise
+
                 else:
                     if req.status == 404:
                         raise CyberarkException(f"404 error with URL {url}")

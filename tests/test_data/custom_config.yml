@@ -1,0 +1,10 @@
+connection:
+  authtype: cyberark
+  password: abc
+  username: def
+custom:
+  LOGON_ACCOUNT_INDEX: 3
+  RECONCILE_ACCOUNT_INDEX: 1
+label: Production Demo
+pvwa:
+  host: host1
