@@ -115,6 +115,12 @@ class TestSafe(IsolatedAsyncioTestCase):
     async def test_delete(self):
         self.skipTest("Test covered by test_create_safe")
 
+    async def test_get(self):
+        safe = await self.vault.safe.get_safe_details(self.test_safe)
+        self.assertEqual(self.test_safe, safe['safeName'])
+        [ self.assertIn(k, safe) for k in ['safeName', 'description', 'accounts']]
+        self.assertNotIn("no_such_attribute", safe)
+
     async def test_list_members(self):
         members = await self.vault.safe.list_members(self.test_safe)
         self.assertIn(self.api_user, members)

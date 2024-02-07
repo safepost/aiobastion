@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os.path
 import random
 import secrets
 import unittest
@@ -452,8 +453,8 @@ class TestAccount(IsolatedAsyncioTestCase):
 
 
     async def test_get_password_aim(self):
-        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
-            self.skipTest("AIM_CONFIG is not set in init file")
+        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == ''  or not os.path.exists(tests.AIM_CONFIG):
+            self.skipTest("AIM_CONFIG is not set in init file, or not exist")
         account = await self.get_random_account()
         logging.debug(f"Account : {account}")
 
@@ -472,8 +473,8 @@ class TestAccount(IsolatedAsyncioTestCase):
             await self.vault.account.get_password_aim(address="not_exist")
 
     async def test_get_secret_aim(self):
-        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
-            self.skipTest("AIM_CONFIG is not set in init file")
+        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '' or not os.path.exists(tests.AIM_CONFIG):
+            self.skipTest("AIM_CONFIG is not set in init file, or not exist")
         account = await self.get_random_account(50)
 
         retrieved_password = await self.vault.account.get_secret(account[15])
