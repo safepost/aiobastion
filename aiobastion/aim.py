@@ -60,6 +60,10 @@ class EPV_AIM:
         if self.max_concurrent_tasks is None:
             self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
 
+        if self.verify is not None and not (isinstance(self.verify, str) and isinstance(self.verify, bool)):
+            raise AiobastionException(f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
+
+
     def validate_and_setup_aim_ssl(self):
         if self.session:
             return
@@ -70,7 +74,7 @@ class EPV_AIM:
 
             if v is None:
                 raise AiobastionException(f"Missing AIM mandatory parameter '{attr_name}'."
-                                          " Required parameters: host, appid, cert, key.")
+                                          " Required parameters are: host, appid, cert, key.")
 
         if not os.path.exists(self.cert):
             raise AiobastionException(f"Parameter 'cert' in AIM: Public certificate file not found: {self.cert!r}")
@@ -78,8 +82,14 @@ class EPV_AIM:
         if not os.path.exists(self.key):
             raise AiobastionException(f"Parameter 'key' in AIM: Private key certificat file not found: {self.key!r}")
 
-        if self.verify is None or \
-           (isinstance(self.verify, str) and not os.path.exists(self.verify)):
+        # if verify is not set, default to no ssl
+        if self.verify is None:
+            self.verify = Config.CYBERARK_DEFAULT_VERIFY
+
+        if not (isinstance(self.verify, str) or isinstance(self.verify, bool)):
+            raise AiobastionException(f"Invalid type for parameter 'verify' (or 'CA') in AIM: {type(self.verify)} value: {self.verify!r}")
+
+        if (isinstance(self.verify, str) and not os.path.exists(self.verify)):
             raise AiobastionException(f"Parameter 'verify' in AIM: file not found {self.verify!r}")
 
         if isinstance(self.verify, str):
@@ -92,13 +102,12 @@ class EPV_AIM:
             else:
                 ssl_context = ssl.create_default_context(cafile=self.verify)
                 ssl_context.load_cert_chain(self.cert, self.key)
-        else:  # None, True or False
-            # Note : How can we have True here ?
+        else: # True or False
             ssl_context = ssl.create_default_context()
             ssl_context.load_cert_chain(self.cert, self.key)
-            # Bugfix => when CA is not set, it will still try to check root CA
-            # Not a better fix than don't check the hostname atm
-            ssl_context.check_hostname = False
+
+            if not self.verify:  # False
+                ssl_context.check_hostname = False
 
         self.request_params = \
             {"timeout": self.timeout,
