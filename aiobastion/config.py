@@ -11,6 +11,7 @@ class Config:
     CYBERARK_DEFAULT_TIMEOUT = 30
     CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS = 10
     CYBERARK_DEFAULT_RETENTION = 10
+    CYBERARK_DEFAULT_VERIFY = False
 
     def __init__(self, configfile):
         self.configfile = configfile
@@ -35,7 +36,7 @@ class Config:
         self.PVWA = None
         self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
         self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
-        self.PVWA_CA = False
+        self.PVWA_CA = Config.CYBERARK_DEFAULT_VERIFY
         self.keep_cookies = False
 
         with open(configfile, 'r') as config:
@@ -201,7 +202,6 @@ class Config:
             self.AIM["max_concurrent_tasks"] =  self.max_concurrent_tasks
         if self.AIM["verify"] is None:
             self.AIM["verify"] = self.PVWA_CA
-
 
     def _to_integer(self, section_key, val):
         try:

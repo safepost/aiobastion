@@ -44,7 +44,7 @@ class EPV:
         # Communication timeout in seconds
         self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
         self.keep_cookies = False           # Whether to keep cookies between API calls
-        self.verify = False                 # root certificate authority (CA)
+        self.verify = Config.CYBERARK_DEFAULT_VERIFY                 # root certificate authority (CA)self.keep_cookies = False   # Whether to keep cookies between API calls
 
         self.request_params = {"timeout": self.timeout, "ssl": False}          # timeout & ssl setupn default value
         self.__token = token                # CyberArk authorization token
@@ -133,7 +133,8 @@ class EPV:
                 "token",
                 "keep_cookies",
                 "verify",
-                "custom"]:
+                "custom",
+            ]:
                 raise AiobastionException(f"Unknown serialized field: {k} = {serialized[k]!r}")
 
         # PVWA definition
@@ -164,7 +165,7 @@ class EPV:
                 "max_concurrent_tasks",
                 getattr(self, "max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS))
             serialized_aim.setdefault("timeout", getattr(self, "timeout", Config.CYBERARK_DEFAULT_TIMEOUT))
-            serialized_aim.setdefault("verify", getattr(self, "verify", False))
+            serialized_aim.setdefault("verify", getattr(self, "verify", Config.CYBERARK_DEFAULT_VERIFY))
             serialized_aim.setdefault("keep_cookies", getattr(self, "keep_cookies", False))
             self.AIM = EPV_AIM(serialized=serialized_aim)
 
@@ -175,6 +176,12 @@ class EPV:
             self.retention = serialized['retention']
 
     def validate_and_setup_ssl(self):
+        if self.verify is None:
+            self.verify = Config.CYBERARK_DEFAULT_VERIFY
+
+        if not (isinstance(self.verify, str) or isinstance(self.verify, bool)):
+            raise AiobastionException(f"Invalid type for parameter 'verify' (or 'CA') in PVWA: {type(self.verify)} value: {self.verify!r}")
+
         if isinstance(self.verify, str):
             if not os.path.exists(self.verify):
                 raise AiobastionException(
@@ -182,14 +189,14 @@ class EPV:
 
             if os.path.isdir(self.verify):
                 self.request_params = {"timeout": self.timeout,
-                      "ssl": ssl.create_default_context(capath=self.verify)}
+                                       "ssl": ssl.create_default_context(capath=self.verify)}
             else:
                 self.request_params = {"timeout": self.timeout,
-                      "ssl": ssl.create_default_context(cafile=self.verify)}
-        elif self.verify: # True
+                                       "ssl": ssl.create_default_context(cafile=self.verify)}
+        elif self.verify:  # True
             self.request_params = {"timeout": self.timeout,
-                "ssl": ssl.create_default_context()}
-        else: # None or False
+                                   "ssl": ssl.create_default_context()}
+        else:  # False
             self.request_params = {"timeout": self.timeout, "ssl": False}
 
 
@@ -344,39 +351,39 @@ class EPV:
 
             if root_ca is None:   # May be false
                 if self.AIM.verify is not None:
-                    root_ca   = self.AIM.verify
+                    root_ca = self.AIM.verify
                 else:
                     if self.verify is not None:
-                        root_ca   = self.verify     # PVWA
+                        root_ca = self.verify  # PVWA
                     else:
-                        root_ca   = True
+                        root_ca = Config.CYBERARK_DEFAULT_VERIFY
 
-            if (aim_host            and aim_host  != self.AIM.host)  or \
-               (appid               and appid     != self.AIM.appid) or \
-               (cert_file           and cert_file != self.AIM.cert)  or \
-               (cert_key            and cert_key  != self.AIM.key)   or \
-               (root_ca is not None and root_ca   != self.AIM.verify):
+            if (aim_host and aim_host != self.AIM.host) or \
+                    (appid and appid != self.AIM.appid) or \
+                    (cert_file and cert_file != self.AIM.cert) or \
+                    (cert_key and cert_key != self.AIM.key) or \
+                    (root_ca is not None and root_ca != self.AIM.verify):
                 raise CyberarkException("AIM is already initialized ! Please close EPV before reopen it.")
         else:
             if root_ca is None:
                 if self.verify is not None:
                     root_ca = self.verify  # PVWA
                 else:
-                    root_ca = True
+                    root_ca = Config.CYBERARK_DEFAULT_VERIFY
 
             self.AIM = EPV_AIM(host=aim_host, appid=appid, cert=cert_file, key=cert_key, verify=root_ca,
                                timeout=timeout, max_concurrent_tasks=max_concurrent_tasks)
 
-            # Valide AIM setup
+            # Valid AIM setup
             self.AIM.validate_and_setup_aim_ssl()
 
         # Check mandatory attributs
-        if self.AIM.host  is None or \
-           self.AIM.appid is None or \
-           self.AIM.cert  is None or \
-           self.AIM.key   is None:
-            raise AiobastionException("Missing AIM mandatory parameters: host, appid, cert, key (and a optional verify).")
-
+        if self.AIM.host is None or \
+                self.AIM.appid is None or \
+                self.AIM.cert is None or \
+                self.AIM.key is None:
+            raise AiobastionException(
+                "Missing AIM mandatory parameters: host, appid, cert, key (and a optional verify).")
 
         # Complete undefined parameters with PVWA attributes
         if username is None and self.config and self.config.username:
@@ -476,11 +483,10 @@ class EPV:
                 except (CyberarkAIMnotFound, CyberarkAPIException, CyberarkException) as err:
                     raise GetTokenException(str(err)) from err
 
-
         try:
             self.__token = await self.__login_cyberark(username, password, auth_type)
             # update the session
-            # await self.close_session()
+            await self.close_session()
         # except ChallengeResponseException:
         #     # User should enter passcode now
         #     raise
@@ -524,7 +530,7 @@ class EPV:
     async def close_session(self):
         self.logger.debug("Closing session")
         try:
-            if self.AIM:    # not sure that this will be used
+            if self.AIM:    # This is used, at least, when login is perform
                 await self.AIM.close_aim_session()
 
             if self.session:
@@ -606,8 +612,7 @@ class EPV:
                                 return response
                             else:
                                 return True
-                        #except:
-                        #    raise
+
                 else:
                     if req.status == 404:
                         raise CyberarkException(f"404 error with URL {url}")

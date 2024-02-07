@@ -8,5 +8,6 @@ all = [
     'platforms',
     'exceptions',
     'cyberark',
-    'utilities'
+    'utilities',
+    'aim'
 ]
