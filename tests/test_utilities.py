@@ -52,6 +52,25 @@ class TestUtilities(IsolatedAsyncioTestCase):
             print(f"Took {end - start} for {i} requests")
 
 
+    async def test_dump_all_users_details(self):
+        start = time.time()
+
+        all_user_list = await self.vault.user.list()
+        all_user_details = await asyncio.gather(*[self.vault.user.details(_u) for _u in all_user_list])
+        end = time.time()
+
+        print(f"Good logic took {end - start} seconds")
+
+        start = time.time()
+        all_user_list = await self.vault.user.list()
+        for _u in all_user_list:
+            await self.vault.user.details(_u)
+
+        end = time.time()
+
+        print(f"Bad logic took {end - start} seconds")
+
+
 class TestPlatformUtilies(IsolatedAsyncioTestCase):
 
     async def test_count_platform(self):
