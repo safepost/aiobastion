@@ -166,7 +166,7 @@ class EPV:
                 getattr(self, "max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS))
             serialized_aim.setdefault("timeout", getattr(self, "timeout", Config.CYBERARK_DEFAULT_TIMEOUT))
             serialized_aim.setdefault("verify", getattr(self, "verify", Config.CYBERARK_DEFAULT_VERIFY))
-            serialized_aim.setdefault("keep_cookies", getattr(self, "keep_cookies", False))
+            # serialized_aim.setdefault("keep_cookies", getattr(self, "keep_cookies", False))
             self.AIM = EPV_AIM(serialized=serialized_aim)
 
         # Other definition

@@ -60,7 +60,7 @@ class EPV_AIM:
         if self.max_concurrent_tasks is None:
             self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
 
-        if self.verify is not None and not (isinstance(self.verify, str) and isinstance(self.verify, bool)):
+        if self.verify is not False and not (isinstance(self.verify, str) and not isinstance(self.verify, bool)):
             raise AiobastionException(f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
 
 
@@ -83,7 +83,7 @@ class EPV_AIM:
             raise AiobastionException(f"Parameter 'key' in AIM: Private key certificat file not found: {self.key!r}")
 
         # if verify is not set, default to no ssl
-        if self.verify is None:
+        if self.verify is False:
             self.verify = Config.CYBERARK_DEFAULT_VERIFY
 
         if not (isinstance(self.verify, str) or isinstance(self.verify, bool)):

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 
 import yaml
 import warnings
@@ -152,8 +153,7 @@ class Config:
             "host":                 None,       # Default = PVWA (host)
             "key":                  None,
             "max_concurrent_tasks": None,       # Default = PVWA (max_concurrent_tasks)
-            "keep_cookies":         False,      # Default = False
-            "verify":               None,       # Default = PVWA (PVWA_CA)
+            "verify":               False,       # Default = PVWA (PVWA_CA)
             "timeout":              None,       # Default = PVWA (timeout)
         }
 
@@ -201,6 +201,7 @@ class Config:
         if self.AIM["max_concurrent_tasks"] is None:
             self.AIM["max_concurrent_tasks"] =  self.max_concurrent_tasks
         if self.AIM["verify"] is None:
+            logging.debug("AIM verify value inherited from PVWA value")
             self.AIM["verify"] = self.PVWA_CA
 
     def _to_integer(self, section_key, val):

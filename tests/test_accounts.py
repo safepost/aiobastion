@@ -299,7 +299,7 @@ class TestAccount(IsolatedAsyncioTestCase):
             await self.vault.accountgroup.add_privileged_account_group(account_group)
         except CyberarkAPIException as err:
             if err.http_status == 409:
-                print("Group (sample_group_name) was already added before")
+                logging.debug("Group (sample_group_name) was already added before")
             else:
                 raise
 
@@ -459,15 +459,18 @@ class TestAccount(IsolatedAsyncioTestCase):
         logging.debug(f"Account : {account}")
 
         # Generating new password and ensuring it respect security policy
-        new_password = secrets.token_hex(44) + "ac12AB$$"
-        ret = await self.vault.account.set_password(account, new_password)
-        self.assertTrue(ret)
+        # This test was not good because CP cache prevent us from getting the last password
+        # new_password = secrets.token_hex(44) + "ac12AB$$"
+        # ret = await self.vault.account.set_password(account, new_password)
+        # self.assertTrue(ret)
+
+        retrieve_password = await self.vault.account.get_password(account, "Testing get password AIM function")
 
         get_password = await self.vault.account.get_password_aim(address=account.address, safe=account.safeName)
-        self.assertEqual(new_password, get_password.secret)
+        self.assertEqual(retrieve_password, get_password.secret)
 
         get_secret = await self.vault.account.get_secret_aim(account)
-        self.assertEqual(new_password, get_secret.secret)
+        self.assertEqual(retrieve_password, get_secret.secret)
 
         with self.assertRaises(CyberarkAIMnotFound):
             await self.vault.account.get_password_aim(address="not_exist")
