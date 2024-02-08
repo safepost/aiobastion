@@ -1,3 +1,4 @@
+import logging
 import re
 
 from .accounts import PrivilegedAccount
@@ -52,6 +53,20 @@ class AccountGroup:
         else:
             return account_group.id
 
+    async def get_account_group_id(self, group_name: str, safe: str):
+        """
+        Get account_group_id with the group_name and the safe
+        :param group_name: the name of the group
+        :param safe: The name of the safe
+        :return: The group ID
+        """
+        ais = await self.list_by_safe(safe)
+        for _a in ais:
+            if _a.name.lower() == group_name.lower():
+                return _a.id
+
+        raise AiobastionException(f"Group {group_name} not found in {safe}")
+
     async def get_group_id(self, account_group):
         if type(account_group) is str:
             if re.match(r'\d+_\d+', account_group) is not None:
@@ -97,6 +112,13 @@ class AccountGroup:
                                              filter_func=lambda x: x['GroupID'])
 
     async def add_member(self, account: (PrivilegedAccount, str), group: (PrivilegedAccountGroup, str)):
+        """
+        Add accounts to a group (specified by PrivilegedAccountGroup object or group_id)
+        :param account: PrivilegedAccount or account_id
+        :param group:  PrivilegedAccountGroup or group_id (get it with
+        :return: dict with {'AccountID' : 'acc_id'}
+        :raises: CyberarkAPIException with err.http_status == 400 if account was already in a group
+        """
         account_id = await self.epv.account.get_account_id(account)
         group_id = await self.get_group_id(group)
         data = {
@@ -135,7 +157,7 @@ class AccountGroup:
                         if getattr(a, k) != v:
                             filtered = True
                 if filtered:
-                    # print("Account group skipped ....")
+                    logging.debug("Account group skipped ....")
                     continue
                 # else:
                 #     print("Account group to be moved !")
