@@ -719,7 +719,7 @@ class Account:
         body = {"ConnectionComponent": connection_component}
         if reason: body["Reason"] = reason
 
-        async with aiohttp.ClientSession(headers=head) as session:
+        async with aiohttp.ClientSession(headers=head, cookies = self.epv.cookies) as session:
             async with session.post(url, json=body, **self.epv.request_params) as req:
                 if req.status != 200:
                     content = await req.json()
