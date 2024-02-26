@@ -152,6 +152,7 @@ class Config:
             "cert":                 None,
             "host":                 None,       # Default = PVWA (host)
             "key":                  None,
+            "passphrase":           None,
             "max_concurrent_tasks": None,       # Default = PVWA (max_concurrent_tasks)
             "verify":               False,       # Default = PVWA (PVWA_CA)
             "timeout":              None,       # Default = PVWA (timeout)
@@ -163,7 +164,7 @@ class Config:
         for k in list(configuration.keys()):
             keyname = k.lower()
 
-            if keyname in ["appid", "cert", "host", "key"]:
+            if keyname in ["appid", "cert", "host", "key", "passphrase"]:
                 configuration_aim[keyname] = configuration[k]
             elif keyname == "timeout":
                 configuration_aim[keyname] = self._to_integer("AIM/" + k, configuration[k])

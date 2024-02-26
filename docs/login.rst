@@ -149,6 +149,7 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
             "appid":  "Automation_Application",         # (required) AIM Application ID
             "Cert":   r"C:\Folder\AIM_Cert.pem",        # (required) AIM Filename public certificate
             "Key":    r"C:\Folder\AIM_private_key",     # (required) AIM Filename Private Key certificate
+            "Passphrase":    "C3rtP4$$Phr4se",          # (optional) AIM Private Key certificate passphrase
             "Verify": r"C:\Folder\AIM_Root_CA.pem"      # (optional) Directory or filename of the ROOT certificate authority (CA)
             "keep_cookies": False,                      # (optional) whether to keep cookies between calls, set to true if API host is behind a load balancer
             "max_concurrent_tasks": 10,                 # (optional) AIM Maximum number of parallel task (default 10)
@@ -259,6 +260,7 @@ For demonstration purpose, AIM serialization is not define here. Otherwise refer
                 appid="Automation_Application",
                 cert_file=r"C:\Folder\AIM_Cert.pem",
                 cert_key=r"C:\Folder\AIM_private_key",
+                passphrase="C3rtP4$$Phr4se",
                 root_ca=r"C:\Folder\AIM_Root_CA.pem",
                 # timeout= 30,
                 # max_concurrent_tasks= 10,
@@ -500,6 +502,8 @@ AIM section / field definitions
 | cert                 | Required                | AIM Filename public certificate                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | key                  | Required                | AIM Filename private key certificate                                                       +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| passphrase           | Optional                | AIM Filename private key certificate passphrase                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | host                 | Required                | AIM CyberArk host name. If not define use the host from the PVWA section.                  +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+

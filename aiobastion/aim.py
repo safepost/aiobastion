@@ -27,7 +27,7 @@ class EPV_AIM:
                                  "failrequestonpasswordchange"]
 
     def __init__(self, host: str = None, appid: str = None, cert: str = None, key: str = None,
-                 verify: Union[str, bool] = None,
+                 passphrase: str = None, verify: Union[str, bool] = None,
                  timeout: int = Config.CYBERARK_DEFAULT_TIMEOUT,
                  max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS,
                  serialized: dict = None):
@@ -36,6 +36,7 @@ class EPV_AIM:
         self.appid = appid
         self.cert = cert
         self.key = key
+        self.passphrase = passphrase
         self.verify = verify
         self.timeout = timeout
         self.max_concurrent_tasks = max_concurrent_tasks
@@ -98,16 +99,17 @@ class EPV_AIM:
 
             if os.path.isdir(self.verify):
                 ssl_context = ssl.create_default_context(capath=self.verify)
-                ssl_context.load_cert_chain(self.cert, self.key)
             else:
                 ssl_context = ssl.create_default_context(cafile=self.verify)
-                ssl_context.load_cert_chain(self.cert, self.key)
-        else: # True or False
+        else:  # True or False
             ssl_context = ssl.create_default_context()
-            ssl_context.load_cert_chain(self.cert, self.key)
 
             if not self.verify:  # False
                 ssl_context.check_hostname = False
+        if self.passphrase is not None:
+            ssl_context.load_cert_chain(self.cert, self.key, password=self.passphrase)
+        else:
+            ssl_context.load_cert_chain(self.cert, self.key)
 
         self.request_params = \
             {"timeout": self.timeout,
