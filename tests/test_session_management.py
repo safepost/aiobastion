@@ -1,4 +1,5 @@
 import asyncio
+import os
 import random
 import secrets
 import unittest
@@ -10,6 +11,7 @@ import tests
 import time
 
 
+@unittest.skipIf(not os.path.exists(tests.AIM_CONFIG), "AIM Config File does Not Exist")
 class TestSessionManagement(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.AIM_CONFIG)
@@ -18,7 +20,6 @@ class TestSessionManagement(IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.vault.close_session()
 
-
     async def test_get_all_connection_components(self):
         all_cc = await self.vault.session_management.get_all_connection_components()
-        print(all_cc)
+        self.assertGreater(all_cc["Total"], 5)

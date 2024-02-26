@@ -12,7 +12,7 @@ class TestApplication(IsolatedAsyncioTestCase):
         self.app_name2 = "TestApp2"
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        await self.vault.logoff()
 
 
     async def test_add_application(self):

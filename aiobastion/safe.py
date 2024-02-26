@@ -336,6 +336,14 @@ class Safe:
         else:
             return [r["safeName"] for r in await self.search()]
 
+    async def get_safe_details(self, safename: str):
+        """
+        Get details of a given safe. We do a direct query instead of a search for efficiency.
+        :return: A dict of the safe details
+        """
+        if not safename: raise AiobastionException("A safe name must be provided")
+        return await self.epv.handle_request("get", f"API/Safes/{safename}", params={"extendedDetails": "True"})
+
     async def v1_get_safes(self):
         return await self.epv.handle_request("get", 'WebServices/PIMServices.svc/Safes/', filter_func=lambda r: r)
 

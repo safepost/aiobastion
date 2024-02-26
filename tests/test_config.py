@@ -1,4 +1,5 @@
 import asyncio
+import os
 import unittest
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
@@ -7,12 +8,45 @@ from aiobastion import CyberarkException
 
 
 class TestEPV(IsolatedAsyncioTestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.custom_linked_acounts = {
+            "custom": {
+                "RECONCILE_ACCOUNT_INDEX": 1,
+                "LOGON_ACCOUNT_INDEX": 3
+            }
+        }
+
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        try:
+            await self.vault.logoff()
+        except:
+            # test_logoff 
+            pass
+
+    def test_default_linked_accounts_from_yml(self):
+        vault = aiobastion.EPV(tests.CONFIG)
+        self.assertEqual(2, vault.LOGON_ACCOUNT_INDEX)
+        self.assertEqual(3, vault.RECONCILE_ACCOUNT_INDEX)
+
+    def test_default_linked_accounts_from_obj(self):
+        vault = aiobastion.EPV(serialized={})
+        self.assertEqual(2, vault.LOGON_ACCOUNT_INDEX)
+        self.assertEqual(3, vault.RECONCILE_ACCOUNT_INDEX)
+
+    def test_custom_linked_accounts_from_yml(self):
+        vault = aiobastion.EPV("test_data/custom_config.yml")
+        self.assertEqual(3, vault.LOGON_ACCOUNT_INDEX)
+        self.assertEqual(1, vault.RECONCILE_ACCOUNT_INDEX)
+
+    def test_custom_linked_accounts_from_obj(self):
+        vault = aiobastion.EPV(serialized=self.custom_linked_acounts)
+        self.assertEqual(3, vault.LOGON_ACCOUNT_INDEX)
+        self.assertEqual(1, vault.RECONCILE_ACCOUNT_INDEX)
 
     async def test_logoff(self):
         await self.vault.logoff()
@@ -23,7 +57,7 @@ class TestEPV(IsolatedAsyncioTestCase):
         self.assertTrue(await self.vault.check_token())
 
     async def test_login_aim(self):
-        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
+        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '' or not os.path.exists(tests.AIM_CONFIG):
             self.skipTest("AIM_CONFIG is not set in init file")
         await self.vault.logoff()
         self.assertFalse(await self.vault.check_token())
@@ -48,9 +82,9 @@ class TestEPV(IsolatedAsyncioTestCase):
         PVWA_CONFIG = '../../confs/config_test_pvwa_only.yml'
         self.vault = aiobastion.EPV(PVWA_CONFIG)
         with self.assertRaises(aiobastion.exceptions.GetTokenException):
-            await self.vault.login(username="admin", password="Cyberark1")
+            await self.vault.login(username="admin", password="wrong_password")
         # For a relevant test we need a correct login password that we cant display in code
-        # It could be stored in a test safe
+        # It could be stored in a test safe. For now, we use a wrong password ane assert token exception.
         # self.assertTrue(await self.vault.check_token())
 
 

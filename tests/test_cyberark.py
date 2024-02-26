@@ -1,4 +1,5 @@
 import asyncio
+import os
 import unittest
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
@@ -11,7 +12,11 @@ class TestEPV(IsolatedAsyncioTestCase):
         await self.vault.login()
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        try:
+            await self.vault.logoff()
+        except:
+            # test_logoff 
+            pass
 
     async def test_logoff(self):
         await self.vault.logoff()
@@ -22,7 +27,7 @@ class TestEPV(IsolatedAsyncioTestCase):
         self.assertTrue(await self.vault.check_token())
 
     async def test_login_aim(self):
-        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '':
+        if tests.AIM_CONFIG is None or tests.AIM_CONFIG == '' or not os.path.exists(tests.AIM_CONFIG):
             self.skipTest("AIM_CONFIG is not set in init file")
         await self.vault.logoff()
         self.assertFalse(await self.vault.check_token())

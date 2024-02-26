@@ -15,7 +15,7 @@ class TestUsers(IsolatedAsyncioTestCase):
         self.test_usr = "bastion_std_usr"
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        await self.vault.logoff()
 
 
     async def get_random_account(self, n=1):
@@ -62,6 +62,13 @@ class TestUsers(IsolatedAsyncioTestCase):
         self.assertEqual(req["username"], self.api_user)
 
     async def test_add_user(self):
+        try:
+            req = await self.vault.user.delete("newAdmin")
+            self.assertEqual(req, True)
+        except AiobastionException:
+            # The user doesn't exist
+            pass
+
         random_password = secrets.token_urlsafe(18)
         req = await self.vault.user.add("newAdmin", password=random_password)
         self.assertIsInstance(req, dict)

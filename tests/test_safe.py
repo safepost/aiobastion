@@ -14,7 +14,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.test_usr = "bastion_std_usr"
 
     async def asyncTearDown(self):
-        await self.vault.close_session()
+        await self.vault.logoff()
 
 
     async def get_random_account(self, n=1):
@@ -65,6 +65,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.assertTrue(ret)
 
     async def test_add_member(self):
+
         with self.assertRaises(CyberarkAPIException):
             ret = await self.vault.safe.add_member(self.test_safe, self.test_usr, "tutu")
 
@@ -114,6 +115,12 @@ class TestSafe(IsolatedAsyncioTestCase):
     async def test_delete(self):
         self.skipTest("Test covered by test_create_safe")
 
+    async def test_get(self):
+        safe = await self.vault.safe.get_safe_details(self.test_safe)
+        self.assertEqual(self.test_safe, safe['safeName'])
+        [ self.assertIn(k, safe) for k in ['safeName', 'description', 'accounts']]
+        self.assertNotIn("no_such_attribute", safe)
+
     async def test_list_members(self):
         members = await self.vault.safe.list_members(self.test_safe)
         self.assertIn(self.api_user, members)
@@ -132,7 +139,7 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.assertIn(self.api_user, members)
 
     async def test_is_member_of(self):
-        self.assertTrue(self.vault.safe.is_member_of(self.test_safe, self.api_user))
+        self.assertTrue(await self.vault.safe.is_member_of(self.test_safe, self.api_user))
 
     async def test_get_permissions(self):
         ret = await self.vault.safe.get_permissions(self.test_safe, self.api_user)
@@ -157,12 +164,12 @@ class TestSafe(IsolatedAsyncioTestCase):
 
     async def test_rename_safe(self):
         # s = await self.get_random_safe(1)
-        safe_to_rename = "BSA-SYS-PTT-R"
-        new_name = "BSA-SYS-PTT-R-RENAMED"
+        safe_to_rename = "RENAME_ME"
+        new_name = "I_AM_RENAMED"
         try:
             ret = await self.vault.safe.rename(safe_to_rename, new_name)
         except AiobastionException:
-            pass
+            raise
         self.assertIn(new_name, [s["safeName"] for s in await self.vault.safe.search(new_name)])
         # undo
         ret = await self.vault.safe.rename(new_name, safe_to_rename)
