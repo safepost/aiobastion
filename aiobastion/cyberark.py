@@ -597,6 +597,7 @@ class EPV:
         async with self.__sema:
             async with session.request(method, url, json=data, headers=head, params=params,
                                        **self.request_params) as req:
+                # self.logger.debug(req.status)
                 if req.status in (200, 201, 204):
                     try:
                         if len(await req.read()) == 0:
@@ -622,6 +623,7 @@ class EPV:
                         raise CyberarkException("Your PVWA version does not support this function")
                     try:
                         content = await req.json(content_type=None)
+                        self.logger.debug(f"Content => {content}")
                     except (KeyError, ValueError, ContentTypeError) as err:
                         raise CyberarkException(f"Error with CyberArk status code {str(req.status)}") from err
 

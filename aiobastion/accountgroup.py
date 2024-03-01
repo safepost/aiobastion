@@ -1,5 +1,6 @@
 import logging
 import re
+import warnings
 
 from .accounts import PrivilegedAccount
 from .exceptions import AiobastionException, CyberarkAPIException
@@ -98,6 +99,7 @@ class AccountGroup:
             "GroupPlatformID": group_platform,
             "Safe": safe_name
         }
+        self.epv.logger.debug(data)
         return await self.epv.handle_request("post", "api/AccountGroups/", data=data, filter_func=lambda x: x['GroupID'])
 
     async def add_privileged_account_group(self, account_group: PrivilegedAccountGroup):
@@ -133,48 +135,133 @@ class AccountGroup:
         return await self.epv.handle_request("delete", url)
 
     # This API call does not exist
+    # async def get_account_group_details(self, group_id):
+    #     url = f"API/AccountGroups/{group_id}"
+    #     return await self.epv.handle_request("get", url)
+
+    # This API call does not exist
     # async def delete(self, group_id):
     #     if re.match(r'\d+_\d+', group_id) is None:
     #         raise BastionException("The provided Group ID is not valid !")
     #     return await self.epv.handle_request("delete", f"api/AccountGroups/{group_id}")
 
-    # Not tested / documented
-    async def move_all_account_groups(self, src_safe, dst_safe, account_filter):
+    async def move_account_group(self, account_group_name: str, src_safe: str, dst_safe: str):
         """
-        Move all accounts groups from a safe to another safe
-        Members of the account groups are also moved !
-
-        filter : filter on accounts base file category
-        example : {"platformID": "Unix-SSH"}
+        Move an account_group and its members from a safe to another safe
+        :param account_group_name:
+        :param src_safe:
+        :param dst_safe: Where to store the account group
+        :return:
         """
         account_groups = await self.list_by_safe(src_safe)
+        for account_group in account_groups:
+            if account_group.name.lower() == account_group_name.lower():
+
+                try:
+                    logging.debug(f"Creating {account_group} to {dst_safe}")
+                    new_group_id = await self.add(account_group.name, account_group.group_platform, dst_safe)
+                    logging.debug(f"Newly created group ID : {new_group_id}")
+
+                except CyberarkAPIException as err:
+                    if "EPVPA012E" in err.err_message:
+                        ng_list = await self.list_by_safe(dst_safe)
+                        new_group_id = next(ng for ng in ng_list if account_group.name.lower() == ng.name.lower())
+                        self.epv.logger.debug(f"Warning : AG already exists and detected with ID : {new_group_id}")
+                    else:
+                        raise
+                except Exception as err:
+                    # Unhandled exception
+                    raise
+
+                ag_members = await self.epv.accountgroup.members(account_group)
+
+                logging.debug(f"Now going to move accounts : {ag_members}")
+                try:
+                    moved_accounts = await self.epv.account.move(ag_members, dst_safe)
+                except CyberarkAPIException as err:
+                    logging.debug(f"Got an exception when moving accounts {err}")
+                    raise
+                logging.debug("Accounts moved !")
+
+                for agm in moved_accounts:
+                    try:
+                        await self.add_member(agm, new_group_id)
+                        logging.debug(f"Moved {agm} into {new_group_id}")
+                    except:
+                        # Account are moved with their account group
+                        pass
+
+                return new_group_id
+        return False
+
+
+    # Not tested / documented
+    async def move_all_account_groups(self, src_safe, dst_safe, account_filter: dict = None):
+        """
+        Move all accounts groups from a safe to another safe
+        * Members of the account groups are also moved ! *
+
+        filter : filter on accounts base file category
+        example : {"platformId": "Unix-SSH"}
+        """
+
+        def _case_insensitive_getattr(obj, attr):
+            for _a in dir(obj):
+                if _a.lower() == attr.lower():
+                    return getattr(obj, _a)
+
+        account_groups = await self.list_by_safe(src_safe)
         for ag in account_groups:
+            logging.debug(f"Current AG is {ag}")
             ag_members = (await self.members(ag))
+            logging.debug(ag_members)
             if account_filter is not None:
                 filtered = False
                 for a in ag_members:
-                    for k, v in account_filter.items():
-                        if getattr(a, k) != v:
-                            filtered = True
+                    logging.debug(f"Considering {a}")
+                    for filter_file_category, filter_value in account_filter.items():
+                        try:
+                            if _case_insensitive_getattr(a, filter_file_category) == filter_value:
+                                logging.debug(f"Filtered : {_case_insensitive_getattr(a, filter_file_category)} equal to {filter_value}")
+                                filtered = True
+                        except Exception as err:
+                            # Most likely the filtered a
+                            raise AiobastionException(f"Your filter doesn't exist on account {a} "
+                                                      f"(bad file category ? {filter_file_category})")
                 if filtered:
                     logging.debug("Account group skipped ....")
                     continue
-                # else:
-                #     print("Account group to be moved !")
-                #     print("Members :")
-                #     print([ag.address for ag in ag_members])
 
+
+            logging.debug(f"Now going to move {ag}")
             try:
+                logging.debug(f"Creating {ag} to {dst_safe}")
                 ng = await self.add(ag.name, ag.group_platform, dst_safe)
-                # print(f"Newly created group ID : {ng}")
+                logging.debug(f"Newly created group ID : {ng}")
+
             except CyberarkAPIException as err:
-                if err.err_code == "CAWS00001E":
+                if "EPVPA012E" in err.err_message:
+                    # self.epv.logger.debug("Account group already exists !")
                     nglist = await self.list_by_safe(dst_safe)
                     ng = next(ng for ng in nglist if ag.name == ng.name)
-                    # print(f"Warning : AG already exists and detected with ID : {ng}")
+                    self.epv.logger.debug(f"Warning : AG already exists and detected with ID : {ng}")
                 else:
                     raise
-            moved_accounts = await self.epv.account.move(ag_members, dst_safe)
-            # print("Account moved !")
+            except Exception as err:
+                logging.debug(f"Got exception : {err}")
+
+            logging.debug(f"Now going to move accounts : {ag_members}")
+            try:
+                moved_accounts = await self.epv.account.move(ag_members, dst_safe)
+            except CyberarkAPIException as err:
+                logging.debug(f"Got an exception when moving accounts {err}")
+                raise
+            logging.debug("Account moved !")
+
             for agm in moved_accounts:
-                print(await self.add_member(agm, ng))
+                try:
+                    print(await self.add_member(agm, ng))
+                    logging.debug(f"Moved {agm} into {ng}")
+                except:
+                    # Account are moved with their account group (Cyberark black magic)
+                    pass

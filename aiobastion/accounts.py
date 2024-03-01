@@ -1245,6 +1245,7 @@ class Account:
         :return: Boolean that indicates if the operation was successful
         """
         async def _move(acc):
+            self.epv.logger.debug(f"Now trying to move {acc} to {new_safe}")
             old_id = acc.id
             acc.safeName = new_safe
             try:
@@ -1257,6 +1258,7 @@ class Account:
                 raise CyberarkException(f"Unable to create {acc.name} new address : {str(err)}")
             try:
                 await self.delete(old_id)
+
             except CyberarkAPIException as err:
                 raise CyberarkException(f"Unable to delete {acc.name} old address : {str(err)}")
             return new_account_id

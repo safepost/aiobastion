@@ -19,6 +19,10 @@ def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_n
         new_a.name = new_a.get_name()
     return new_a
 
+def case_insensitive_getattr(obj, attr):
+    for a in dir(obj):
+        if a.lower() == attr.lower():
+            return getattr(obj, a)
 
 class Utilities:
     def __init__(self, epv):

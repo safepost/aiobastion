@@ -146,6 +146,56 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         members = await self.vault.accountgroup.members(group)
         self.assertNotIn(account.id, [x.id for x in members])
 
+
+    async def test_move_account_group(self):
+        ag_name = "MoveAccountGroupTest"
+
+        try:
+            group_id = await self.vault.accountgroup.add(ag_name, "sample_group", self.test_safe)
+        except CyberarkAPIException as err:
+            if err.http_status == 409:
+                group_id = await self.vault.accountgroup.get_account_group_id(ag_name, self.test_safe)
+            else:
+                raise
+
+        if len(await self.vault.accountgroup.members(group_id)) == 0:
+            # Adding two members of a given platform
+            random_accounts = await self.get_random_account(2, "UnixSSH")
+            for _r in random_accounts:
+                print(f"Adding {_r.name} to {ag_name} (Group ID : {group_id})")
+                try:
+                    await self.vault.accountgroup.add_member(_r, group_id)
+                except CyberarkAPIException as err:
+                    if err.http_status == 400:
+                        # Account already added in a group
+                        pass
+                    else:
+                        raise
+        else:
+            print("Not adding more members on this group now")
+
+        try:
+            new_gid = await self.vault.accountgroup.move_account_group(ag_name, self.test_safe, self.test_target_safe)
+        except Exception as err:
+            raise
+
+        self.assertGreater(len(await self.vault.accountgroup.members(new_gid)), 0)
+
+        # Revert
+        try:
+            await self.vault.accountgroup.move_account_group(ag_name, self.test_target_safe, self.test_safe)
+        except Exception as err:
+            raise
+
+        for _r in await self.vault.accountgroup.members(group_id):
+            try:
+                await self.vault.accountgroup.delete_member(_r, group_id)
+            except:
+                pass
+
+        self.assertEqual(len(await self.vault.accountgroup.members(new_gid)), 0)
+
+
     async def test_move_all_account_groups(self):
         ag_name = "MoveAccountGroupTest"
         # Create a new account group in test safe
@@ -156,18 +206,22 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
                 group_id = await self.vault.accountgroup.get_account_group_id(ag_name, self.test_safe)
             else:
                 raise
-        # Adding two members of a given platform
-        random_accounts = await self.get_random_account(2, "UnixSSH")
-        for _r in random_accounts:
-            print(f"Adding {_r.name} to {ag_name} (Group ID : {group_id})")
-            try:
-                await self.vault.accountgroup.add_member(_r, group_id)
-            except CyberarkAPIException as err:
-                if err.http_status == 400:
-                    # Account already added in a group
-                    pass
-                else:
-                    raise
+
+        if len(await self.vault.accountgroup.members(group_id)) == 0:
+            # Adding two members of a given platform
+            random_accounts = await self.get_random_account(2, "UnixSSH")
+            for _r in random_accounts:
+                print(f"Adding {_r.name} to {ag_name} (Group ID : {group_id})")
+                try:
+                    await self.vault.accountgroup.add_member(_r, group_id)
+                except CyberarkAPIException as err:
+                    if err.http_status == 400:
+                        # Account already added in a group
+                        pass
+                    else:
+                        raise
+        else:
+            print("Not adding more members on this group now")
 
         # Moving accounts group but filtering in our platform to test_target_safe
         # So the account should not be moved !
@@ -176,28 +230,39 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
             await self.vault.accountgroup.move_all_account_groups(self.test_safe, self.test_target_safe,
                                                                   account_filter=filtered)
         except Exception as err:
-            # We have raised StopIteration here
-            print(f"Handle me {err}")
+            raise
 
         # The account should remain in src safe
         list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_safe)
+        print(f"List In test safe : {[l.name for l in list_of_account_groups]}")
         self.assertIn(ag_name, [_l.name for _l in list_of_account_groups])
 
         # Not in dst safe
         list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_target_safe)
+        print(f"List In Dst safe : {[l.name for l in list_of_account_groups]}")
         self.assertNotIn(ag_name, [_l.name for _l in list_of_account_groups])
 
+        try:
+            await self.vault.accountgroup.move_all_account_groups(self.test_safe, self.test_target_safe)
+        except Exception as err:
+            raise
 
-        # Moving account not filtering
-        # => expected result : the account is moved
+        # In src safe, the account group should be empty now
+        self.assertEqual(0,len(await self.vault.accountgroup.members(group_id)))
 
-        # Going back to
-        #
-        # _account_groups = await self.vault.accountgroup.list_by_safe(self.test_safe)
-        # for _ag in _account_groups:
-        #     print(str(_ag))
-        #     _ag_members = await self.vault.accountgroup.members(_ag)
-        #     print([str(_a) for _a in _ag_members])
+        # In dst safe we should have the new group
+        list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_target_safe)
+        self.assertIn(ag_name, [_l.name for _l in list_of_account_groups])
 
-            # print(str(a))
-        # await self.vault.accountgroup.move_all_account_groups(self.test_safe, )
+        # Revert
+        try:
+            await self.vault.accountgroup.move_all_account_groups(self.test_target_safe, self.test_safe)
+        except Exception as err:
+            raise
+
+        for _r in await self.vault.accountgroup.members(group_id):
+            try:
+                await self.vault.accountgroup.delete_member(_r, group_id)
+            except:
+                pass
+
