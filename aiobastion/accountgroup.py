@@ -45,6 +45,11 @@ class AccountGroup:
         return [PrivilegedAccountGroup(**g) for g in groups]
 
     async def get_privileged_account_group_id(self, account_group: PrivilegedAccountGroup):
+        """
+        Internal function to get the group ID in functions
+        :param account_group: PrivilegedAccountGroup object
+        :return: group ID
+        """
         if account_group.id == "":
             acc = await self.list_by_safe(account_group.safe)
             for a in acc:
@@ -69,6 +74,11 @@ class AccountGroup:
         raise AiobastionException(f"Group {group_name} not found in {safe}")
 
     async def get_group_id(self, account_group):
+        """
+        Internal function to get group_id from object or from group_id
+        :param account_group: PrivilegedAccountGroup object or group_id
+        :return: group_id
+        """
         if type(account_group) is str:
             if re.match(r'\d+_\d+', account_group) is not None:
                 return account_group
@@ -80,6 +90,11 @@ class AccountGroup:
             raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
 
     async def members(self, group):
+        """
+        Returns the list of members (PrivilegedAccount) for a given PrivilegedAccountGroup
+        :param group: PrivilegedAccountGroup or group_id
+        :return: List of members of a group
+        """
         group_id = await self.get_group_id(group)
         members = await self.epv.handle_request("get", f"api/AccountGroups/{group_id}/Members")
         return await self.epv.account.get_account([m["AccountID"] for m in members])
@@ -105,8 +120,8 @@ class AccountGroup:
     async def add_privileged_account_group(self, account_group: PrivilegedAccountGroup):
         """
         Add a privileged account group using a Privileged Account Group object
-        @param account_group: a PrivilegedAccountGroup object
-        @return: group id
+        :param account_group: a PrivilegedAccountGroup object
+        :return: group id
         """
         if not await self.epv.safe.exists(account_group.safe):
             raise AiobastionException(f"Safe {account_group.safe} does not exists")

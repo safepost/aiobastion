@@ -12,6 +12,7 @@ class Safe:
     def __init__(self, epv):
         self.epv = epv
 
+    # TODO : add membershipExpirationDate permissions isReadOnly
     async def add_member(self, safe: str, username: str, search_in: str = "Vault",
                          useAccounts: bool = False,
                          retrieveAccounts: bool = False,
@@ -36,6 +37,35 @@ class Safe:
                          requestsAuthorizationLevel1: bool = False,
                          requestsAuthorizationLevel2: bool = False
                          ):
+        """
+        Add a safe member
+        :param safe: Name of the safe - Required
+        :param username: Name of the user or group to add - Required
+        :param search_in: The Vault or the domain of the user or group - Defaults to Vault - Optional
+        :param useAccounts: Use accounts but cannot view passwords. - Default: False - Optional
+        :param retrieveAccounts: Retrieve and view accounts in the Safe. - Default: False - Optional
+        :param listAccounts: View accounts list. - Default: False - Optional
+        :param addAccounts: Add accounts in the Safe. - Default: False - Optional
+        :param updateAccountContent: Update existing account content. - Default: False - Optional
+        :param updateAccountProperties: Update existing account properties. - Default: False - Optional
+        :param initiateCPMAccountManagementOperations: Initiate password management operations through CPM. - Default: False - Optional
+        :param specifyNextAccountContent: Specify the password that is used when the CPM changes the password value. - Default: False - Optional
+        :param renameAccounts: Rename existing accounts in the Safe. - Default: False - Optional
+        :param deleteAccounts: Delete existing passwords in the Safe. - Default: False - Optional
+        :param unlockAccounts: Unlock accounts that are locked by other users. - Default: False - Optional
+        :param manageSafe: Perform administrative tasks in the Safe (update properies, recover, delete) - Default: False - Optional
+        :param manageSafeMembers: Add and remove Safe members, and update their authorizations in the Safe. - Default: False - Optional
+        :param backupSafe: Create a backup of a Safe and its contents, and store it in another location. - Default: False - Optional
+        :param viewAuditLog: View account and user activity in the Safe. - Default: False - Optional
+        :param viewSafeMembers: View permissions of Safe members. - Default: False - Optional
+        :param accessWithoutConfirmation: Access the Safe without confirmation from authorized users. - Default: False - Optional
+        :param createFolders: Create folders in the Safe. - Default: False - Optional
+        :param deleteFolders: Delete folders in the Safe. - Default: False - Optional
+        :param moveAccountsAndFolders: Move accounts and folders in the Safe to different folders and subfolders. - Default: False - Optional
+        :param requestsAuthorizationLevel1: Request Authorization Level 1. - Default: False - Optional
+        :param requestsAuthorizationLevel2: Request Authorization Level 2. - Default: False - Optional
+        :return: A dict with the result
+        """
         perm = {
             "useAccounts": useAccounts,
             "retrieveAccounts": retrieveAccounts,
@@ -73,7 +103,8 @@ class Safe:
             raise AiobastionException(f"Safe : \"{safe}\" was not found")
 
         return await self.epv.handle_request("post", url, data=data)
-    
+
+    # TODO : Document profiles
     async def add_member_profile(self, safe: str, username: str, profile: (str, dict)):
         """
         This functions adds the "username" user (or group) to the given safe with a relevant profile
@@ -113,8 +144,7 @@ class Safe:
 
     async def exists(self, safename: str):
         """
-        Return whether a safe exists or not
-
+        Whether a safe exists whose name is "safename"
         :param safename: name of the safe
         :return: Boolean
         """
@@ -139,7 +169,7 @@ class Safe:
         :param olac: Enable OLAC for the safe (default to False)
         :param days: days of retention
         :param versions: number of versions
-        :param auto_purge: Whether or not to automatically purge files after the end of the Object History Retention Period defined in the Safe properties.
+        :param auto_purge: Whether to automatically purge files after the end of the Object History Retention Period defined in the Safe properties.
         :param cpm: The name of the CPM user who will manage the new Safe.
         :param add_admins: Add "Vaults Admin" group and Administrator user as safe owners
         :return: boolean
@@ -324,6 +354,13 @@ class Safe:
         }
 
     async def search(self, query=None, include_accounts=False, details=False):
+        """
+        Search for a safe
+        :param query: What to search - Default: None (retrieve all safes) - Optional
+        :param include_accounts: Add privileged accounts on the result - Default: False - Optional
+        :param details: Include additional safe details - Default: False - Optional
+        :return: A list of dict with the result
+        """
         return [safe async for safe in self.search_safe_iterator(query, include_accounts, details)]
 
     async def list(self, details=False):
@@ -341,10 +378,15 @@ class Safe:
         Get details of a given safe. We do a direct query instead of a search for efficiency.
         :return: A dict of the safe details
         """
-        if not safename: raise AiobastionException("A safe name must be provided")
+        if not safename:
+            raise AiobastionException("A safe name must be provided")
         return await self.epv.handle_request("get", f"API/Safes/{safename}", params={"extendedDetails": "True"})
 
     async def v1_get_safes(self):
+        """
+        Old way to retrieve safes, when the v2 operation fail
+        :return: A list of safes
+        """
         return await self.epv.handle_request("get", 'WebServices/PIMServices.svc/Safes/', filter_func=lambda r: r)
 
     async def get_permissions(self, safename: str, username: str):

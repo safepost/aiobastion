@@ -61,6 +61,11 @@ class User:
         raise AiobastionException(f"No such user found : {username}")
 
     async def exists(self, username: str):
+        """
+        Whether a user exists whose username is "username"
+        :param username: username of the user
+        :return: Boolean
+        """
         if self.epv.user_list is None:
             results = await self.epv.handle_request("get", 'API/Users', filter_func=lambda result: result["Users"])
             self.epv.user_list = [u['username'].lower().strip() for u in results]
@@ -120,9 +125,8 @@ class User:
     async def del_ssh_key(self, username: str, key_id: str):
         """
         Deletes the key identified by key_id of the username
-
-        :param username: username of the user
-        :param key_id: KeyID of the key to delete
+        :param username: username of the user - Required
+        :param key_id: KeyID of the key to delete - Required
         :return: Boolean
         """
         url = f"WebServices/PIMServices.svc/Users/{username}/AuthenticationMethods/SSHKeyAuthentication" \
@@ -131,12 +135,15 @@ class User:
         return await self.epv.handle_request("delete", url)
 
     async def del_all_ssh_keys(self, username: str):
+        """
+        Delete all SSH Keys of a given user
+        :param username: Username of the user - Required
+        :return: A list of booleans
+        """
         keys = await self.get_ssh_keys(username)
         all_key_id = [k["KeyID"] for k in keys]
-        coros = []
-        for key in all_key_id:
-            coros.append(self.del_ssh_key(username, key))
-        await asyncio.gather(*coros)
+        tasks = [self.del_ssh_key(username, key) for key in all_key_id]
+        return await asyncio.gather(*tasks)
 
     async def add(self, username: str, user_type: str = "EPVUser", non_authorized_interfaces: List = None,
                   location: str = "\\", expiry_date: int = None, enable_user: bool = True,
@@ -145,6 +152,27 @@ class User:
                   distinguished_name: str = None, vault_authorization: List = None, business_address: dict = None,
                   internet: dict = None, phones: dict = None, description: str = None, personal_details: dict = None
                   ):
+        """
+        Add a new user
+        :param username: The name of the user - Required
+        :param user_type: The user type that was returned according to the license. - Default: EPVUser
+        :param non_authorized_interfaces: The CyberArk interfaces that this user is not authorized to use. - Default: None
+        :param location: Location of the user - Default: \\
+        :param expiry_date: The date when the user expires. (Date-type int) - Default: None
+        :param enable_user: Whether the user will be enabled upon creation. - Default: True
+        :param authentication_method: Restrict authentication method that the user will use to log on. - Default: None
+        :param password: The password that the user will use to log on for the first time - Default: None - Not required for PKI or LDAP
+        :param change_password_on_the_next_logon: Whether the user must change their password at first logon. - Default: False
+        :param password_never_expires: Whether the user’s password will not expire unless they decide to change it. - Default: False
+        :param distinguished_name: The user’s distinguished name for PKI auth.  - Default: None
+        :param vault_authorization: The list of user permissions (refer to documentation) - Default : None
+        :param business_address: The user's postal address dict (refer to documentation) - Default: None
+        :param internet: The user's email dict (refer to documentation) - Default: None
+        :param phones: The user's phones dict (refer to documentation) - Default: None
+        :param description: Description free text - Default: None
+        :param personal_details: The user's personal details dict (refer to documentation) - Default: None
+        :return: A dict representation of the newly created user
+        """
         #
         # if non_authorized_interfaces is None:
         #     non_authorized_interfaces = []
@@ -184,6 +212,14 @@ class Group:
 
     async def list(self, pattern: str = None, group_type: str = None, details: bool = False,
                    include_members: bool = False):
+        """
+
+        :param pattern:
+        :param group_type:
+        :param details:
+        :param include_members:
+        :return:
+        """
         url = f"api/UserGroups"
         params = {}
 
