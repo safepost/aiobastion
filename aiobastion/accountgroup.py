@@ -151,7 +151,7 @@ class AccountGroup:
         :param account_group_name:
         :param src_safe:
         :param dst_safe: Where to store the account group
-        :return:
+        :return: the new account group ID, or False if no group was found
         """
         account_groups = await self.list_by_safe(src_safe)
         for account_group in account_groups:
@@ -175,11 +175,10 @@ class AccountGroup:
 
                 ag_members = await self.epv.accountgroup.members(account_group)
 
-                logging.debug(f"Now going to move accounts : {ag_members}")
+                # Moving accounts
                 try:
                     moved_accounts = await self.epv.account.move(ag_members, dst_safe)
                 except CyberarkAPIException as err:
-                    logging.debug(f"Got an exception when moving accounts {err}")
                     raise
                 logging.debug("Accounts moved !")
 
@@ -194,8 +193,6 @@ class AccountGroup:
                 return new_group_id
         return False
 
-
-    # Not tested / documented
     async def move_all_account_groups(self, src_safe, dst_safe, account_filter: dict = None):
         """
         Move all accounts groups from a safe to another safe
@@ -218,50 +215,19 @@ class AccountGroup:
             if account_filter is not None:
                 filtered = False
                 for a in ag_members:
-                    logging.debug(f"Considering {a}")
                     for filter_file_category, filter_value in account_filter.items():
                         try:
                             if _case_insensitive_getattr(a, filter_file_category) == filter_value:
-                                logging.debug(f"Filtered : {_case_insensitive_getattr(a, filter_file_category)} equal to {filter_value}")
                                 filtered = True
                         except Exception as err:
-                            # Most likely the filtered a
+                            # Most likely the filtered file category is not a basic one
                             raise AiobastionException(f"Your filter doesn't exist on account {a} "
                                                       f"(bad file category ? {filter_file_category})")
                 if filtered:
                     logging.debug("Account group skipped ....")
                     continue
 
-
-            logging.debug(f"Now going to move {ag}")
             try:
-                logging.debug(f"Creating {ag} to {dst_safe}")
-                ng = await self.add(ag.name, ag.group_platform, dst_safe)
-                logging.debug(f"Newly created group ID : {ng}")
-
+                await self.move_account_group(ag.name, ag.safe, dst_safe)
             except CyberarkAPIException as err:
-                if "EPVPA012E" in err.err_message:
-                    # self.epv.logger.debug("Account group already exists !")
-                    nglist = await self.list_by_safe(dst_safe)
-                    ng = next(ng for ng in nglist if ag.name == ng.name)
-                    self.epv.logger.debug(f"Warning : AG already exists and detected with ID : {ng}")
-                else:
-                    raise
-            except Exception as err:
-                logging.debug(f"Got exception : {err}")
-
-            logging.debug(f"Now going to move accounts : {ag_members}")
-            try:
-                moved_accounts = await self.epv.account.move(ag_members, dst_safe)
-            except CyberarkAPIException as err:
-                logging.debug(f"Got an exception when moving accounts {err}")
                 raise
-            logging.debug("Account moved !")
-
-            for agm in moved_accounts:
-                try:
-                    print(await self.add_member(agm, ng))
-                    logging.debug(f"Moved {agm} into {ng}")
-                except:
-                    # Account are moved with their account group (Cyberark black magic)
-                    pass

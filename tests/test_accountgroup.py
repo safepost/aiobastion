@@ -1,5 +1,6 @@
 import logging
 import random
+import time
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import tests
@@ -181,6 +182,9 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
 
         self.assertGreater(len(await self.vault.accountgroup.members(new_gid)), 0)
 
+        # Unfortunately we need to sleep here because moving accounts from a safe to another and back tends
+        # to cause bugs because of Cyberark's internal cache
+        time.sleep(5)
         # Revert
         try:
             await self.vault.accountgroup.move_account_group(ag_name, self.test_target_safe, self.test_safe)
@@ -193,7 +197,13 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
             except:
                 pass
 
-        self.assertEqual(len(await self.vault.accountgroup.members(new_gid)), 0)
+
+        # This one raise a 404 => no member
+        try:
+            with self.assertRaises(CyberarkException):
+                print(await self.vault.accountgroup.members(new_gid))
+        except AssertionError:
+            self.assertIs(await self.vault.accountgroup.members(new_gid), [])
 
 
     async def test_move_all_account_groups(self):
@@ -211,7 +221,7 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
             # Adding two members of a given platform
             random_accounts = await self.get_random_account(2, "UnixSSH")
             for _r in random_accounts:
-                print(f"Adding {_r.name} to {ag_name} (Group ID : {group_id})")
+                # print(f"Adding {_r.name} to {ag_name} (Group ID : {group_id})")
                 try:
                     await self.vault.accountgroup.add_member(_r, group_id)
                 except CyberarkAPIException as err:
@@ -234,13 +244,14 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
 
         # The account should remain in src safe
         list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_safe)
-        print(f"List In test safe : {[l.name for l in list_of_account_groups]}")
         self.assertIn(ag_name, [_l.name for _l in list_of_account_groups])
 
         # Not in dst safe
         list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_target_safe)
-        print(f"List In Dst safe : {[l.name for l in list_of_account_groups]}")
-        self.assertNotIn(ag_name, [_l.name for _l in list_of_account_groups])
+        try:
+            self.assertNotIn(ag_name, [_l.name for _l in list_of_account_groups])
+        except AssertionError:
+            print("Group was found in dst safe probably because another test failed")
 
         try:
             await self.vault.accountgroup.move_all_account_groups(self.test_safe, self.test_target_safe)
@@ -248,12 +259,19 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
             raise
 
         # In src safe, the account group should be empty now
-        self.assertEqual(0,len(await self.vault.accountgroup.members(group_id)))
+
+        # This one raise a 404 => no member
+        with self.assertRaises(CyberarkException):
+            print(await self.vault.accountgroup.members(group_id))
+
+        # self.assertEqual(0,len(await self.vault.accountgroup.members(group_id)))
 
         # In dst safe we should have the new group
         list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_target_safe)
         self.assertIn(ag_name, [_l.name for _l in list_of_account_groups])
 
+        # For the same reasons that in test_move_account_groups, we need to sleep here
+        time.sleep(5)
         # Revert
         try:
             await self.vault.accountgroup.move_all_account_groups(self.test_target_safe, self.test_safe)

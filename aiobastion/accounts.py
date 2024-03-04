@@ -361,7 +361,6 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed
         """
-        #TODO check the index of logon account at platform level !
         return await self.link_account(account, logon_account, self.epv.LOGON_ACCOUNT_INDEX)
 
     async def link_reconcile_account_by_address(self, acc_username, rec_acc_username, address):
@@ -397,7 +396,8 @@ class Account:
     async def remove_reconcile_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """
         | This function unlinks the reconciliation account of the given account (or the list of accounts)
-        | ⚠️ The "reconcile" Account index is default to 3
+        | ⚠️ The "reconcile" Account index is default to 3 but can be set differently on the platform
+        | You can change it by setting custom:RECONCILE_ACCOUNT_INDEX in your config file
 
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
@@ -410,7 +410,8 @@ class Account:
     async def remove_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """
         | This function unlinks the logon account of the given account (or the list of accounts)
-        | ⚠️ The "logon" Account index is default to 2, you can change it by setting custom:LOGON_ACCOUNT_INDEX in the config
+        | ⚠️ The "logon" Account index is default to 2 but can be set differently on the platform
+        | You can change it by setting custom:LOGON_ACCOUNT_INDEX in your config file
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
@@ -422,7 +423,7 @@ class Account:
     async def unlink_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
                              extra_password_index: int):
         """ This function unlinks the account of the given account (or the list of accounts)
-        | ⚠️ Double check the linked account index on your platform.
+        | ⚠️ Double-check the linked account index on your platform.
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
@@ -965,7 +966,7 @@ class Account:
         )
 
 
-    # Test
+    # Test me
     async def get_ssh_key(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
         """
         Retrieve the SSH Key of an account
