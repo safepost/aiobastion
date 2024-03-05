@@ -507,7 +507,7 @@ class EPV:
         elif self.session is None:
             head = {'Content-type': 'application/json',
                     'Authorization': self.__token}
-            self.session = aiohttp.ClientSession(headers=head)
+            self.session = aiohttp.ClientSession(headers=head, cookies = self.cookies)
             self.logger.debug(f"Building session ID (token is known) : {self.session}")
 
         elif self.session.closed:
@@ -515,7 +515,8 @@ class EPV:
             self.logger.debug("Never happens scenario happened (Session closed but not None)")
             head = {'Content-type': 'application/json',
                     'Authorization': self.__token}
-            self.session = aiohttp.ClientSession(headers=head)
+            self.session = aiohttp.ClientSession(headers=head, cookies = self.cookies)
+
 
         if self.__sema is None:
             self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)

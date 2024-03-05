@@ -131,7 +131,7 @@ class Platform:
         url, head = self.epv.get_url(f"API/Platforms/{str(pfid)}/Export")
 
         try:
-            async with aiohttp.ClientSession(headers=head) as session:
+            async with aiohttp.ClientSession(headers=head, cookies = self.epv.cookies ) as session:
                 async with session.request("post", url, **self.epv.request_params) as req:
                     if req.status != 200:
                         content = await req.json()

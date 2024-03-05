@@ -177,6 +177,7 @@ class EPV_AIM:
                 self.validate_and_setup_aim_ssl()
                 # Previously we tried to use aiohttp session,
                 # but now we are always doing our own session for AIM
+                # TODO: test this with aiohttp.ClientSession(cookies = self.cookies)
             self.session = aiohttp.ClientSession()
 
         if self.__sema is None:

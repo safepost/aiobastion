@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2024-03-05
+### Bugfixes
+- The "retain cookies" feature in 0.1.1 has a bug (cookies were not retained). 0.1.1 had no broken changes, but the
+  new feature was not functional. The issue is fixed here.
+
 ## [0.1.3] - 2024-03-04
 ### Changes
 - Adding some tests

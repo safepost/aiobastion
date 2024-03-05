@@ -70,6 +70,23 @@ With a freshly installed CyberArk,
 
 Finally, create two apps, "TestApp" and "TestApp2".
 
+#### Load-balancer for Testing
+You can use [HAproxy](https://www.haproxy.org/) as a load-balancer for testing. HAproxy supports both client IP hash
+and affinity cookies, as shown below:
+```aidl
+backend my_backend
+    mode http
+    ## cookie based session affinity
+    cookie SERVERID insert indirect nocache
+    server backend1 ip_address_1:443 check cookie backend1 ssl verify none
+    server backend2 ip_address_2:443 check cookie backend2 ssl verify none
+
+#     ## hash based session affinity
+#     stick-table type ip size 200k expire 30m
+#     stick on src
+#     server backend1 ip_address_1:443 check  ssl verify none
+#     server backend2 ip_address_2:443 check ssl verify none
+```
 ### Troubleshoot Test Issues
 * `PASWS167E There are some invalid parameters`: The secrets should not include "," or "<".
 * `PASWS159E Parameter [manualManagementReason] cannot be specified with parameter [enableAutomaticManagement]=[True]`: 
