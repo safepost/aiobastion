@@ -1,4 +1,4 @@
-Account manipulation
+Accounts
 ==========================
 
 In the following table, Account design a PrivilegedAccount object described below.

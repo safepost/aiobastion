@@ -56,7 +56,7 @@ class Platform:
         """
         Free search on target platforms.
         Beware that for a search it can return several platforms
-        If you want to search on a particular platform better use get_target_platform_details
+        If you want to search on a particular platform better use get_target_platform_details.
 
         :param search: free search
         :return: a list of found platforms
@@ -131,7 +131,7 @@ class Platform:
         url, head = self.epv.get_url(f"API/Platforms/{str(pfid)}/Export")
 
         try:
-            async with aiohttp.ClientSession(headers=head) as session:
+            async with aiohttp.ClientSession(headers=head, cookies = self.epv.cookies ) as session:
                 async with session.request("post", url, **self.epv.request_params) as req:
                     if req.status != 200:
                         content = await req.json()

@@ -5,16 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2024-02-03
+## [0.1.4] - 2024-03-05
+### Bugfixes
+- The "retain cookies" feature in 0.1.1 has a bug (cookies were not retained). 0.1.1 had no broken changes, but the
+  new feature was not functional. The issue is fixed here.
+
+## [0.1.3] - 2024-03-04
+### Changes
+- Adding some tests
+- Adding some functions related to Account Groups
+
+## [0.1.2] - 2024-02-08
+### Changes
+- Better SSL handling for AIM
+- Useless functions removal
+- Updating documentation
+
+## [0.1.1] - 2024-02-03
 ### Changes
 - Add "get_safe_details" method
 - Add support for "custom" configs to override the default logon and reconcile account index
 - Add support to retain cookies during login, and use for subsequent API calls for load-balanced PVWAs.
 
-## [1.0.0] - 2024-01-26
+## [0.1.0] - 2024-01-26
 ### Changes
 - Adding some debug information
-- Code refactoring
+- Code refactoring for aim part
 
 ## [0.0.31] - 2024-01-15
 ### Changes

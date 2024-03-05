@@ -78,22 +78,17 @@ Do this :
 
 .. code-block:: python
 
+    # Perform a CPM change a list of accounts for specific host (here host_list) in a specific safe
     production = aiobastion.EPV("path/to/config.yml")
     async with production as vault:
         # Dump all safe in a list of account
         admin_accounts = await vault.account.search_account_by(safe="Admins-Accounts-Safe")
 
-        # Initiate an empty task list
-        tasks_list = []
-        for host in host_list:
-            # find the corresponding account in the list with address equivalent to host, or None
-            current_host_account = next((h for h in admin_accounts if h.address.lower() == host.lower()), None)
-            if current_host_account in not None:
-                # Add the wanted action to the task list, here a cpm_change
-                tasks_list.append(vault.account.change(current_host_account))
+        # Only accounts whose addresses match our list (not handling upper / lower here)
+        filtered_list = [_a for _a in admin_accounts if _a.address in host_list]
 
-        # Run the tasks_list with a PVWA semaphore of size 10, returning exception as normal result (don't stop on error)
-        print(await vault.utils.gather_with_concurrency(10, *tasks_list, return_exceptions=True))
+        # Perform the change
+        await vault.account.change(filtered_list)
 
 
 Don't do this :
@@ -102,9 +97,6 @@ Don't do this :
 
     production = aiobastion.EPV("path/to/config.yml")
     async with production as vault:
-        # Dump all safe in a list of account
-        admin_accounts = await vault.account.search_account_by(safe="Admins-Accounts-Safe")
-
         # Initiate an empty task list
         tasks_list = []
         for host in host_list:
@@ -116,3 +108,20 @@ Don't do this :
                 print(await vault.account.change(current_host_account))
             except Exception as err:
                 print(f"An error as occured when changing {host}'s password")
+
+When manipulating other things that account, you can use the standard asyncio library to run your operations
+
+.. code-block:: python
+
+        # Good logic
+        all_user_list = await self.vault.user.list()
+        all_user_details = await asyncio.gather(*[self.vault.user.details(_u) for _u in all_user_list])
+
+        # Bad logic
+        all_user_list = await self.vault.user.list()
+        for _u in all_user_list:
+            await self.vault.user.details(_u)
+
+Result (in my lab):
+* Good logic took 2.09 seconds
+* Bad logic took 9.09 seconds

@@ -1,4 +1,6 @@
+import logging
 import random
+import time
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import tests
@@ -12,10 +14,10 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         await self.vault.login()
 
         self.test_safe = "sample-it-dept"
+        self.test_target_safe = "sample-coolteam"
 
     async def asyncTearDown(self):
         await self.vault.logoff()
-
 
     async def get_random_account_group(self, n=1):
         groups = await self.vault.accountgroup.list_by_safe(self.test_safe)
@@ -24,9 +26,12 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         else:
             return random.choices(groups, k=n)
 
-    async def get_random_account(self, n=1):
+    async def get_random_account(self, n=1, platform_id=""):
+        search = {"safe": self.test_safe}
+        if platform_id != "":
+            search["platform"] = platform_id
         accounts = await self.vault.account.search_account_by(
-            safe=self.test_safe
+            **search
         )
         self.assertGreaterEqual(len(accounts), 1)
         if n == 1:
@@ -38,6 +43,8 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         ret = await self.vault.accountgroup.list_by_safe(self.test_safe)
         for members in ret:
             self.assertIsInstance(members.to_json(), dict)
+            # Check __str__
+            self.assertIn("group_platform", str(members))
 
     async def test_list_by_safe(self):
         ret = await self.vault.accountgroup.list_by_safe(self.test_safe)
@@ -141,5 +148,139 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         self.assertNotIn(account.id, [x.id for x in members])
 
 
+    async def test_move_account_group(self):
+        ag_name = "MoveAccountGroupTest"
 
+        try:
+            group_id = await self.vault.accountgroup.add(ag_name, "sample_group", self.test_safe)
+        except CyberarkAPIException as err:
+            if err.http_status == 409:
+                group_id = await self.vault.accountgroup.get_account_group_id(ag_name, self.test_safe)
+            else:
+                raise
+
+        if len(await self.vault.accountgroup.members(group_id)) == 0:
+            # Adding two members of a given platform
+            random_accounts = await self.get_random_account(2, "UnixSSH")
+            for _r in random_accounts:
+                print(f"Adding {_r.name} to {ag_name} (Group ID : {group_id})")
+                try:
+                    await self.vault.accountgroup.add_member(_r, group_id)
+                except CyberarkAPIException as err:
+                    if err.http_status == 400:
+                        # Account already added in a group
+                        pass
+                    else:
+                        raise
+        else:
+            print("Not adding more members on this group now")
+
+        try:
+            new_gid = await self.vault.accountgroup.move_account_group(ag_name, self.test_safe, self.test_target_safe)
+        except Exception as err:
+            raise
+
+        self.assertGreater(len(await self.vault.accountgroup.members(new_gid)), 0)
+
+        # Unfortunately we need to sleep here because moving accounts from a safe to another and back tends
+        # to cause bugs because of Cyberark's internal cache
+        time.sleep(5)
+        # Revert
+        try:
+            await self.vault.accountgroup.move_account_group(ag_name, self.test_target_safe, self.test_safe)
+        except Exception as err:
+            raise
+
+        for _r in await self.vault.accountgroup.members(group_id):
+            try:
+                await self.vault.accountgroup.delete_member(_r, group_id)
+            except:
+                pass
+
+
+        # This one raise a 404 => no member
+        try:
+            with self.assertRaises(CyberarkException):
+                print(await self.vault.accountgroup.members(new_gid))
+        except AssertionError:
+            self.assertIs(await self.vault.accountgroup.members(new_gid), [])
+
+
+    async def test_move_all_account_groups(self):
+        ag_name = "MoveAccountGroupTest"
+        # Create a new account group in test safe
+        try:
+            group_id = await self.vault.accountgroup.add(ag_name, "sample_group", self.test_safe)
+        except CyberarkAPIException as err:
+            if err.http_status == 409:
+                group_id = await self.vault.accountgroup.get_account_group_id(ag_name, self.test_safe)
+            else:
+                raise
+
+        if len(await self.vault.accountgroup.members(group_id)) == 0:
+            # Adding two members of a given platform
+            random_accounts = await self.get_random_account(2, "UnixSSH")
+            for _r in random_accounts:
+                # print(f"Adding {_r.name} to {ag_name} (Group ID : {group_id})")
+                try:
+                    await self.vault.accountgroup.add_member(_r, group_id)
+                except CyberarkAPIException as err:
+                    if err.http_status == 400:
+                        # Account already added in a group
+                        pass
+                    else:
+                        raise
+        else:
+            print("Not adding more members on this group now")
+
+        # Moving accounts group but filtering in our platform to test_target_safe
+        # So the account should not be moved !
+        filtered = {"platformID": "UnixSSH"}
+        try:
+            await self.vault.accountgroup.move_all_account_groups(self.test_safe, self.test_target_safe,
+                                                                  account_filter=filtered)
+        except Exception as err:
+            raise
+
+        # The account should remain in src safe
+        list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_safe)
+        self.assertIn(ag_name, [_l.name for _l in list_of_account_groups])
+
+        # Not in dst safe
+        list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_target_safe)
+        try:
+            self.assertNotIn(ag_name, [_l.name for _l in list_of_account_groups])
+        except AssertionError:
+            print("Group was found in dst safe probably because another test failed")
+
+        try:
+            await self.vault.accountgroup.move_all_account_groups(self.test_safe, self.test_target_safe)
+        except Exception as err:
+            raise
+
+        # In src safe, the account group should be empty now
+
+        # This one raise a 404 => no member
+        with self.assertRaises(CyberarkException):
+            print(await self.vault.accountgroup.members(group_id))
+
+        # self.assertEqual(0,len(await self.vault.accountgroup.members(group_id)))
+
+        # In dst safe we should have the new group
+        list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_target_safe)
+        self.assertIn(ag_name, [_l.name for _l in list_of_account_groups])
+
+        # For the same reasons that in test_move_account_groups, we need to sleep here
+        time.sleep(5)
+        # Revert
+        try:
+            await self.vault.accountgroup.move_all_account_groups(self.test_target_safe, self.test_safe)
+        except Exception as err:
+            raise
+
+        for _r in await self.vault.accountgroup.members(group_id):
+            try:
+                await self.vault.accountgroup.delete_member(_r, group_id)
+            except:
+                pass
 

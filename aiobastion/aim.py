@@ -27,7 +27,7 @@ class EPV_AIM:
                                  "failrequestonpasswordchange"]
 
     def __init__(self, host: str = None, appid: str = None, cert: str = None, key: str = None,
-                 verify: Union[str, bool] = None,
+                 passphrase: str = None, verify: Union[str, bool] = None,
                  timeout: int = Config.CYBERARK_DEFAULT_TIMEOUT,
                  max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS,
                  serialized: dict = None):
@@ -36,6 +36,7 @@ class EPV_AIM:
         self.appid = appid
         self.cert = cert
         self.key = key
+        self.passphrase = passphrase
         self.verify = verify
         self.timeout = timeout
         self.max_concurrent_tasks = max_concurrent_tasks
@@ -60,6 +61,10 @@ class EPV_AIM:
         if self.max_concurrent_tasks is None:
             self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
 
+        if self.verify is not False and not (isinstance(self.verify, str) and not isinstance(self.verify, bool)):
+            raise AiobastionException(f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
+
+
     def validate_and_setup_aim_ssl(self):
         if self.session:
             return
@@ -70,7 +75,7 @@ class EPV_AIM:
 
             if v is None:
                 raise AiobastionException(f"Missing AIM mandatory parameter '{attr_name}'."
-                                          " Required parameters: host, appid, cert, key.")
+                                          " Required parameters are: host, appid, cert, key.")
 
         if not os.path.exists(self.cert):
             raise AiobastionException(f"Parameter 'cert' in AIM: Public certificate file not found: {self.cert!r}")
@@ -78,8 +83,14 @@ class EPV_AIM:
         if not os.path.exists(self.key):
             raise AiobastionException(f"Parameter 'key' in AIM: Private key certificat file not found: {self.key!r}")
 
-        if self.verify is None or \
-           (isinstance(self.verify, str) and not os.path.exists(self.verify)):
+        # if verify is not set, default to no ssl
+        if self.verify is False:
+            self.verify = Config.CYBERARK_DEFAULT_VERIFY
+
+        if not (isinstance(self.verify, str) or isinstance(self.verify, bool)):
+            raise AiobastionException(f"Invalid type for parameter 'verify' (or 'CA') in AIM: {type(self.verify)} value: {self.verify!r}")
+
+        if (isinstance(self.verify, str) and not os.path.exists(self.verify)):
             raise AiobastionException(f"Parameter 'verify' in AIM: file not found {self.verify!r}")
 
         if isinstance(self.verify, str):
@@ -88,17 +99,17 @@ class EPV_AIM:
 
             if os.path.isdir(self.verify):
                 ssl_context = ssl.create_default_context(capath=self.verify)
-                ssl_context.load_cert_chain(self.cert, self.key)
             else:
                 ssl_context = ssl.create_default_context(cafile=self.verify)
-                ssl_context.load_cert_chain(self.cert, self.key)
-        else:  # None, True or False
-            # Note : How can we have True here ?
+        else:  # True or False
             ssl_context = ssl.create_default_context()
+
+            if not self.verify:  # False
+                ssl_context.check_hostname = False
+        if self.passphrase is not None:
+            ssl_context.load_cert_chain(self.cert, self.key, password=self.passphrase)
+        else:
             ssl_context.load_cert_chain(self.cert, self.key)
-            # Bugfix => when CA is not set, it will still try to check root CA
-            # Not a better fix than don't check the hostname atm
-            ssl_context.check_hostname = False
 
         self.request_params = \
             {"timeout": self.timeout,
@@ -166,6 +177,7 @@ class EPV_AIM:
                 self.validate_and_setup_aim_ssl()
                 # Previously we tried to use aiohttp session,
                 # but now we are always doing our own session for AIM
+                # TODO: test this with aiohttp.ClientSession(cookies = self.cookies)
             self.session = aiohttp.ClientSession()
 
         if self.__sema is None:

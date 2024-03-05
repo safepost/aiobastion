@@ -149,6 +149,7 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
             "appid":  "Automation_Application",         # (required) AIM Application ID
             "Cert":   r"C:\Folder\AIM_Cert.pem",        # (required) AIM Filename public certificate
             "Key":    r"C:\Folder\AIM_private_key",     # (required) AIM Filename Private Key certificate
+            "Passphrase":    "C3rtP4$$Phr4se",          # (optional) AIM Private Key certificate passphrase
             "Verify": r"C:\Folder\AIM_Root_CA.pem"      # (optional) Directory or filename of the ROOT certificate authority (CA)
             "keep_cookies": False,                      # (optional) whether to keep cookies between calls, set to true if API host is behind a load balancer
             "max_concurrent_tasks": 10,                 # (optional) AIM Maximum number of parallel task (default 10)
@@ -259,6 +260,7 @@ For demonstration purpose, AIM serialization is not define here. Otherwise refer
                 appid="Automation_Application",
                 cert_file=r"C:\Folder\AIM_Cert.pem",
                 cert_key=r"C:\Folder\AIM_private_key",
+                passphrase="C3rtP4$$Phr4se",
                 root_ca=r"C:\Folder\AIM_Root_CA.pem",
                 # timeout= 30,
                 # max_concurrent_tasks= 10,
@@ -355,12 +357,12 @@ In rare cases, you may want to connect only with the AIM interface (without PVWA
             "appid":  "Automation_Application",         # (required) AIM Application ID
             "cert":   r"C:\Folder\AIM_Cert.pem",        # (required) AIM Filename public certificate
             "key":    r"C:\Folder\AIM_private_key",     # (required) AIM Filename Private Key certificate
-            "verify": r"C:\Folder\AIM_Root_CA.pem"      # (optional) Directory or filename of the ROOT certificate authority (CA)
+            "verify": True                              # (optional) Directory or filename of the ROOT certificate authority (CA)
             "max_concurrent_tasks": 13,                 # (optional) AIM Maximum number of parallel task (default 10)
             "timeout": 60                               # (optional) AIM Maximum wait time in seconds before generating a timeout (default 30 seconds)
             }
 
-        aim_env  = aiobastion.cyberark.EPV_AIM(serialized=aim_config)
+        aim_env  = aiobastion.aim.EPV_AIM(serialized=aim_config)
 
         return aim_env
 
@@ -368,16 +370,17 @@ In rare cases, you may want to connect only with the AIM interface (without PVWA
     async def aim_somework(aim_env):
         try:
             # Extract secret (password) and account information in a dictionary
+            # Return one and only one account
             username = "Administror"
             user_safe = "production-safe"
 
-            secret_dict = await aim_env.get_secret_detail(
+            secret_info = await aim_env.get_secret_detail(
                 reason="Extract-utility.py; prepare safe migration",
-                object=username,
+                username=username,
                 safe=user_safe)
 
-            print("password: ", secret_dict["Content"])
-            print(secret_dict)
+            print("secret (password): ", secret_info.secret)
+            print("detail: ", secret_info.detail)
 
         except aiobastion.exceptions.CyberarkAIMnotFound as err:
             print(f"Account {username} not found in safe {user_safe}: {err}")
@@ -480,8 +483,8 @@ PVWA section / field definitions
 |                      |                         |                                                                                            +
 |                      |                         |   -  False:         No SSL (not recommended)                                               +
 |                      |                         |   -  True:          Use system SSL                                                         +
-|                      |                         |   -  <directory>:   CA certificates to trust for certificate verification (capath)         +
-|                      |                         |   -  <filename>:    CA certificates to trust for certificate verification (cafile)         +
+|                      |                         |   -  <directory>:   (capath) CA certificates to trust for certificate verification         +
+|                      |                         |   -  <filename>:    (cafile) CA certificates to trust for certificate verification         +
 +----------------------+-------------------------+                                                                                            +
 | ca                   | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
@@ -500,6 +503,8 @@ AIM section / field definitions
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | key                  | Required                | AIM Filename private key certificate                                                       +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| passphrase           | Optional                | AIM Filename private key certificate passphrase                                            +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | host                 | Required                | AIM CyberArk host name. If not define use the host from the PVWA section.                  +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | max_concurrent_tasks | Optional                | AIM Maximum number of parallel task (default 10).                                          +
@@ -507,14 +512,14 @@ AIM section / field definitions
 +----------------------+-------------------------+ If not define use the *max_concurrent_tasks* from the PVWA section.                        +
 | maxtasks             | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
-| verify               | Optional                | PVWA Directory or filename of the ROOT certificate authority (CA) (default True).          +
+| verify               | Optional                | PVWA Directory or filename of the ROOT certificate authority (CA) (default False).         +
 |                      |                         |                                                                                            +
 |                      |                         | Possible values:                                                                           +
 |                      |                         |                                                                                            +
-|                      |                         |   - True:          Use system SSL                                                          +
-|                      |                         |   - <directory>:   (capath) CA certificates to trust for certificate verification          +
-|                      |                         |   - <filename>:    (cafile) CA certificates to trust for certificate verification          +
-|                      |                         |   - False:         Is not allowed. Switch to True.                                         +
+|                      |                         |   -  False:         No SSL (not recommended)                                               +
+|                      |                         |   -  True:          Use system SSL                                                         +
+|                      |                         |   -  <directory>:   (capath) CA certificates to trust for certificate verification         +
+|                      |                         |   -  <filename>:    (cafile) CA certificates to trust for certificate verification         +
 +----------------------+-------------------------+                                                                                            +
 | ca                   | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+

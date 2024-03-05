@@ -59,6 +59,37 @@ class TestAccount(IsolatedAsyncioTestCase):
         else:
             return random.choices(accounts, k=n)
 
+    async def test_mapping_protocol(self):
+        _random_accounts = await self.get_random_account(2)
+        self.assertTrue(_random_accounts[0] == _random_accounts[0])
+        self.assertFalse(_random_accounts[0] != _random_accounts[0])
+        self.assertTrue(_random_accounts[0] != _random_accounts[1])
+        self.assertFalse(_random_accounts[0] == _random_accounts[1])
+        self.assertIn(_random_accounts[0], _random_accounts)
+        for _r in _random_accounts:
+            self.assertIn(_r, _random_accounts)
+
+        for k, v in _random_accounts[0].items():
+            self.assertIsInstance(k, str)
+            self.assertTrue(isinstance(v, str) or isinstance(v, dict))
+
+        for k, v in _random_accounts[0]:
+            self.assertIsInstance(k, str)
+            self.assertTrue(isinstance(v, str) or isinstance(v, dict))
+
+        for k in _random_accounts[0].keys():
+            self.assertIsInstance(k, str)
+
+        # getitem
+        self.assertIsInstance(_random_accounts[0]["id"], str)
+
+        _random_copy = PrivilegedAccount(**_random_accounts[0])
+        _random_copy.id = ""
+        self.assertTrue(_random_copy == _random_accounts[0])
+        self.assertFalse(_random_copy == _random_accounts[1])
+
+
+
     async def test_add_account_to_safe(self):
         already_exists = await self.vault.account.search_account_by(
             username=create_me.userName,
@@ -114,7 +145,6 @@ class TestAccount(IsolatedAsyncioTestCase):
         except:
             self.assertRaises(CyberarkException)
 
-
     async def test_get_account_id(self):
         account = await self.get_random_account()
         acc_id = await self.vault.account.get_account_id(account)
@@ -122,6 +152,20 @@ class TestAccount(IsolatedAsyncioTestCase):
 
         acc_id = await self.vault.account.get_account_id(account.id)
         self.assertEqual(acc_id, account.id)
+
+    async def test_get_privileged_account_id(self):
+        account = await self.get_random_account()
+        true_account_id = account.id
+        account.id = ""
+        found_acc_id = await self.vault.account.get_privileged_account_id(account)
+        self.assertEqual(true_account_id, found_acc_id)
+
+        _accounts = await self.get_random_account(2)
+        true_account_id = [_a.id for _a in _accounts]
+        _accounts[0].id = ""
+        _accounts[1].id = ""
+        found_acc_id = await self.vault.account.get_privileged_account_id(_accounts)
+        self.assertEqual(true_account_id, found_acc_id)
 
     async def test_link_account(self):
         accounts = await self.get_random_account(2)
@@ -299,7 +343,7 @@ class TestAccount(IsolatedAsyncioTestCase):
             await self.vault.accountgroup.add_privileged_account_group(account_group)
         except CyberarkAPIException as err:
             if err.http_status == 409:
-                print("Group (sample_group_name) was already added before")
+                logging.debug("Group (sample_group_name) was already added before")
             else:
                 raise
 
@@ -459,15 +503,18 @@ class TestAccount(IsolatedAsyncioTestCase):
         logging.debug(f"Account : {account}")
 
         # Generating new password and ensuring it respect security policy
-        new_password = secrets.token_hex(44) + "ac12AB$$"
-        ret = await self.vault.account.set_password(account, new_password)
-        self.assertTrue(ret)
+        # This test was not good because CP cache prevent us from getting the last password
+        # new_password = secrets.token_hex(44) + "ac12AB$$"
+        # ret = await self.vault.account.set_password(account, new_password)
+        # self.assertTrue(ret)
+
+        retrieve_password = await self.vault.account.get_password(account, "Testing get password AIM function")
 
         get_password = await self.vault.account.get_password_aim(address=account.address, safe=account.safeName)
-        self.assertEqual(new_password, get_password.secret)
+        self.assertEqual(retrieve_password, get_password.secret)
 
         get_secret = await self.vault.account.get_secret_aim(account)
-        self.assertEqual(new_password, get_secret.secret)
+        self.assertEqual(retrieve_password, get_secret.secret)
 
         with self.assertRaises(CyberarkAIMnotFound):
             await self.vault.account.get_password_aim(address="not_exist")
