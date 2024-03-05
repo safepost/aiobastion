@@ -339,7 +339,7 @@ class Account:
                                           reconcile_account: PrivilegedAccount):
         """
         | This function links the account (or the list of accounts) to the given reconcile account
-        | ⚠️ The "reconcile" Account index is default to 3
+        | ⚠️ The "reconcile" Account is supposed to have an index of 3
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
@@ -347,13 +347,13 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed
         """
-        return await self.link_account(account, reconcile_account, self.epv.RECONCILE_ACCOUNT_INDEX)
+        return await self.link_account(account, reconcile_account, 3)
 
     async def link_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
                                  logon_account: PrivilegedAccount):
         """
         | This function links the account (or the list of accounts) to the given logon account
-        | ⚠️ The "logon" Account index is default to 2, you can change it by setting custom:LOGON_ACCOUNT_INDEX in the config
+        | ⚠️ The "logon" Account is supposed to have an index of 2
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
@@ -396,7 +396,7 @@ class Account:
     async def remove_reconcile_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """
         | This function unlinks the reconciliation account of the given account (or the list of accounts)
-        | ⚠️ The "reconcile" Account index is default to 3 but can be set differently on the platform
+        | ⚠️ The "reconcile" Account is supposed to have an index of 3
         | You can change it by setting custom:RECONCILE_ACCOUNT_INDEX in your config file
 
 
@@ -1259,7 +1259,6 @@ class Account:
                 raise CyberarkException(f"Unable to create {acc.name} new address : {str(err)}")
             try:
                 await self.delete(old_id)
-
             except CyberarkAPIException as err:
                 raise CyberarkException(f"Unable to delete {acc.name} old address : {str(err)}")
             return new_account_id

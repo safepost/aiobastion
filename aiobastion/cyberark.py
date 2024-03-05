@@ -165,8 +165,8 @@ class EPV:
                 "max_concurrent_tasks",
                 getattr(self, "max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS))
             serialized_aim.setdefault("timeout", getattr(self, "timeout", Config.CYBERARK_DEFAULT_TIMEOUT))
-            serialized_aim.setdefault("verify", getattr(self, "verify", Config.CYBERARK_DEFAULT_VERIFY))
-            # serialized_aim.setdefault("keep_cookies", getattr(self, "keep_cookies", False))
+            serialized_aim.setdefault("verify", getattr(self, "verify", False))
+            serialized_aim.setdefault("keep_cookies", getattr(self, "keep_cookies", False))
             self.AIM = EPV_AIM(serialized=serialized_aim)
 
         # Other definition
@@ -198,7 +198,6 @@ class EPV:
                                    "ssl": ssl.create_default_context()}
         else:  # False
             self.request_params = {"timeout": self.timeout, "ssl": False}
-
 
     # Context manager
     async def __aenter__(self):
@@ -496,7 +495,6 @@ class EPV:
             # update or clean the session
             await self.close_session()
 
-
     def get_session(self):
         self.logger.debug(f"Getting aiobastion session ({self.session})")
         if self.__token is None and self.session is None:
@@ -597,7 +595,6 @@ class EPV:
         async with self.__sema:
             async with session.request(method, url, json=data, headers=head, params=params,
                                        **self.request_params) as req:
-                # self.logger.debug(req.status)
                 if req.status in (200, 201, 204):
                     try:
                         if len(await req.read()) == 0:
@@ -613,7 +610,6 @@ class EPV:
                                 return response
                             else:
                                 return True
-
                 else:
                     if req.status == 404:
                         raise CyberarkException(f"404 error with URL {url}")
