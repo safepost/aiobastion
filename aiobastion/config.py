@@ -11,6 +11,7 @@ class Config:
     CYBERARK_DEFAULT_TIMEOUT = 30
     CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS = 10
     CYBERARK_DEFAULT_RETENTION = 10
+    CYBERARK_DEFAULT_VERIFY = False
 
     def __init__(self, configfile):
         self.configfile = configfile
@@ -35,7 +36,7 @@ class Config:
         self.PVWA = None
         self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
         self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
-        self.PVWA_CA = False
+        self.PVWA_CA = Config.CYBERARK_DEFAULT_VERIFY
         self.keep_cookies = False
 
         with open(configfile, 'r') as config:
@@ -150,9 +151,10 @@ class Config:
             "cert":                 None,
             "host":                 None,       # Default = PVWA (host)
             "key":                  None,
+            "passphrase":           None,
             "max_concurrent_tasks": None,       # Default = PVWA (max_concurrent_tasks)
+            "verify":               False,       # Default = PVWA (PVWA_CA)
             "keep_cookies":         False,      # Default = False
-            "verify":               None,       # Default = PVWA (PVWA_CA)
             "timeout":              None,       # Default = PVWA (timeout)
         }
 
@@ -162,7 +164,7 @@ class Config:
         for k in list(configuration.keys()):
             keyname = k.lower()
 
-            if keyname in ["appid", "cert", "host", "key"]:
+            if keyname in ["appid", "cert", "host", "key", "passphrase"]:
                 configuration_aim[keyname] = configuration[k]
             elif keyname == "timeout":
                 configuration_aim[keyname] = self._to_integer("AIM/" + k, configuration[k])
@@ -201,7 +203,6 @@ class Config:
             self.AIM["max_concurrent_tasks"] =  self.max_concurrent_tasks
         if self.AIM["verify"] is None:
             self.AIM["verify"] = self.PVWA_CA
-
 
     def _to_integer(self, section_key, val):
         try:

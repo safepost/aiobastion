@@ -56,7 +56,7 @@ class Platform:
         """
         Free search on target platforms.
         Beware that for a search it can return several platforms
-        If you want to search on a particular platform better use get_target_platform_details
+        If you want to search on a particular platform better use get_target_platform_details.
 
         :param search: free search
         :return: a list of found platforms

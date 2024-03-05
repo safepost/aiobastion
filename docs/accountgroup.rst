@@ -1,4 +1,4 @@
-Account Group Manipulation
+Account Groups
 =============================
 The PrivilegedAccountGroup Class
 -------------------------------------
@@ -15,85 +15,13 @@ It has the following extra attributes:
 
 Functions
 -----------
-list_by_safe
-~~~~~~~~~~~~~~
-.. py:function:: list_by_safe(safe_name)
-    :async:
-
-    Returns the list of PrivilegedAccountGroup for a given safe
-
-    :param safe: the safe name
-    :return: list(PrivilegedAccountGroup)
-
-members
-~~~~~~~~~~
-.. py:function:: members(group)
-    :async:
-    :noindex:
-
-
-    Returns the list of members (PrivilegedAccount) for a given PrivilegedAccountGroup
-
-    :param group: PrivilegedAccountGroup
-    :return: list(PrivilegedAccountGroup)
-
-add
-~~~~~~~~~~
-.. py:function:: add(group_name, group_platform, safe_name)
-    :async:
-    :noindex:
-
-    Creates the Privileged Account Group with parameters in the Vault
-
-    :param group_name: group name
-    :param group_platform: group platform
-    :param safe_name: safe name
-    :return: group unique id
-
-add_privileged_account_group
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. py:function:: add_privileged_account_group(account_group)
-    :async:
-
-    Creates the Privileged Account Group in the Vault from the object
-
-    :param account_group: A PrivilegedAccountGroup object
-    :return: group unique id
-
-add_member
-~~~~~~~~~~~~
-.. py:function:: add_member(account, group)
-    :async:
-    :noindex:
-
-    Adds the given Privileged Account to the group
-
-    :param account: A PrivilegedAccount object
-    :param group: A PrivilegedAccountGroup object
-    :return: Boolean
-
-delete_member
-~~~~~~~~~~~~~~~~~~
-.. py:function:: delete_member(account, group)
-    :async:
-
-    Delete the given Privileged Account from the group
-
-    :param account: A PrivilegedAccount object
-    :param group: A PrivilegedAccountGroup object
-    :return: Boolean
-
-
-
-get_privileged_account_group_id
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. py:function:: get_privileged_account_group_id(account_group)
-    :async:
-
-    Returns the unique ID of the PrivilegedAccountGroup.
-
-    For this to work, the safe and name attributes must be relevant.
-
-    :param account_group: a PrivilegedAccountGroup
-    :return: The account group ID
-
+.. currentmodule:: aiobastion.accountgroup.AccountGroup
+.. autofunction:: list_by_safe
+.. autofunction:: get_account_group_id
+.. autofunction:: members
+.. autofunction:: add
+.. autofunction:: add_privileged_account_group
+.. autofunction:: add_member
+.. autofunction:: delete_member
+.. autofunction:: move_account_group
+.. autofunction:: move_all_account_groups

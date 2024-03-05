@@ -10,6 +10,7 @@ Welcome to aiobastion's documentation!
    accountgroup
    applications
    platforms
+   sessionmanagement
    safe
    users
    utilities

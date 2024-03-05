@@ -20,6 +20,22 @@ class Applications:
                   access_to: int = None, expiration:str = None, disabled:bool = None,
                   owner_first_name: str = "", owner_last_name: str = "", owner_email: str = None, owner_phone: str = ""
                   ):
+        """
+        Create a new application
+
+        :param app_name: Name of the application ("AppID") - Required
+        :param description: Description - Optional
+        :param location: Location - Defaults to \\ - Optional
+        :param access_from: The start hour that access is permitted to the application. - Defaults to None - Optional
+        :param access_to: The end hour that access is permitted to the application. - Defaults to None - Optional
+        :param expiration: The date when the application expires (format mm-dd-yyyy) - Defaults to None - Optional
+        :param disabled: Whether the application is disabled (True / False) - Defaults to None (False) - Optional
+        :param owner_first_name: Product Owner first name - Defaults to empty - Optional
+        :param owner_last_name: Product Owner last name - Defaults to empty - Optional
+        :param owner_email: Product Owner email - Defaults to empty - Optional
+        :param owner_phone: Product Owner phone - Defaults to empty - Optional
+        :return: True if created
+        """
         url = "WebServices/PIMServices.svc/Applications/"
 
         data = {
@@ -56,17 +72,27 @@ class Applications:
                 raise AiobastionException(f"owner_email argument must be valid mail, given : {owner_email}")
             data["application"]["BusinessOwnerEmail"] = owner_email
 
-
         return await self.epv.handle_request("post", url, data=data)
 
-
     async def delete(self, app_name:str):
+        """
+        Delete an application
+
+        :param app_name: The application name (AppID)
+        :return: True if deleted
+        """
         url = f"WebServices/PIMServices.svc/Applications/{app_name}"
 
         return await self.epv.handle_request("delete", url)
 
 
     async def details(self, app_name: str):
+        """
+        Get application details
+
+        :param app_name: The application name (AppID)
+        :return: A dict with the application information
+        """
         url = "WebServices/PIMServices.svc/Applications/"
         params = {
             "AppID": app_name,
@@ -85,6 +111,7 @@ class Applications:
     async def search(self, search: str):
         """
         Search applications by name
+
         :param search: free text to search application
         :return: list of application names
         """
@@ -102,6 +129,7 @@ class Applications:
                                  allow_internal_scripts: bool = False, comment: str = "") -> bool:
         """
         Add one or more authentication methods to a given app_id with a named param
+
         :param app_name: the name of the application
         :param path: path to authenticated
         :param hash_string: hash of script / binary
