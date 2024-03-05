@@ -1,4 +1,4 @@
-Account Group Manipulation
+Account Groups
 =============================
 The PrivilegedAccountGroup Class
 -------------------------------------

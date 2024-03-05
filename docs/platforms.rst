@@ -1,6 +1,6 @@
-Platforms manipulation
+Platforms
 ============================
-Platform related functions
+Functions
 ------------------------------
 
 .. currentmodule:: aiobastion.platforms.Platform
@@ -19,9 +19,9 @@ Platform related functions
 
 
 Return Examples
-===================
+----------------------
 get_platform_details example return
---------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block::
 
@@ -75,7 +75,7 @@ get_platform_details example return
 
 
 get_platforms_details example return
------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block::
 
@@ -146,7 +146,7 @@ get_platforms_details example return
 
 
 get_target_platform_details example return
--------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block::
 
@@ -203,7 +203,7 @@ get_target_platform_details example return
     }
 
 get_session_management_policy example return
-----------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block::
 
@@ -231,10 +231,9 @@ get_session_management_policy example return
 
 
 Code samples
-====================================
+---------------------------
 Display the number of accounts by platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 .. code-block:: python
 
         async with prod as epv:
@@ -250,7 +249,7 @@ Display the number of accounts by platform
             print(f"{p};{len(r)}")
 
 Export then delete a platform
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 

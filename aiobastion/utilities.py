@@ -3,8 +3,6 @@ import copy
 
 from .accounts import PrivilegedAccount
 from .exceptions import AiobastionException, CyberarkAPIException
-import logging
-
 
 
 def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_name=True) -> PrivilegedAccount:
@@ -19,16 +17,17 @@ def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_n
         new_a.name = new_a.get_name()
     return new_a
 
+
 def case_insensitive_getattr(obj, attr):
     for a in dir(obj):
         if a.lower() == attr.lower():
             return getattr(obj, a)
 
+
 class Utilities:
     def __init__(self, epv):
         self.epv = epv
         self.platform = self.Platform(epv)
-
 
     async def cpm_change_failed_accounts(self, address, username_filter: list = None):
         """
@@ -44,49 +43,47 @@ class Utilities:
                     ("status" not in acc.secretManagement) or (acc.secretManagement["status"] == 'failure'):
                 try:
                     await self.epv.account.change_password(acc)
-                    logging.info(f"{address};{acc.userName};MARKED FOR CHANGE")
+                    self.epv.logger.info(f"{address};{acc.userName};MARKED FOR CHANGE")
                 except CyberarkAPIException:
-                    logging.error(f"{address};FAILED MARK CHANGE FOR {acc.userName}")
+                    self.epv.logger.error(f"{address};FAILED MARK CHANGE FOR {acc.userName}")
 
 
     async def cpm_change(self, address,username_filter: list = None):
         """
-        CPM Change a list of accounts for a address
-        @param address: exact value of field Address in EPV
-        @param username_filter : Put a list of username in filter to change only those accounts (default all accounts)
+        CPM Change a list of accounts for an address
+        :param address: exact value of field Address in EPV
+        :param username_filter : Put a list of username in filter to change only those accounts (default all accounts)
         """
         accounts = await self.epv.account.search_account_by(address=address)
         for account in accounts:
             if username_filter is not None and account.userName not in username_filter:
-                logging.debug(f"EPV;SKIPPING;{account.userName};{account.address}")
+                self.epv.logger.debug(f"EPV;SKIPPING;{account.userName};{account.address}")
                 continue
             try:
                 await self.epv.account.change_password(account)
-                logging.info(f"EPV;MARKED FOR CHANGE;{account.userName};{account.address}")
+                self.epv.logger.info(f"EPV;MARKED FOR CHANGE;{account.userName};{account.address}")
             except CyberarkAPIException:
-                logging.error(f"EPV;MARK CHANGE FAILED;{account.userName};{account.address}")
+                self.epv.logger.error(f"EPV;MARK CHANGE FAILED;{account.userName};{account.address}")
 
-
-    async def manual_set_password(self, address, password, username_filter: list):
+    async def manual_set_password(self, address, password, username_filter: list = None):
         """
-        CPM Change a list of accounts for a address
+        Set a custom password a list of accounts for an address
         :param address: exact value of field Address in EPV
         :param password: New password to put on the address
-        :param username_filter: Which accounts to put the password on (list)
+        :param username_filter: Put a list of username in filter to change only those accounts (default all accounts)
         """
         accounts = await self.epv.account.search_account_by(address=address)
         for account in accounts:
-            if account.userName not in username_filter:
-                logging.debug(f"EPV;SKIPPING;{account.userName};{account.address}")
+            if username_filter is not None and account.userName not in username_filter:
+                self.epv.logger.debug(f"EPV;SKIPPING;{account.userName};{account.address}")
                 continue
             try:
                 if await self.epv.account.set_password(account.id, password):
-                    logging.info(f"{account.userName};{address};Password successfully changed")
+                    self.epv.logger.info(f"{account.userName};{address};Password successfully changed")
                 else:
-                    logging.info(f"{account.userName};{address};Password NOT changed")
+                    self.epv.logger.info(f"{account.userName};{address};Password NOT changed")
             except Exception as err:
-                logging.error(f"{account.userName};{address};An error occured when trying to change password : {err}")
-
+                self.epv.logger.error(f"{account.userName};{address};An error occured when trying to change password : {err}")
 
     async def reconcile(self, address, username_filter: list = None):
         """
@@ -97,53 +94,32 @@ class Utilities:
         accounts = await self.epv.account.search_account_by(address=address)
         for account in accounts:
             if username_filter is not None and account.userName not in username_filter:
-                logging.debug(f"EPV;SKIPPING;{account.userName};{account.address}")
+                self.epv.logger.debug(f"EPV;SKIPPING;{account.userName};{account.address}")
                 continue
             try:
                 await self.epv.account.reconcile(account)
-                logging.info(f"EPV;MARKED FOR RECONCILE;{account.userName};{account.address}")
+                self.epv.logger.info(f"EPV;MARKED FOR RECONCILE;{account.userName};{account.address}")
             except CyberarkAPIException:
-                logging.error(f"EPV;MARK FOR RECONCILE FAILED;{account.userName};{account.address}")
-
+                self.epv.logger.error(f"EPV;MARK FOR RECONCILE FAILED;{account.userName};{account.address}")
 
     async def reconcile_failed_accounts(self, address: str, username_filter: list = None):
         """
         Reconcile a list of accounts for a address if they are red in PVWA
-        @param address: exact value of field Address in EPV
-        @param username_filter : Put a list of username in filter to change only those accounts (default all accounts)
+        :param address: exact value of field Address in EPV
+        :param username_filter : Put a list of username in filter to change only those accounts (default all accounts)
         """
         accounts = await self.epv.account.search_account_by(address=address)
         for account in accounts:
             if username_filter is not None and account.userName not in username_filter:
-                logging.debug(f"EPV;SKIPPING;{account.userName};{account.address}")
+                self.epv.logger.debug(f"EPV;SKIPPING;{account.userName};{account.address}")
                 continue
             if "status" not in account.secretManagement or account.secretManagement["status"] == 'failure'\
                     or account.secretManagement['automaticManagementEnabled'] is False:
                 try:
                     await self.epv.account.reconcile(account)
-                    logging.info(f"EPV;MARKED FOR RECONCILE;{account.userName};{account.address}")
+                    self.epv.logger.info(f"EPV;MARKED FOR RECONCILE;{account.userName};{account.address}")
                 except CyberarkAPIException:
-                    logging.error(f"EPV;RECONCILE_FAILED;{account.userName};{account.address}")
-
-
-    async def migrate_platform(self, old_platform: str, new_platform: str, address_filter: list = None):
-        """
-        Migrate all accounts from old platform to new platform
-        :param old_platform: Platform to migrate from
-        :param new_platform: Platform to migrate to
-        :param address_filter: A list of address (exact value of field address) to filter on (default ALL address)
-        """
-        for acc in await self.epv.account.search_account_by(platform=old_platform):
-            if address_filter is not None and acc.address not in address_filter:
-                logging.debug(f"{acc.address};{acc.userName};Filtered by user !")
-                continue
-            data = [{"path": "/platformID", "op": "replace", "value": new_platform}]
-            try:
-                await self.epv.account.update_using_list(acc.id, data)
-                logging.info(f"{acc.address};{acc.userName};Platform changed")
-            except Exception as e:
-                logging.error(f"{acc.address};{acc.userName};An error occured when trying to change platform : {e}")
-
+                    self.epv.logger.error(f"EPV;RECONCILE_FAILED;{account.userName};{account.address}")
 
     async def account_status(self, address: str, accounts: list):
         """
@@ -159,7 +135,7 @@ class Utilities:
         accs = await self.epv.account.search_account_by(address=address)
 
         if len(accs) == 0:
-            logging.info(f"{address};Introuvable !")
+            self.epv.logger.info(f"{address};Introuvable !")
 
         for acc in accs:
             if "status" not in acc.secretManagement or acc.secretManagement["status"] == 'failure':
@@ -179,7 +155,6 @@ class Utilities:
         else:
             return f"{address};False;{failed};{reason}"
 
-
     async def delete_accounts(self, address: str, safe_pattern_filter: str = ""):
         """
         Delete all accounts associated to an address
@@ -191,9 +166,8 @@ class Utilities:
         results = []
         for acc in del_acc:
             if safe_pattern_filter != "" and safe_pattern_filter in acc.safeName:
-                logging.info(f"EPV;User filter matched;{acc.userName};{acc.address}")
+                self.epv.logger.info(f"EPV;User filter matched;{acc.userName};{acc.address}")
                 continue
-            # logging.info(f"EPV;DELETE;{acc.userName};{acc.address}")
             if await self.epv.account.delete(acc):
                 results.append(acc.name)
         return results
@@ -201,11 +175,10 @@ class Utilities:
     async def clone_address(self, address: str, replace: dict, update_name=True):
         """
         Find all accounts with an address, and clone them with new parameters
-
-        :param update_name: automatic update of the address name, True by default
         :param address: address of accounts to find
         :param replace: FC to replace : ex {"address": "new_address", "safeName": "new_safe"}
-        :return:
+        :param update_name: automatic update of the address name, True by default
+        :return: List of ID of the clones
         """
         accounts = await self.epv.account.search_account_by(address=address)
         clones = []
@@ -293,3 +266,22 @@ class Utilities:
                 result.append(f"{conn},{len(pfs)},{','.join(pfs)}")
 
             return result
+
+        async def migrate_platform(self, old_platform: str, new_platform: str, address_filter: list = None):
+            """
+            Migrate all accounts from old platform to new platform
+            :param old_platform: Platform to migrate from
+            :param new_platform: Platform to migrate to
+            :param address_filter: A list of address (exact value of field address) to filter on (default ALL address)
+            """
+            for acc in await self.epv.account.search_account_by(platform=old_platform):
+                if address_filter is not None and acc.address not in address_filter:
+                    self.epv.logger.debug(f"{acc.address};{acc.userName};Filtered by user !")
+                    continue
+                data = [{"path": "/platformID", "op": "replace", "value": new_platform}]
+                try:
+                    await self.epv.account.update_using_list(acc.id, data)
+                    self.epv.logger.info(f"{acc.address};{acc.userName};Platform changed")
+                except Exception as e:
+                    self.epv.logger.error(
+                        f"{acc.address};{acc.userName};An error occured when trying to change platform : {e}")

@@ -39,6 +39,7 @@ class Safe:
                          ):
         """
         Add a safe member
+
         :param safe: Name of the safe - Required
         :param username: Name of the user or group to add - Required
         :param search_in: The Vault or the domain of the user or group - Defaults to Vault - Optional
@@ -145,6 +146,7 @@ class Safe:
     async def exists(self, safename: str):
         """
         Whether a safe exists whose name is "safename"
+
         :param safename: name of the safe
         :return: Boolean
         """
@@ -296,9 +298,9 @@ class Safe:
     async def search_safe_iterator(self, query=None, include_accounts=False, extended_details=False) -> AsyncIterator:
         """
         This function allow to search using one or more parameters and return list of address id
+
         :param query: free search
         :param include_accounts: include safe's accounts
-
         :return: an async iterator of json representation of safes
         """
 
@@ -317,6 +319,7 @@ class Safe:
                                    include_accounts=False, extended_details=False):
         """
         Search safes in a paginated way
+
         :param search: free search
         :param page: number of page
         :param size_of_page: size of pages
@@ -356,6 +359,7 @@ class Safe:
     async def search(self, query=None, include_accounts=False, details=False):
         """
         Search for a safe
+
         :param query: What to search - Default: None (retrieve all safes) - Optional
         :param include_accounts: Add privileged accounts on the result - Default: False - Optional
         :param details: Include additional safe details - Default: False - Optional
@@ -366,6 +370,7 @@ class Safe:
     async def list(self, details=False):
         """
         List all safes (better use search)
+
         :return: A list of safes names
         """
         if details:
@@ -376,6 +381,7 @@ class Safe:
     async def get_safe_details(self, safename: str):
         """
         Get details of a given safe. We do a direct query instead of a search for efficiency.
+
         :return: A dict of the safe details
         """
         if not safename:
@@ -385,6 +391,7 @@ class Safe:
     async def v1_get_safes(self):
         """
         Old way to retrieve safes, when the v2 operation fail
+
         :return: A list of safes
         """
         return await self.epv.handle_request("get", 'WebServices/PIMServices.svc/Safes/', filter_func=lambda r: r)

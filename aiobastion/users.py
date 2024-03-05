@@ -237,6 +237,12 @@ class Group:
             return [g["groupName"] for g in groups]
 
     async def details(self, group_id, include_members: bool = False):
+        """
+        Get details about a specific group (PVWA v12.2 required)
+        :param group_id: Unique ID of the group - Required
+        :param include_members: Include members of the group - Default: False
+        :return: Dict representation of the group
+        """
         # > v12.2
         url = f"api/UserGroups/{group_id}"
         params = {}
@@ -247,6 +253,12 @@ class Group:
         return await self.epv.handle_request("get", url, params=params)
 
     async def get_id(self, group_name: str):
+        """
+        Get Unique ID of a group with his name
+        :param group_name: Name of the group
+        :return: Unique ID of the group
+        :raise: Aiobastion exception if group was not found
+        """
         url = f"api/UserGroups"
         ret = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
         for r in ret:
@@ -260,7 +272,7 @@ class Group:
 
         :param name: Name of the new group
         :param description: Description of the group
-        :param location: Location of the group (defaults to \ )
+        :param location: Location of the group (defaults to \\)
         :return: Boolean
         """
         group = {

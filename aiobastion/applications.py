@@ -22,6 +22,7 @@ class Applications:
                   ):
         """
         Create a new application
+
         :param app_name: Name of the application ("AppID") - Required
         :param description: Description - Optional
         :param location: Location - Defaults to \\ - Optional
@@ -76,6 +77,7 @@ class Applications:
     async def delete(self, app_name:str):
         """
         Delete an application
+
         :param app_name: The application name (AppID)
         :return: True if deleted
         """
@@ -87,6 +89,7 @@ class Applications:
     async def details(self, app_name: str):
         """
         Get application details
+
         :param app_name: The application name (AppID)
         :return: A dict with the application information
         """
@@ -108,6 +111,7 @@ class Applications:
     async def search(self, search: str):
         """
         Search applications by name
+
         :param search: free text to search application
         :return: list of application names
         """
@@ -125,6 +129,7 @@ class Applications:
                                  allow_internal_scripts: bool = False, comment: str = "") -> bool:
         """
         Add one or more authentication methods to a given app_id with a named param
+
         :param app_name: the name of the application
         :param path: path to authenticated
         :param hash_string: hash of script / binary
@@ -224,6 +229,7 @@ class Applications:
     async def get_authentication(self, app_name: str) -> list or bool:
         """
         Get authenticated methods for an application
+
         :param app_name: The name of the application
         :return: a list of authentication methods
         """

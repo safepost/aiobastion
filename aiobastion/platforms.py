@@ -46,6 +46,7 @@ class Platform:
     async def get_platforms_details(self, platform_name: str):
         """
         Get details for a given platform name
+
         :param platform_name: Platform name
         :return: a dictionary with the details of the platform
         """
@@ -70,6 +71,7 @@ class Platform:
     async def get_target_platform_details(self, platform_name: str):
         """
         Give detail about one particular platform
+
         :param platform_name: Name of the platform
         :return: a dict with details of the platform
         """

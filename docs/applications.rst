@@ -1,10 +1,5 @@
-Application
-=============
-
-This section documents the function linked to application.
-
-Application related functions
---------------------------------
+Applications
+===============
 
 .. currentmodule:: aiobastion.applications.Applications
 .. autofunction:: add

@@ -35,6 +35,7 @@ class AccountGroup:
     async def list_by_safe(self, safe_name: str):
         """
         List all groups for a given safe
+
         :param safe_name: name of the safe
         :return: a list of PrivilegedAccountGroups
         """
@@ -47,6 +48,7 @@ class AccountGroup:
     async def get_privileged_account_group_id(self, account_group: PrivilegedAccountGroup):
         """
         Internal function to get the group ID in functions
+
         :param account_group: PrivilegedAccountGroup object
         :return: group ID
         """
@@ -62,6 +64,7 @@ class AccountGroup:
     async def get_account_group_id(self, group_name: str, safe: str):
         """
         Get account_group_id with the group_name and the safe
+
         :param group_name: the name of the group
         :param safe: The name of the safe
         :return: The group ID
@@ -76,6 +79,7 @@ class AccountGroup:
     async def get_group_id(self, account_group):
         """
         Internal function to get group_id from object or from group_id
+
         :param account_group: PrivilegedAccountGroup object or group_id
         :return: group_id
         """
@@ -92,6 +96,7 @@ class AccountGroup:
     async def members(self, group):
         """
         Returns the list of members (PrivilegedAccount) for a given PrivilegedAccountGroup
+
         :param group: PrivilegedAccountGroup or group_id
         :return: List of members of a group
         """
@@ -102,6 +107,7 @@ class AccountGroup:
     async def add(self, group_name: str, group_platform: str, safe_name: str):
         """
         Add a privileged address group using group name, group platform and safe name
+
         :param group_name: group name
         :param group_platform: group platform
         :param safe_name: safe name
@@ -120,6 +126,7 @@ class AccountGroup:
     async def add_privileged_account_group(self, account_group: PrivilegedAccountGroup):
         """
         Add a privileged account group using a Privileged Account Group object
+
         :param account_group: a PrivilegedAccountGroup object
         :return: group id
         """
@@ -131,6 +138,7 @@ class AccountGroup:
     async def add_member(self, account: (PrivilegedAccount, str), group: (PrivilegedAccountGroup, str)):
         """
         Add accounts to a group (specified by PrivilegedAccountGroup object or group_id)
+
         :param account: PrivilegedAccount or account_id
         :param group:  PrivilegedAccountGroup or group_id (get it with
         :return: dict with {'AccountID' : 'acc_id'}
@@ -144,6 +152,13 @@ class AccountGroup:
         return await self.epv.handle_request("post", f"api/AccountGroups/{group_id}/Members", data=data)
 
     async def delete_member(self, account: (PrivilegedAccount, str), group: (PrivilegedAccountGroup, str)):
+        """
+        Delete the member of an account group
+
+        :param account: PrivilegedAccount or account_id
+        :param group: PrivilegedAccountGroup or privileged_account_id
+        :return: Boolean
+        """
         group_id = await self.get_group_id(group)
         account_id = await self.epv.account.get_account_id(account)
         url = f"API/AccountGroups/{group_id}/Members/{account_id}"
@@ -163,6 +178,7 @@ class AccountGroup:
     async def move_account_group(self, account_group_name: str, src_safe: str, dst_safe: str):
         """
         Move an account_group and its members from a safe to another safe
+
         :param account_group_name:
         :param src_safe:
         :param dst_safe: Where to store the account group
@@ -213,8 +229,9 @@ class AccountGroup:
         Move all accounts groups from a safe to another safe
         * Members of the account groups are also moved ! *
 
-        filter : filter on accounts base file category
-        example : {"platformId": "Unix-SSH"}
+        :param src_safe: Source safe
+        :param dst_safe: Destination safe
+        :param account_filter: filter : filter on accounts base file category, for example : {"platformId": "Unix-SSH"}
         """
 
         def _case_insensitive_getattr(obj, attr):
