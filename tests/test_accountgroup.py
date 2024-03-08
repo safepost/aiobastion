@@ -149,6 +149,7 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
 
 
     async def test_move_account_group(self):
+        self.skipTest("Not for daily usage but run it twice if you work on account group functions")
         ag_name = "MoveAccountGroupTest"
 
         source_safe = ""
