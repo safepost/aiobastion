@@ -30,6 +30,7 @@ class EPV_AIM:
                  passphrase: str = None, verify: Union[str, bool] = None,
                  timeout: int = Config.CYBERARK_DEFAULT_TIMEOUT,
                  max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS,
+                 keep_cookies: bool = False,
                  serialized: dict = None):
 
         self.host = host
@@ -40,6 +41,7 @@ class EPV_AIM:
         self.verify = verify
         self.timeout = timeout
         self.max_concurrent_tasks = max_concurrent_tasks
+        self.keep_cookies = keep_cookies           # Whether to keep cookies between AIM calls
 
         # Session management
         self.__sema = None

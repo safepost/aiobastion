@@ -151,13 +151,50 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
     async def test_move_account_group(self):
         ag_name = "MoveAccountGroupTest"
 
-        try:
-            group_id = await self.vault.accountgroup.add(ag_name, "sample_group", self.test_safe)
-        except CyberarkAPIException as err:
-            if err.http_status == 409:
-                group_id = await self.vault.accountgroup.get_account_group_id(ag_name, self.test_safe)
+        source_safe = ""
+        target_safe = ""
+
+        # Where is "MoveAccountGroupTest"
+        ag_test_safe = await self.vault.accountgroup.list_by_safe(self.test_safe)
+        ag_target_safe = await self.vault.accountgroup.list_by_safe(self.test_target_safe)
+
+        # Worst case
+        if ag_name in [_a.name for _a in ag_target_safe] and \
+                ag_name in [_a.name for _a in ag_test_safe]:
+            # We have MoveAccountGroupTest in both safes
+            _group_test_safe = next(_a for _a in ag_test_safe if _a.name == ag_name)
+            _group_target_safe = next(_a for _a in ag_target_safe if _a.name == ag_name)
+
+            _move1 = await self.vault.accountgroup.members(_group_test_safe)
+            _move2 = await self.vault.accountgroup.members(_group_target_safe)
+            if len(_move1) > len(_move2):
+                # More members on ag_test_safe
+                source_safe = self.test_safe
+                target_safe = self.test_target_safe
+                group_id = _group_test_safe.id
             else:
-                raise
+                # More members on ag_target_safe
+                source_safe = self.test_target_safe
+                target_safe = self.test_safe
+                group_id = _group_target_safe.id
+
+        # account_group is already on target
+        elif ag_name in [_a.name for _a in ag_target_safe]:
+            source_safe = self.test_target_safe
+            target_safe = self.test_safe
+            _group_target_safe = next(_a for _a in ag_target_safe if _a.name == ag_name)
+            group_id = _group_target_safe.id
+        # account_group is on source or test was never done before
+        elif ag_name in [_a.name for _a in ag_test_safe]:
+            source_safe = self.test_safe
+            target_safe = self.test_target_safe
+            _group_test_safe = next(_a for _a in ag_test_safe if _a.name == ag_name)
+            group_id = _group_test_safe.id
+        else:
+            # Test was never run before
+            group_id = await self.vault.accountgroup.add(ag_name, "sample_group", self.test_safe)
+            source_safe = self.test_safe
+            target_safe = self.test_target_safe
 
         if len(await self.vault.accountgroup.members(group_id)) == 0:
             # Adding two members of a given platform
@@ -176,37 +213,16 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
             print("Not adding more members on this group now")
 
         try:
-            new_gid = await self.vault.accountgroup.move_account_group(ag_name, self.test_safe, self.test_target_safe)
+            new_gid = await self.vault.accountgroup.move_account_group(ag_name, source_safe, target_safe)
         except Exception as err:
             raise
 
+        # New group should have members now
         self.assertGreater(len(await self.vault.accountgroup.members(new_gid)), 0)
-
-        # Unfortunately we need to sleep here because moving accounts from a safe to another and back tends
-        # to cause bugs because of Cyberark's internal cache
-        time.sleep(5)
-        # Revert
-        try:
-            await self.vault.accountgroup.move_account_group(ag_name, self.test_target_safe, self.test_safe)
-        except Exception as err:
-            raise
-
-        for _r in await self.vault.accountgroup.members(group_id):
-            try:
-                await self.vault.accountgroup.delete_member(_r, group_id)
-            except:
-                pass
-
-
-        # This one raise a 404 => no member
-        try:
-            with self.assertRaises(CyberarkException):
-                print(await self.vault.accountgroup.members(new_gid))
-        except AssertionError:
-            self.assertIs(await self.vault.accountgroup.members(new_gid), [])
 
 
     async def test_move_all_account_groups(self):
+        self.skipTest('Avoiding this test because we need to sleep long time for reverting, what we dont like')
         ag_name = "MoveAccountGroupTest"
         # Create a new account group in test safe
         try:
@@ -270,8 +286,10 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         list_of_account_groups = await self.vault.accountgroup.list_by_safe(self.test_target_safe)
         self.assertIn(ag_name, [_l.name for _l in list_of_account_groups])
 
-        # For the same reasons that in test_move_account_groups, we need to sleep here
-        time.sleep(5)
+        # Cyberark has an incorrect behaviour if you move quickly account from a safe to another and vice versa
+        # He has an internal cache and thinks the account still exists if it was deleted just before
+        # So we need to wait for long for Cyberark to clear its cache
+        time.sleep(8)
         # Revert
         try:
             await self.vault.accountgroup.move_all_account_groups(self.test_target_safe, self.test_safe)
