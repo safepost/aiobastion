@@ -21,7 +21,8 @@ class EPV_AIM:
     """
     Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
     """
-    _serialized_fields = ["host", "appid", "cert", "key", "verify", "timeout", "max_concurrent_tasks"]
+    _serialized_fields = ["host", "appid", "cert", "key", "verify", "timeout", "max_concurrent_tasks",
+                         "keep_cookies"]
     _getPassword_request_parm = ["safe", "folder", "object", "username", "address", "database",
                                  "policyid", "reason", "connectiontimeout", "query", "queryformat",
                                  "failrequestonpasswordchange"]
