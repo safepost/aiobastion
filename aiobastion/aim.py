@@ -22,7 +22,7 @@ class EPV_AIM:
     Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
     """
     _serialized_fields = ["host", "appid", "cert", "key", "verify", "timeout", "max_concurrent_tasks",
-                         "keep_cookies"]
+                          "keep_cookies"]
     _getPassword_request_parm = ["safe", "folder", "object", "username", "address", "database",
                                  "policyid", "reason", "connectiontimeout", "query", "queryformat",
                                  "failrequestonpasswordchange"]
@@ -42,7 +42,7 @@ class EPV_AIM:
         self.verify = verify
         self.timeout = timeout
         self.max_concurrent_tasks = max_concurrent_tasks
-        self.keep_cookies = keep_cookies           # Whether to keep cookies between AIM calls
+        self.keep_cookies = keep_cookies  # Whether to keep cookies between AIM calls
 
         # Session management
         self.__sema = None
@@ -65,8 +65,8 @@ class EPV_AIM:
             self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
 
         if self.verify is not False and not (isinstance(self.verify, str) and not isinstance(self.verify, bool)):
-            raise AiobastionException(f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
-
+            raise AiobastionException(
+                f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
 
     def validate_and_setup_aim_ssl(self):
         if self.session:
@@ -91,7 +91,8 @@ class EPV_AIM:
             self.verify = Config.CYBERARK_DEFAULT_VERIFY
 
         if not (isinstance(self.verify, str) or isinstance(self.verify, bool)):
-            raise AiobastionException(f"Invalid type for parameter 'verify' (or 'CA') in AIM: {type(self.verify)} value: {self.verify!r}")
+            raise AiobastionException(
+                f"Invalid type for parameter 'verify' (or 'CA') in AIM: {type(self.verify)} value: {self.verify!r}")
 
         if (isinstance(self.verify, str) and not os.path.exists(self.verify)):
             raise AiobastionException(f"Parameter 'verify' in AIM: file not found {self.verify!r}")
