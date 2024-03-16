@@ -285,21 +285,21 @@ class Account:
             return [PrivilegedAccount(**a) for a in acc]
 
     async def get_privileged_account_id(self, account: PrivilegedAccount):
-        """ **This function support list of PrivilegedAccount as argument**
+        """
+        This function returns an account_id for a given PrivilegedAccount by searching it with username,
+        address and safe (mostly used for internal needs)
 
-        This function returns an account_id (or list) for a given PrivilegedAccount (or list of PrivilegedAccount) by
-        searching it with username, address and safe.
-
-        :param account: PrivilegedAccount or list(PrivilegedAccount)
-        :return: account_id or list(account_id)
-        :raises CyberarkException: if no account was found
+        :param account: PrivilegedAccount
+        :return: account_id
+        :raises CyberarkException: if no account was found or if multiple accounts found
         """
 
         if account.id == "":
             acc = await self.search_account_by(username=account.userName, safe=account.safeName,
                                                keywords=account.address)
             if len(acc) != 1:
-                return [a.id for a in acc]
+                raise CyberarkException(f"Multiple account ID were found with {account.userName} {account.safeName} "
+                                        f"{account.address}")
             else:
                 return acc[0].id
         else:
