@@ -259,7 +259,10 @@ class Safe:
 
         #url = f"WebServices/PIMServices.svc/Safes/{safe_name}/Members"
         url = f"api/Safes/{safe_name}/Members"
-        members = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
+        try:
+            members = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
+        except CyberarkException as err:
+            raise CyberarkAPIException(404, "ERR_404", f"Safe {safe_name} doesn't exist")
 
         if raw:
             return members
