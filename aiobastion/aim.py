@@ -68,7 +68,6 @@ class EPV_AIM:
             raise AiobastionException(
                 f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
 
-
     def validate_and_setup_aim_ssl(self):
         if self.session:
             return
