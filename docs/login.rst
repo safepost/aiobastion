@@ -492,7 +492,7 @@ PVWA section / field definitions
 | ca                   | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | keep_cookies         | Optional                | Keep cookies from login and send in subsequent API calls (default Fasle). You may need to  +
-|                      |                         | You may need to set to True when a load-balancer is present.                               |
+|                      |                         | You may need to set to True when a load-balancer is present.                               +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 
 AIM section / field definitions
@@ -531,7 +531,7 @@ AIM section / field definitions
 |                      |                         | If not define use the *timeout* from the PVWA section.                                     +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | keep_cookies         | Optional                | Keep cookies from login and send in subsequent API calls (default Fasle). You may need to  +
-|                      |                         | You may need to set to True when a load-balancer is present.                               |
+|                      |                         | You may need to set to True when a load-balancer is present.                               +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 
 Accounts Section
