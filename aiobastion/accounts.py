@@ -397,7 +397,7 @@ class Account:
         """
         | This function unlinks the reconciliation account of the given account (or the list of accounts)
         | ⚠️ The "reconcile" Account is supposed to have an index of 3
-        | You can change it by setting custom:RECONCILE_ACCOUNT_INDEX in your config file
+        | You can change it by setting accounts:RECONCILE_ACCOUNT_INDEX in your config file
 
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
@@ -411,7 +411,7 @@ class Account:
         """
         | This function unlinks the logon account of the given account (or the list of accounts)
         | ⚠️ The "logon" Account index is default to 2 but can be set differently on the platform
-        | You can change it by setting custom:LOGON_ACCOUNT_INDEX in your config file
+        | You can change it by setting accounts:LOGON_ACCOUNT_INDEX in your config file
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list

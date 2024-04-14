@@ -44,7 +44,7 @@ it has the following methods :
 About linked account index :
     * reconcile account index: 3 - you should NOT change it unless your system has different custom value.
     * logon account index: 2 - this is different from the installation (1). The default value is kept at 2 to avoid
-      breaking existing users. You can override it to 1 by providing a "custom.LOGON_ACCOUNT_INDEX" value in your config.
+      breaking existing users. You can override it to 1 by providing a "accounts.LOGON_ACCOUNT_INDEX" value in your config.
 
 Calling functions
 -------------------

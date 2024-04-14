@@ -11,7 +11,7 @@ class TestEPV(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.custom_linked_acounts = {
-            "custom": {
+            "accounts": {
                 "RECONCILE_ACCOUNT_INDEX": 1,
                 "LOGON_ACCOUNT_INDEX": 3
             }

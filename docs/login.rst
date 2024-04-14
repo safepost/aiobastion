@@ -432,6 +432,9 @@ The configuration file contains the following main sections:
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
 | retention     | Optional  | For safe creation, the number of retained versions of every password that is stored in the Safe (EPV.retention).     +
 +---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+| accounts      | Optional  | To override the reconcile and logon account index                                                                    +
++---------------+-----------+----------------------------------------------------------------------------------------------------------------------+
+
 
 CONNECTION section / field definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -530,6 +533,16 @@ AIM section / field definitions
 | keep_cookies         | Optional                | Keep cookies from login and send in subsequent API calls (default Fasle). You may need to  +
 |                      |                         | You may need to set to True when a load-balancer is present.                               |
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+
+Accounts Section
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++-------------------------+-------------------------+-----------------------------------------------------------------------------------------+
+| Field                   | Type                    | Description                                                                             +
++=========================+=========================+=========================================================================================+
+| LOGON_ACCOUNT_INDEX     | Optional                | The logon account index (default to 1) -- you most time should leave it alone           +
++-------------------------+-------------------------+-----------------------------------------------------------------------------------------+
+| RECONCILE_ACCOUNT_INDEX | Optional                | The reconcile account index (default to 2) -- often you need to override with 3         +
++-------------------------+-------------------------+-----------------------------------------------------------------------------------------+
 
 
 A complete configuration file definition
