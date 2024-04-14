@@ -39,6 +39,9 @@ class Config:
         self.PVWA_CA = Config.CYBERARK_DEFAULT_VERIFY
         self.keep_cookies = False
 
+        # Accounts section Initialisation
+        self.accounts = None
+
         with open(configfile, 'r') as config:
             configuration = yaml.safe_load(config)
 
@@ -47,7 +50,7 @@ class Config:
             keyname = k.lower()
 
             if keyname not in ["aim", "connection", "cpm", "custom",
-                               "customipfield", "label", "pvwa", "retention"]:
+                               "customipfield", "label", "pvwa", "retention", "accounts"]:
                 warnings.warn(f"aiobastion - Unknown section '{k}' in {self.configfile}")
                 continue
 
@@ -75,6 +78,8 @@ class Config:
             self.customIPField = configuration["customipfield"]
         if "retention" in configuration:
             self.retention = self._to_integer("retention", configuration["retention"])
+        if "accounts" in configuration:
+            self.accounts = configuration["accounts"]
 
     def _read_section_connection(self, configuration):
         for k in list(configuration.keys()):

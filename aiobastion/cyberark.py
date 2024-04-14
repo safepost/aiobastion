@@ -90,10 +90,10 @@ class EPV:
         self.system_health = SystemHealth(self)
         self.utils = Utilities(self)
 
-    def _epv_set_linked_account_index(self, custom):
-        if custom is not None:
-            if custom['LOGON_ACCOUNT_INDEX']: self.LOGON_ACCOUNT_INDEX = int(custom['LOGON_ACCOUNT_INDEX']) # noqa:
-            if custom['RECONCILE_ACCOUNT_INDEX']: self.RECONCILE_ACCOUNT_INDEX = int(custom['RECONCILE_ACCOUNT_INDEX']) # noqa:
+    def _epv_set_linked_account_index(self, accounts):
+        if accounts is not None:
+            if accounts['LOGON_ACCOUNT_INDEX']: self.LOGON_ACCOUNT_INDEX = int(accounts['LOGON_ACCOUNT_INDEX']) # noqa:
+            if accounts['RECONCILE_ACCOUNT_INDEX']: self.RECONCILE_ACCOUNT_INDEX = int(accounts['RECONCILE_ACCOUNT_INDEX']) # noqa:
 
     def _epv_config(self, configfile):
         self.config = Config(configfile)
@@ -113,8 +113,9 @@ class EPV:
         # Other definition
         self.cpm = self.config.CPM
         self.retention = self.config.retention
+        self.accounts = self.config.accounts
 
-        self._epv_set_linked_account_index(self.config.custom)
+        self._epv_set_linked_account_index(self.config.accounts)
 
     def _epv_serialize(self, serialized):
         if not isinstance(serialized, dict):
@@ -134,6 +135,7 @@ class EPV:
                 "keep_cookies",
                 "verify",
                 "custom",
+                "accounts",
             ]:
                 raise AiobastionException(f"Unknown serialized field: {k} = {serialized[k]!r}")
 
@@ -154,7 +156,9 @@ class EPV:
             self.__token = serialized['token']
         if "custom" in serialized:
             self.custom = serialized['custom']
-            self._epv_set_linked_account_index(self.custom)
+        if "accounts" in serialized:
+            self.accounts = serialized['accounts']
+            self._epv_set_linked_account_index(self.accounts)
 
         # AIM Communication
         if "AIM" in serialized:

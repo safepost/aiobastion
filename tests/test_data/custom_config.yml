@@ -2,7 +2,7 @@ connection:
   authtype: cyberark
   password: abc
   username: def
-custom:
+accounts:
   LOGON_ACCOUNT_INDEX: 3
   RECONCILE_ACCOUNT_INDEX: 1
 label: Production Demo
