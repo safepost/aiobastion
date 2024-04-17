@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Test Git connection
 import logging
 import os.path
 import asyncio
