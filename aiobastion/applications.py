@@ -1,6 +1,6 @@
 # import aiobastion.exceptions
-from .exceptions import AiobastionException
-
+from .exceptions import AiobastionException, AiobastionConfigurationException
+from typing import Union
 
 # class AamObject:
 #     def __init__(self, appid: str, params: dict, cert_file: str = None, cert_key: str = None):
@@ -13,6 +13,11 @@ from .exceptions import AiobastionException
 
 
 class Applications:
+    # _APPLICATIONS_DEFAULT_XXX = <value>
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = []
+
     def __init__(self, epv):
         self.epv = epv
 
@@ -73,6 +78,62 @@ class Applications:
             data["application"]["BusinessOwnerEmail"] = owner_email
 
         return await self.epv.handle_request("post", url, data=data)
+
+
+    @classmethod
+    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
+        """_init_validate_class_attributes      Initialize and validate the Application definition (file configuration and serialized)
+
+        Arguments:
+            serialized {dict}           Definition from configuration file or serialization
+            section {str}               verified section name
+
+        Keyword Arguments:
+            configfile {str}            Name of the configuration file
+
+        Raises:
+            AiobastionConfigurationException
+
+        Returns:
+            new_serialized {dict}       Applications defintion
+        """
+        if not configfile:
+            configfile = "serialized"
+
+        new_serialized = {}
+
+        for k in serialized.keys():
+            keyname = k.lower()
+
+            # # Special validation: integer, boolean
+            # if keyname in ["xxx"]:
+            #     new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
+            # elif ...
+
+            if keyname in Applications._SERIALIZED_FIELDS:
+                # String definition
+                if serialized[k] is not None:
+                    new_serialized[keyname] = serialized[k]
+            else:
+                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
+
+        # Default values if not set
+        # new_serialized.setdefault("xxx", Applications._ACCOUNTGROUP_DEFAULT_XXX)
+
+        return new_serialized
+
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Applications._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
+
 
     async def delete(self, app_name:str):
         """
@@ -226,7 +287,7 @@ class Applications:
         else:
             return False
 
-    async def get_authentication(self, app_name: str) -> list or bool:
+    async def get_authentication(self, app_name: str) -> Union[list, bool]:
         """
         Get authenticated methods for an application
 
@@ -238,7 +299,7 @@ class Applications:
             f'WebServices/PIMServices.svc/Applications/{app_name}/Authentications',
             filter_func=lambda x: x['authentication'])
 
-    async def del_authentication(self, app_name: str, auth_id: str) -> list or bool:
+    async def del_authentication(self, app_name: str, auth_id: str) -> Union[list, bool]:
         """
         Delete authentication method identified by auth_id for the application
 

@@ -42,9 +42,20 @@ it has the following methods :
     * last_modified : return the last modified time (days since last password change)
 
 About linked account index :
-    * reconcile account index: 3 - you should NOT change it unless your system has different custom value.
-    * logon account index: 2 - this is different from the installation (1). The default value is kept at 2 to avoid
-      breaking existing users. You can override it to 1 by providing a "custom.LOGON_ACCOUNT_INDEX" value in your config.
+    * **reconcile account index**: This field is the linked account's extra password index (extraPasswordIndex) use with CyberArk "LinkAccount".
+      The index can be for a Reconcile account, Logon account, or other linked account that is defined in the Platform configuration.
+
+      It is used in *remove_reconcile_account* function.  The default value 3 should NOT be changed unless your system has different custom value.
+      You can override it by providing in "account" section the "reconcile_account_index" value in your configuration file or serialization.
+
+    * **logon account index**: This field is the linked account's extra password index (extraPasswordIndex) use with CyberArk "LinkAccount".
+      The index can be for a Reconcile account, Logon account, or other linked account that is defined in the Platform configuration.
+
+      It is used in *link_logon_account* and *remove_logon_account* functions.
+      The defaut value is 2 for compatibility. This is different from the installation (1).
+      You can override it to 1 by providing in "account" section the "logon_account_index" value in your configuration file or serialization.
+
+The linked account's extra password index. The index can be for a Reconcile account, Logon account, or other linked account that is defined in the Platform configuration.
 
 Calling functions
 -------------------
@@ -82,6 +93,10 @@ Account management
 .. autofunction:: remove_logon_account
 .. autofunction:: remove_reconcile_account
 .. autofunction:: delete
+
+
+
+.. _CyberArk Central Credential Provider - REST web service: https://docs.cyberark.com/AAM-CP/Latest/en/Content/CCP/Calling-the-Web-Service-using-REST.htm
 
 
 Password Actions
@@ -127,7 +142,6 @@ Miscellaneous
 .. autofunction:: get_account_id
 .. autofunction:: is_valid_safename
 .. autofunction:: is_valid_username
-
 
 ..
     for documenting a single function =>

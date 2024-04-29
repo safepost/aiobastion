@@ -1,12 +1,72 @@
 import asyncio
-from .exceptions import AiobastionException
+from .exceptions import AiobastionException, AiobastionConfigurationException
 
 from typing import List
 
 
 class User:
+    # _USER_DEFAULT_XXX = <value>
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = []
+
     def __init__(self, epv):
         self.epv = epv
+
+
+    @classmethod
+    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
+        """_init_validate_class_attributes      Initialize and validate the User definition (file configuration and serialized)
+
+        Arguments:
+            serialized {dict}           Definition from configuration file or serialization
+            section {str}               Verified section name
+
+        Keyword Arguments:
+            configfile {str}            Name of the configuration file
+
+        Raises:
+            AiobastionConfigurationException
+
+        Returns:
+            new_serialized {dict}       User defintion
+        """
+        if not configfile:
+            configfile = "serialized"
+
+        new_serialized = {}
+
+        for k in serialized.keys():
+            keyname = k.lower()
+
+            # # Special validation: integer, boolean
+            # if keyname in ["xxx"]:
+            #     new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
+
+            if keyname in User._SERIALIZED_FIELDS:
+                # String definition
+                if serialized[k] is not None:
+                    new_serialized[keyname] = serialized[k]
+            else:
+                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
+
+        # Default values if not set
+        # new_serialized.setdefault("xxx", User._USER_DEFAULT_XXX)
+
+        return new_serialized
+
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in User._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
+
 
     async def get_logged_on_user_details(self):
         """
@@ -207,8 +267,65 @@ class User:
 
 
 class Group:
+    # _GROUP_DEFAULT_XXX = <value>
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = []
+
     def __init__(self, epv):
         self.epv = epv
+
+    @classmethod
+    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
+        """_init_validate_class_attributes      Initialize and validate the Group definition (file configuration and serialized)
+
+        Arguments:
+            serialized {dict}           Definition from configuration file or serialization
+            section {str}               Verified section name
+
+        Keyword Arguments:
+            configfile {str}            Name of the configuration file
+
+        Raises:
+            AiobastionConfigurationException
+
+        Returns:
+            new_serialized {dict}       Group defintion
+        """
+        if not configfile:
+            configfile = "serialized"
+
+        new_serialized = {}
+
+        for k in serialized.keys():
+            keyname = k.lower()
+
+            # # Special validation: integer, boolean
+            # if keyname in ["xxx"]:
+            #     new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
+
+            if keyname in Group._SERIALIZED_FIELDS:
+                # String definition
+                if serialized[k] is not None:
+                    new_serialized[keyname] = serialized[k]
+            else:
+                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
+
+        # Default values if not set
+        # new_serialized.setdefault("xxx", Group._GROUP_DEFAULT_XXX)
+
+        return new_serialized
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Group._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
 
     async def list(self, pattern: str = None, group_type: str = None, details: bool = False,
                    include_members: bool = False):

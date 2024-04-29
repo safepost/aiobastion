@@ -11,9 +11,9 @@ class TestEPV(IsolatedAsyncioTestCase):
     @classmethod
     def setUpClass(cls):
         cls.custom_linked_acounts = {
-            "custom": {
-                "RECONCILE_ACCOUNT_INDEX": 1,
-                "LOGON_ACCOUNT_INDEX": 3
+            "account": {
+                "reconcile_account_index": 1,
+                "logon_account_index": 3
             }
         }
 
@@ -30,23 +30,23 @@ class TestEPV(IsolatedAsyncioTestCase):
 
     def test_default_linked_accounts_from_yml(self):
         vault = aiobastion.EPV(tests.CONFIG)
-        self.assertEqual(2, vault.LOGON_ACCOUNT_INDEX)
-        self.assertEqual(3, vault.RECONCILE_ACCOUNT_INDEX)
+        self.assertEqual(2, vault.account.logon_account_index)
+        self.assertEqual(3, vault.account.reconcile_account_index)
 
     def test_default_linked_accounts_from_obj(self):
         vault = aiobastion.EPV(serialized={})
-        self.assertEqual(2, vault.LOGON_ACCOUNT_INDEX)
-        self.assertEqual(3, vault.RECONCILE_ACCOUNT_INDEX)
+        self.assertEqual(2, vault.account.logon_account_index)
+        self.assertEqual(3, vault.account.reconcile_account_index)
 
     def test_custom_linked_accounts_from_yml(self):
         vault = aiobastion.EPV("test_data/custom_config.yml")
-        self.assertEqual(3, vault.LOGON_ACCOUNT_INDEX)
-        self.assertEqual(1, vault.RECONCILE_ACCOUNT_INDEX)
+        self.assertEqual(3, vault.account.logon_account_index)
+        self.assertEqual(1, vault.account.reconcile_account_index)
 
     def test_custom_linked_accounts_from_obj(self):
         vault = aiobastion.EPV(serialized=self.custom_linked_acounts)
-        self.assertEqual(3, vault.LOGON_ACCOUNT_INDEX)
-        self.assertEqual(1, vault.RECONCILE_ACCOUNT_INDEX)
+        self.assertEqual(3, vault.account.logon_account_index)
+        self.assertEqual(1, vault.account.reconcile_account_index)
 
     async def test_logoff(self):
         await self.vault.logoff()

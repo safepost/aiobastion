@@ -5,13 +5,14 @@ import os
 import ssl
 from collections import namedtuple
 from http import HTTPStatus
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 
 import aiohttp
 from aiohttp import ContentTypeError
 
-from .exceptions import AiobastionException, CyberarkException, CyberarkAPIException, CyberarkAIMnotFound
-from .config import Config
+from .exceptions import AiobastionException, CyberarkException, CyberarkAPIException, CyberarkAIMnotFound, AiobastionConfigurationException
+from .config import Config, validate_bool, validate_integer
+# from .cyberark import EPV
 
 # AIM section
 AIM_secret_resp = namedtuple('AIM_secret_resp', ['secret', 'detail'])
@@ -21,28 +22,71 @@ class EPV_AIM:
     """
     Class managing communication with the Central Credential Provider (AIM) GetPassword Web Service
     """
-    _serialized_fields = ["host", "appid", "cert", "key", "verify", "timeout", "max_concurrent_tasks",
-                          "keep_cookies"]
-    _getPassword_request_parm = ["safe", "folder", "object", "username", "address", "database",
-                                 "policyid", "reason", "connectiontimeout", "query", "queryformat",
-                                 "failrequestonpasswordchange"]
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS_IN = [
+        "appid",
+        "cert",
+        "host",
+        "keep_cookies",
+        "key",
+        "max_concurrent_tasks",
+        "passphrase",
+        "timeout",
+        "verify",
+        ]
 
-    def __init__(self, host: str = None, appid: str = None, cert: str = None, key: str = None,
-                 passphrase: str = None, verify: Union[str, bool] = None,
-                 timeout: int = Config.CYBERARK_DEFAULT_TIMEOUT,
+    # List of attributes for serialization (to_json)
+    _SERIALIZED_FIELDS_OUT = [
+        "appid",
+        "cert",
+        "host",
+        "keep_cookies",
+        "key",
+        "max_concurrent_tasks",
+        # "passphrase",     # Exclude
+        "timeout",
+        "verify",
+        ]
+
+    # List of attributes for user_search available in AIM
+    _GETPASSWORD_REQUEST_PARM = [
+        "address",
+        "connectiontimeout",
+        "database",
+        "failrequestonpasswordchange",
+        "folder",
+        "object",
+        "policyid",
+        "query",
+        "queryformat",
+        "reason",
+        "safe",
+        "username",
+        ]
+
+    # You must specify the following parameters by key=value (no positional parameters allowed):
+    def __init__(self, *,
+                 appid: Optional[str] = None,
+                 cert: Optional[str] = None,
+                 host: Optional[str] = None,
+                 keep_cookies: bool = Config.CYBERARK_DEFAULT_KEEP_COOKIES,
+                 key: Optional[str] = None,
                  max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS,
-                 keep_cookies: bool = False,
-                 serialized: dict = None):
+                 passphrase: Optional[str] = None,
+                 serialized: Optional[dict] = None,
+                 timeout: int = Config.CYBERARK_DEFAULT_TIMEOUT,
+                 verify: Optional[Union[str, bool]] = None,
+                 ):
 
-        self.host = host
         self.appid = appid
         self.cert = cert
+        self.host = host
+        self.keep_cookies = keep_cookies           # Whether to keep cookies between AIM calls
         self.key = key
-        self.passphrase = passphrase
-        self.verify = verify
-        self.timeout = timeout
         self.max_concurrent_tasks = max_concurrent_tasks
-        self.keep_cookies = keep_cookies  # Whether to keep cookies between AIM calls
+        self.passphrase = passphrase
+        self.timeout = timeout
+        self.verify = verify if verify is not None else Config.CYBERARK_DEFAULT_VERIFY
 
         # Session management
         self.__sema = None
@@ -52,47 +96,154 @@ class EPV_AIM:
         if serialized:
             for k, v in serialized.items():
                 keyname = k.lower()
-                if keyname in EPV_AIM._serialized_fields:
+                if keyname in EPV_AIM._SERIALIZED_FIELDS_IN:
                     setattr(self, keyname, v)
                 else:
                     raise AiobastionException(f"Unknown serialized AIM field: {k} = {v!r}")
 
         # Optional attributes
+        if self.keep_cookies is None:
+            self.keep_cookies = Config.CYBERARK_DEFAULT_KEEP_COOKIES
+
         if self.timeout is None:
             self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
 
         if self.max_concurrent_tasks is None:
             self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
 
-        if self.verify is not False and not (isinstance(self.verify, str) and not isinstance(self.verify, bool)):
+        if self.verify is not None and not (isinstance(self.verify, str) or isinstance(self.verify, bool)):
             raise AiobastionException(
                 f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
+
+        if isinstance(self.verify, str):
+            if not os.path.exists(self.verify):
+                raise AiobastionConfigurationException(
+                    f"CA certificat File not found {self.verify!r} (Parameter 'verify' in AIM).")
+
+
+    @classmethod
+    def _init_validate_class_attributes(cls, serialized: dict, section: str, epv,  configfile: Optional[str] = None) -> dict:
+        """_init_validate_class_attributes      Initialize and validate the EPV_AIM definition (file configuration and serialized)
+
+        Arguments:
+            serialized {dict}           Definition from configuration file or serialization
+            section {str}               verified section name
+
+        Keyword Arguments:
+            epv {EPV}                   EPV class definition
+            configfile {str}            Name of the configuration file
+
+        Raises:
+            AiobastionConfigurationException
+
+        Information:
+            "appid":                # Default = Connection (appid)
+            "cert":
+            "host":                 # Default = PVWA (host)
+            "keep_cookies":         # Default = Config.CYBERARK_DEFAULT_KEEP_COOKIES
+            "key":
+            "max_concurrent_tasks": # Default = PVWA (max_concurrent_tasks) or Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
+            "passphrase":
+            "timeout":              # Default = PVWA (timeout) or Config.CYBERARK_DEFAULT_TIMEOUT
+            "verify":               # Default = PVWA (PVWA_CA) or Config.CYBERARK_DEFAULT_VERIFY
+
+        Returns:
+            new_serialized {dict}       AIM defintion
+        """
+        if not configfile:
+            configfile = "serialized"
+
+        new_serialized = {}
+
+        for k in serialized.keys():
+            keyname = k.lower()
+
+            # Special validation: integer, boolean
+            if keyname in ["max_concurrent_tasks", "timeout"]:
+                if serialized[k] is not None:
+                    new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
+            elif keyname in ["verify"]:
+                if serialized[k] is not None:
+                    if isinstance(serialized[k], str) or isinstance(serialized[k], bool):
+                        new_serialized["verify"] = serialized[k]
+                    else:
+                        raise AiobastionConfigurationException(
+                            f"Parameter invalid '{section}/{k}' "
+                            f"in {configfile}: {serialized[k]!r}")
+
+            elif keyname in EPV_AIM._SERIALIZED_FIELDS_IN:
+                # String definition
+                if serialized[k] is not None:
+                    new_serialized[keyname] = serialized[k]
+            else:
+                # Unknown attribute
+                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
+
+
+        # Complete initialization with epv section (file configuration and serialized)
+        if epv:
+            if "host" not in new_serialized and epv.api_host:
+                new_serialized["host"]  = epv.api_host
+
+            # Should not be None or the default value
+            if "timeout" not in new_serialized and epv.timeout and \
+               epv.timeout != Config.CYBERARK_DEFAULT_TIMEOUT:
+                new_serialized["timeout"] = epv.timeout
+
+            # Should not be None or the default value
+            if "max_concurrent_tasks" not in new_serialized and \
+                epv.max_concurrent_tasks is not None  and \
+                epv.max_concurrent_tasks != Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS:
+                new_serialized["max_concurrent_tasks"] =  epv.max_concurrent_tasks
+
+            # Should not be None or the default value
+            if "verify" not in new_serialized and \
+               epv.verify is not None and \
+               epv.verify != Config.CYBERARK_DEFAULT_VERIFY:
+                new_serialized["verify"] = epv.verify
+
+        # If no value has been set, return a empty dictionary. AIM should not be set.
+        if not any(new_serialized.values()):
+            return {}
+
+        # Default values if not set
+        new_serialized.setdefault("keep_cookies", Config.CYBERARK_DEFAULT_KEEP_COOKIES)
+        new_serialized.setdefault("max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS)
+        new_serialized.setdefault("timeout", Config.CYBERARK_DEFAULT_TIMEOUT)
+        new_serialized.setdefault("verify", Config.CYBERARK_DEFAULT_VERIFY)
+
+        # Validation
+        if isinstance(new_serialized["verify"], str):
+            if not os.path.exists(new_serialized["verify"]):
+                raise AiobastionConfigurationException(
+                    f"CA certificat File not found {new_serialized['verify']!r} (Parameter 'verify' in AIM).")
+
+        return new_serialized
 
     def validate_and_setup_aim_ssl(self):
         if self.session:
             return
 
         # Check mandatory attributes
-        for attr_name in ["host", "appid", "cert", "key"]:
-            v = getattr(self, attr_name, None)
-
-            if v is None:
-                raise AiobastionException(f"Missing AIM mandatory parameter '{attr_name}'."
-                                          " Required parameters are: host, appid, cert, key.")
+        if self.host is None or \
+           self.appid is None or \
+           self.cert is None:
+            raise AiobastionException(f"Missing AIM mandatory parameters. "
+                                       "Required parameters are: host, appid, cert.")
 
         if not os.path.exists(self.cert):
             raise AiobastionException(f"Parameter 'cert' in AIM: Public certificate file not found: {self.cert!r}")
 
-        if not os.path.exists(self.key):
+        if self.key and not os.path.exists(self.key):
             raise AiobastionException(f"Parameter 'key' in AIM: Private key certificat file not found: {self.key!r}")
 
-        # if verify is not set, default to no ssl
-        if self.verify is False:
+        # Set verify if it is not set
+        if self.verify is None:
             self.verify = Config.CYBERARK_DEFAULT_VERIFY
 
         if not (isinstance(self.verify, str) or isinstance(self.verify, bool)):
             raise AiobastionException(
-                f"Invalid type for parameter 'verify' (or 'CA') in AIM: {type(self.verify)} value: {self.verify!r}")
+                f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
 
         if (isinstance(self.verify, str) and not os.path.exists(self.verify)):
             raise AiobastionException(f"Parameter 'verify' in AIM: file not found {self.verify!r}")
@@ -110,10 +261,11 @@ class EPV_AIM:
 
             if not self.verify:  # False
                 ssl_context.check_hostname = False
-        if self.passphrase is not None:
-            ssl_context.load_cert_chain(self.cert, self.key, password=self.passphrase)
-        else:
-            ssl_context.load_cert_chain(self.cert, self.key)
+
+        # if self.key is None:
+        #     ssl_context.load_cert_chain(self.cert, keyfile=self.key, password=self.passphrase)
+        # else:
+        ssl_context.load_cert_chain(self.cert, keyfile=self.key, password=self.passphrase)
 
         self.request_params = \
             {"timeout": self.timeout,
@@ -130,7 +282,7 @@ class EPV_AIM:
             for k in list(params.keys()):
                 key_lower = k.lower()
 
-                if key_lower not in EPV_AIM._getPassword_request_parm:
+                if key_lower not in EPV_AIM._GETPASSWORD_REQUEST_PARM:
                     error_str = f"unknown parameter: {k}={params[k]}"
                     break
 
@@ -155,7 +307,7 @@ class EPV_AIM:
     def to_json(self):
         serialized = {}
 
-        for attr_name in EPV_AIM._serialized_fields:
+        for attr_name in EPV_AIM._SERIALIZED_FIELDS_OUT:
             serialized[attr_name] = getattr(self, attr_name, None)
 
         return serialized
