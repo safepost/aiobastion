@@ -249,8 +249,10 @@ class Account:
         new_serialized.setdefault("reconcile_account_index", Account._ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX)
 
         # Validation
-        if new_serialized["reconcile_account_index"] not in [1, 2, 3]:
-            raise AiobastionConfigurationException("ExtraPasswordIndex must be between 1 and 3")
+        for keyname in ["logon_account_index", "reconcile_account_index"]:
+            if new_serialized[keyname] not in [1, 2, 3]:
+                raise AiobastionConfigurationException(f"Invalid value for attribute '{section}/{keyname}' in {configfile}  (expected 1 to 3): {new_serialized[keyname]!r}")
+
 
         return new_serialized
 

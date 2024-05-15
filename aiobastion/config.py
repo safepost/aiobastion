@@ -13,7 +13,7 @@ class Config:
     # The following default values are defined here (instead of EPV class)
     CYBERARK_DEFAULT_KEEP_COOKIES = False
     CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS = 10
-    CYBERARK_DEFAULT_RETENTION = 10
+    # CYBERARK_DEFAULT_RETENTION = 10
     CYBERARK_DEFAULT_TIMEOUT = 30
     CYBERARK_DEFAULT_VERIFY = True
     CYBERARK_OPTIONS_MODULES_LIST = [
@@ -111,7 +111,7 @@ class Config:
         pvwa(1)         verify                          options_modules["cyberark"]             verify Union[{bool}, {str}]
 
         cpm(2)                                          options_modules["account"]              cpm
-        retention(2)                                    options_modules["account"]              retention
+        retention(2)                                    options_modules["account"]              retention {int}
 
 
         *** aim module ***
@@ -121,23 +121,22 @@ class Config:
         aim                 key                         options_modules["aim"]                  key
 
         aim                 passphrase                  options_modules["aim"]                  passphrase
-        aim                 timeout                     options_modules["aim"]                  timeout
+        aim                 timeout                     options_modules["aim"]                  timeout {int}
 
-        aim(1)              maxtasks                    options_modules["aim"]                  max_concurrent_tasks {int}
         aim(1)              max_concurrent_tasks        options_modules["aim"]                  max_concurrent_tasks {int}
 
         aim(1)              verify                      options_modules["aim"]                  verify Union[{bool}, {str}]
 
-        custom(3)           LOGON_ACCOUNT_INDEX         options_modules["safe"]                 logon_account_index
-        custom(3)           RECONCILE_ACCOUNT_INDEX     options_modules["safe"]                 reconcile_account_index
+        custom(3)           LOGON_ACCOUNT_INDEX         options_modules["safe"]                 logon_account_index {int}
+        custom(3)           RECONCILE_ACCOUNT_INDEX     options_modules["safe"]                 reconcile_account_index {int}
 
 
         *** modules (4) ***
-        account(3)          logon_account_index         options_modules["account"]              logon_account_index
-        account(3)          reconcile_account_index     options_modules["account"]              reconcile_account_index
+        account(3)          logon_account_index         options_modules["account"]              logon_account_index {int}
+        account(3)          reconcile_account_index     options_modules["account"]              reconcile_account_index {int}
 
         safe                cpm                         options_modules["safe"]                 cpm
-        safe                retention                   options_modules["safe"]                 retention
+        safe                retention                   options_modules["safe"]                 retention {int}
 
 
         accountgroup        <all>                       options_modules["accountgroup"]         <all>
@@ -179,7 +178,7 @@ class Config:
         # Check the global section defined in the configuration file
         for k in configuration.keys():
             if k not in global_sections:
-                raise AiobastionConfigurationException(f"Unknown section '{k}' in {self.configfile}")
+                raise AiobastionConfigurationException(f"Unknown attribute '{k}' in {self.configfile}")
 
         # --------------------------------------------
         # Config attribute class
@@ -221,9 +220,14 @@ class Config:
         # Compatilibility and exceptions
         # --------------------------------------------
         # Don't allow 'safe' and ('cpm' or 'retention').
-        if "safe" in configuration and \
-           ("cpm" in configuration or "retention" in configuration):
-            raise AiobastionConfigurationException(f"Move 'cpm' and 'retention' to the 'safe' definition in {self.configfile}.")
+        if "cpm" in configuration or "retention" in configuration:
+            if "safe" in configuration:
+                raise AiobastionConfigurationException(f"Duplicate definition: Move 'cpm' and 'retention' to the 'safe' definition in {self.configfile}.")
+            else:
+                warnings.warn(
+                            "aiobastion - Please, move 'cpm' and "
+                            "'retention' definition from global to 'safe' "
+                            f"section in {self.configfile}.")
 
         # Move 'cpm' and 'retention' to 'safe' module
         for keyname in ["cpm", "retention"]:
@@ -258,10 +262,10 @@ class Config:
         verify                                      options_modules["cyberark"]     verify Union         [{bool}, {str}]
 
         cpm(2)                                      options_modules["account"]      cpm
-        retention(2)                                options_modules["account"]      retention
+        retention(2)                                options_modules["account"]      retention {int}
 
-        custom(3)       LOGON_ACCOUNT_INDEX         options_modules["account"]      logon_account_index
-        custom(3)       RECONCILE_ACCOUNT_INDEX     options_modules["account"]      reconcile_account_index
+        custom(3)       LOGON_ACCOUNT_INDEX         options_modules["account"]      logon_account_index {int}
+        custom(3)       RECONCILE_ACCOUNT_INDEX     options_modules["account"]      reconcile_account_index {int}
 
 
         ***  modules (4) ***
@@ -303,7 +307,7 @@ class Config:
         # Don't allow 'safe' and ('cpm' or 'retention').
         if "safe" in serialized and \
            ("cpm" in serialized or "retention" in serialized):
-            raise AiobastionConfigurationException("Move 'cpm' and 'retention' to the 'safe' definition in serialization.")
+            raise AiobastionConfigurationException("Duplicate definition: Move 'cpm' and 'retention' to the 'safe' definition in serialization.")
 
         # Validate dictionary keys
         for k, v in serialized.items():
@@ -429,7 +433,7 @@ class Config:
             keyname = k.lower()
 
             if keyname in rt:
-                raise AiobastionConfigurationException(f"Duplicate key '{section_name}/{k}'"
+                raise AiobastionConfigurationException(f"Duplicate key '{section_name}/{keyname}'"
                                                         f" in {configfile}")
 
             if isinstance(v, dict) and  keyname != "custom":
