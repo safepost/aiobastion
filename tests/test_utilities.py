@@ -89,3 +89,12 @@ class TestPlatformUtilies(IsolatedAsyncioTestCase):
             for c in await qualif.utils.platform.connection_component_usage():
                 print(c)
 
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    unittest.main()

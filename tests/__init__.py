@@ -1,7 +1,8 @@
 import logging
+import os
 
-CONFIG = '../../confs/config_tests.yml'
-AIM_CONFIG = '../../confs/config_aim_hp.yml'
+CONFIG = os.path.join("..", "..", "confs", "config_tests.yml")
+AIM_CONFIG = os.path.join("..", "..", "confs", "config_aim_hp.yml")
 
 logging.basicConfig(
     level=logging.DEBUG,

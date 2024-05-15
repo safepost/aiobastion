@@ -23,3 +23,13 @@ class TestSessionManagement(IsolatedAsyncioTestCase):
     async def test_get_all_connection_components(self):
         all_cc = await self.vault.session_management.get_all_connection_components()
         self.assertGreater(all_cc["Total"], 5)
+
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    unittest.main()
