@@ -45,7 +45,7 @@ class EPV:
     ]
 
 
-    def __init__(self, configfile: str = None, serialized: dict = None, token: str = None):
+    def __init__(self, configfile: str = None, token: str = None, serialized: dict = None):
         # Logging stuff
         logger: logging.Logger = logging.getLogger("aiobastion")
         self.logger = logger
@@ -216,17 +216,19 @@ class EPV:
                 err = EPV_AIM.valid_secret_params(v)
 
                 if err:
-                    raise GetTokenException(f"invalid parameter in '{section_name(k)}': {err}")
+                    raise AiobastionConfigurationException(f"invalid parameter in '{section_name(k)}': {err}")
 
             elif k == "username":
                 self.username = v
             elif k in ["verify", "ca"]:
                 synonym_verify += 1
 
-                if isinstance(v, str):
+                if isinstance(v, str) or isinstance(v, bool):
                     self.verify = v
                 else:
-                    self.verify = validate_bool(configfile, section_name(k), v)
+                     raise AiobastionConfigurationException(
+                            f"Parameter type invalid '{section_name(k)}' "
+                            f"in {configfile}: {v!r}")
 
                 if synonym_verify > 1:
                     raise AiobastionConfigurationException(

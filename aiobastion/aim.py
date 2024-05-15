@@ -168,7 +168,7 @@ class EPV_AIM:
                         new_serialized["verify"] = serialized[k]
                     else:
                         raise AiobastionConfigurationException(
-                            f"Parameter invalid '{section}/{k}' "
+                            f"Parameter type invalid '{section}/{k}' "
                             f"in {configfile}: {serialized[k]!r}")
 
             elif keyname in EPV_AIM._SERIALIZED_FIELDS_IN:
