@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # All field must be define without any error and no synonyms.
 # Put keys in lowercase.
 #
@@ -48,3 +49,55 @@ safe:
 custom:
   Custion_Field1: "Hello"
 
+=======
+# All field must be define without any error and no synonyms.
+# Put keys in lowercase.
+#
+# This definition will be the main source of testing
+#     the configuration file and the serialization.
+#
+# For a complete field definition see the comment on the following function in config.py file:
+#   Config._mngt_configfile
+#   Config._mngt_serialized
+
+label: Production Demo
+
+connection:
+  appid:  appUser
+  authtype: cyberark
+  password: A_password
+  username: pvwaUser
+  user_search:
+    OBJect: "object-windows"
+
+pvwa:
+  host: PVWAHost1
+  timeout: 12
+  max_concurrent_tasks: 5
+  keep_cookies: false
+  verify: false
+
+aim:
+  #appid in Connection
+  host: AIMhost2
+  cert: "CertFile.crt"
+  key:  "KeyFile.pem"
+  keep_cookies: false
+  passphrase: passPhrase1
+  timeout: 35
+  max_concurrent_tasks: 15
+  verify: true
+
+account:
+  logon_account_index: 2
+  reconcile_account_index: 3
+
+safe:
+  cpm:  "userAdm"
+  retention: 15
+
+# Customer information only
+custom:
+  Custion_Field1: "Hello"
+
+>>>>>>> d06df4a570e5fc5f0b18a46849d1a5b0932898da
