@@ -51,6 +51,7 @@ The base YAML file come from ./tests/test_data/custom_config.yml
 
 """
 import os
+import sys
 import copy
 import yaml
 import unittest
@@ -64,6 +65,7 @@ import datetime
 import pprint
 import logging
 import inspect
+import asyncio
 
 
 # -----------------------------------

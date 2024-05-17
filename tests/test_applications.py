@@ -1,3 +1,6 @@
+import sys
+import unittest
+import asyncio
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
 from aiobastion.exceptions import AiobastionException
