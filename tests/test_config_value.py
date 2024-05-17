@@ -171,10 +171,12 @@ class TestConfig_epv(unittest.TestCase):
             logger.addHandler(fh)
 
             cls.logger = logger
-            cls.writelog(f"Trace file:        '{logging_name}'")
 
+        if cls.yaml_dict:
+            return
 
         cls.writelog(HEADER, fnc_name)
+        cls.writelog(f"Trace file:        '{logging_name}'")
         cls.writelog(f"yaml_filename:     '{cls.yaml_filename}'")
         cls.writelog(f"yaml_temp_name:    '{cls.yaml_temp_name}'")
 
@@ -292,9 +294,10 @@ class TestConfig_epv(unittest.TestCase):
 
 
     @classmethod
-    def TearDown(cls):
-        """TearDown - cleanup of class test """
-        cls.writelog(HEADER, "TearDown")
+    def tearDownClass(cls):
+        """tearDownClass - cleanup of class test """
+        fnc_name = inspect.currentframe().f_code.co_name
+        cls.writelog(HEADER, fnc_name)
 
         if os.path.exists(TestConfig_epv.yaml_temp_name):
             os.remove(TestConfig_epv.yaml_temp_name)
