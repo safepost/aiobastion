@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import os
 import unittest
@@ -15,7 +16,7 @@ class TestEPV(IsolatedAsyncioTestCase):
         try:
             await self.vault.logoff()
         except:
-            # test_logoff 
+            # test_logoff
             pass
 
     async def test_logoff(self):
@@ -75,6 +76,12 @@ class TestEPV(IsolatedAsyncioTestCase):
 
         self.assertFalse(ret)
 
-if __name__ == "__main__":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     unittest.main()

@@ -1,16 +1,86 @@
 # -*- coding: utf-8 -*-
 import warnings
-from typing import AsyncIterator
+from typing import AsyncIterator, Union
 
-from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile
+from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile, validate_integer
 from .exceptions import (
-    CyberarkAPIException, CyberarkException, AiobastionException
+    CyberarkAPIException, CyberarkException, AiobastionException, AiobastionConfigurationException
 )
 
 
 class Safe:
-    def __init__(self, epv):
-        self.epv = epv
+    _SAFE_DEFAULT_CPM = ""
+    _SAFE_DEFAULT_RETENTION = 10
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = ["cpm", "retention"]
+
+    def __init__(self, epv, cpm = None, retention = None):
+        self.epv       = epv
+        self.cpm       = cpm if cpm is not None else Safe._SAFE_DEFAULT_RETENTION
+        self.retention = retention if retention is not None else Safe._SAFE_DEFAULT_RETENTION
+
+
+    @classmethod
+    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
+        """_init_validate_class_attributes      Initialize and validate the Safe definition (file configuration and serialized)
+
+        Arguments:
+            serialized {dict}           Definition from configuration file or serialization
+            section {str}               Verified section name
+
+        Keyword Arguments:
+            configfile {str}            Name of the configuration file
+
+        Raises:
+            AiobastionConfigurationException
+
+        Returns:
+            new_serialized {dict}       Safe defintion
+        """
+        if configfile:
+            configfile = "serialized"
+
+        new_serialized = {
+            "cpm": Safe._SAFE_DEFAULT_CPM,
+            "retention":  Safe._SAFE_DEFAULT_RETENTION
+            }
+
+        for k in serialized.keys():
+            keyname = k.lower()
+
+            try:
+                # Special validation: integer, boolean
+                if keyname == "retention":
+                    new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
+                elif keyname in Safe._SERIALIZED_FIELDS:
+                    # String definition
+                    if serialized[k] is not None:
+                        new_serialized[keyname] = serialized[k]
+                else:
+                    raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
+
+            except ValueError:
+                raise(f"Invalid integer definition '{section}/{k}' in {configfile}: {serialized[k]!r}")
+
+
+        new_serialized.setdefault("cpm", Safe._SAFE_DEFAULT_CPM)
+        new_serialized.setdefault("retention", Safe._SAFE_DEFAULT_RETENTION)
+
+        return new_serialized
+
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Safe._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
+
 
     # TODO : add membershipExpirationDate permissions isReadOnly
     async def add_member(self, safe: str, username: str, search_in: str = "Vault",
@@ -106,7 +176,7 @@ class Safe:
         return await self.epv.handle_request("post", url, data=data)
 
     # TODO : Document profiles
-    async def add_member_profile(self, safe: str, username: str, profile: (str, dict)):
+    async def add_member_profile(self, safe: str, username: str, profile: Union[str, dict]):
         """
         This functions adds the "username" user (or group) to the given safe with a relevant profile
 
@@ -182,8 +252,8 @@ class Safe:
             "SafeName": safe_name,
             "Description": description,
             "OLACEnabled": olac,
-            "ManagingCPM": self.epv.cpm if cpm is None else cpm,
-            "NumberOfVersionsRetention": self.epv.retention if versions is None else versions,
+            "ManagingCPM": self.cpm if cpm is None else cpm,
+            "NumberOfVersionsRetention": self.retention if versions is None else versions,
             "numberOfDaysRetention": days,
             "AutoPurgeEnabled": auto_purge,
             "location": location
@@ -259,7 +329,10 @@ class Safe:
 
         #url = f"WebServices/PIMServices.svc/Safes/{safe_name}/Members"
         url = f"api/Safes/{safe_name}/Members"
-        members = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
+        try:
+            members = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
+        except CyberarkException as err:
+            raise CyberarkAPIException(404, "ERR_404", f"Safe {safe_name} doesn't exist")
 
         if raw:
             return members

@@ -1,6 +1,9 @@
+import sys
 import os
 import random
 import shutil
+import asyncio
+import unittest
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
@@ -129,3 +132,13 @@ class TestApplication(IsolatedAsyncioTestCase):
 
         # Cleanup
         shutil.rmtree("./temp")
+
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    unittest.main()

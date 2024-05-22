@@ -1,3 +1,6 @@
+import sys
+import unittest
+import asyncio
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import random
@@ -174,3 +177,14 @@ class TestSafe(IsolatedAsyncioTestCase):
         # undo
         ret = await self.vault.safe.rename(new_name, safe_to_rename)
         self.assertIn(safe_to_rename, [s["safeName"] for s in await self.vault.safe.search(safe_to_rename)])
+
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    unittest.main()
+

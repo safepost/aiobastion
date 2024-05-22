@@ -5,9 +5,9 @@ from typing import List, Union, AsyncIterator
 
 import aiohttp
 
-from .config import validate_ip, flatten
+from .config import validate_ip, flatten, validate_integer
 from .exceptions import (
-    CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound
+    CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound, AiobastionConfigurationException
 )
 
 BASE_FILECATEGORY = ("platformId", "userName", "address", "name")
@@ -197,8 +197,76 @@ class Account:
     """
     Utility class to handle account manipulation
     """
-    def __init__(self, epv):
+    _ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX = 2
+    _ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX = 3
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = ["logon_account_index",
+                          "reconcile_account_index"]
+
+
+    def __init__(self, epv, logon_account_index = None, reconcile_account_index = None):
         self.epv = epv
+        self.logon_account_index = logon_account_index if logon_account_index is not None else Account._ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX
+        self.reconcile_account_index = reconcile_account_index if reconcile_account_index else Account._ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX
+
+    @classmethod
+    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
+        """_init_validate_class_attributes      Initialize and validate the Account definition (file configuration and serialized)
+
+        Arguments:
+            serialized {dict}           Definition from configuration file or serialization
+            section {str}               verified section name
+
+        Keyword Arguments:
+            configfile {str}            Name of the configuration file
+
+        Raises:
+            AiobastionConfigurationException
+
+        Returns:
+            new_serialized {dict}                    Account defintion
+        """
+        if not configfile:
+            configfile = "serialized"
+
+        new_serialized = {}
+
+        for k in serialized.keys():
+            keyname = k.lower()
+
+            # Special validation: integer, boolean
+            if keyname in ["logon_account_index", "reconcile_account_index"]:
+                new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
+            elif keyname in Account._SERIALIZED_FIELDS:
+                # String definition (future use)
+                new_serialized[keyname] = serialized[k]
+            else:
+                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
+
+        # Default values if not set
+        new_serialized.setdefault("logon_account_index", Account._ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX)
+        new_serialized.setdefault("reconcile_account_index", Account._ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX)
+
+        # Validation
+        for keyname in ["logon_account_index", "reconcile_account_index"]:
+            if new_serialized[keyname] not in [1, 2, 3]:
+                raise AiobastionConfigurationException(f"Invalid value for attribute '{section}/{keyname}' in {configfile}  (expected 1 to 3): {new_serialized[keyname]!r}")
+
+
+        return new_serialized
+
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Account._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
 
     async def _handle_acc_list(self, api_call, account, *args, **kwargs):
         """
@@ -361,7 +429,7 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed
         """
-        return await self.link_account(account, logon_account, self.epv.LOGON_ACCOUNT_INDEX)
+        return await self.link_account(account, logon_account, self.logon_account_index)
 
     async def link_reconcile_account_by_address(self, acc_username, rec_acc_username, address):
         """ This function links the account with the given username and address to the reconciliation account with
@@ -397,7 +465,7 @@ class Account:
         """
         | This function unlinks the reconciliation account of the given account (or the list of accounts)
         | ⚠️ The "reconcile" Account is supposed to have an index of 3
-        | You can change it by setting custom:RECONCILE_ACCOUNT_INDEX in your config file
+        | You can change it by setting "account" section field "reconcile_account_index" in your config file
 
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
@@ -405,20 +473,20 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed:
         """
-        return await self.unlink_account(account, self.epv.RECONCILE_ACCOUNT_INDEX)
+        return await self.unlink_account(account, self.reconcile_account_index)
 
     async def remove_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """
         | This function unlinks the logon account of the given account (or the list of accounts)
         | ⚠️ The "logon" Account index is default to 2 but can be set differently on the platform
-        | You can change it by setting custom:LOGON_ACCOUNT_INDEX in your config file
+        | You can change it by setting "account" section field "logon_account_index" in your config file
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed:
         """
-        return await self.unlink_account(account, self.epv.LOGON_ACCOUNT_INDEX)
+        return await self.unlink_account(account, self.logon_account_index)
 
     async def unlink_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
                              extra_password_index: int):
@@ -1317,8 +1385,8 @@ class Account:
         | Retrieve secret password from the Central Credential Provider (**AIM**) GetPassword
           Web Service information.
 
-        ℹ️ The following parameters are optional searchable keys, see CyberArk documentation in
-           Developer/Central Credential Provider/Call the Central Credential Provider Web Service .../REST
+        | ℹ️ The following parameters are optional searchable keys. Refer to
+            `CyberArk Central Credential Provider - REST web service`.
 
         :param username: User account name
         :param safe: Safe where the account is stored.

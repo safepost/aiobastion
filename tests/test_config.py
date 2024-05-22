@@ -1,5 +1,6 @@
-import asyncio
 import os
+import sys
+import asyncio
 import unittest
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
@@ -8,15 +9,6 @@ from aiobastion import CyberarkException
 
 
 class TestEPV(IsolatedAsyncioTestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.custom_linked_acounts = {
-            "custom": {
-                "RECONCILE_ACCOUNT_INDEX": 1,
-                "LOGON_ACCOUNT_INDEX": 3
-            }
-        }
-
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
@@ -25,28 +17,8 @@ class TestEPV(IsolatedAsyncioTestCase):
         try:
             await self.vault.logoff()
         except:
-            # test_logoff 
+            # test_logoff
             pass
-
-    def test_default_linked_accounts_from_yml(self):
-        vault = aiobastion.EPV(tests.CONFIG)
-        self.assertEqual(2, vault.LOGON_ACCOUNT_INDEX)
-        self.assertEqual(3, vault.RECONCILE_ACCOUNT_INDEX)
-
-    def test_default_linked_accounts_from_obj(self):
-        vault = aiobastion.EPV(serialized={})
-        self.assertEqual(2, vault.LOGON_ACCOUNT_INDEX)
-        self.assertEqual(3, vault.RECONCILE_ACCOUNT_INDEX)
-
-    def test_custom_linked_accounts_from_yml(self):
-        vault = aiobastion.EPV("test_data/custom_config.yml")
-        self.assertEqual(3, vault.LOGON_ACCOUNT_INDEX)
-        self.assertEqual(1, vault.RECONCILE_ACCOUNT_INDEX)
-
-    def test_custom_linked_accounts_from_obj(self):
-        vault = aiobastion.EPV(serialized=self.custom_linked_acounts)
-        self.assertEqual(3, vault.LOGON_ACCOUNT_INDEX)
-        self.assertEqual(1, vault.RECONCILE_ACCOUNT_INDEX)
 
     async def test_logoff(self):
         await self.vault.logoff()
@@ -95,7 +67,12 @@ class TestEPV(IsolatedAsyncioTestCase):
         # self.fail()
 
 
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-if __name__ == "__main__":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     unittest.main()

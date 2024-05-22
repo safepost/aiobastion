@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2024-04-14
+### Changes
+- Added new config section "accounts" to configure custom "LOGON_ACCOUNT_INDEX" and "RECONCILE_ACCOUNT_INDEX". This is
+  moved from the 'custom' section in release 0.1.1.
+- Moved "cpm" and "retention" definiton from global section to new section "safe".
+- Add "passphrase" in "AIM" section to handle PEM certificat with a password.
+- Internal modification for a better management for file configuration and serialization mainly in config.py and cyberark.py.
+
+## [0.1.6] - 2024-03-14
+### Bugfixes
+- add keep_cookies to serialized aim fields
+
+
 ## [0.1.5] - 2024-03-08
 ### Bugfixes
 - Tests were not all functional
@@ -30,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2024-02-03
 ### Changes
 - Add "get_safe_details" method
-- Add support for "custom" configs to override the default logon and reconcile account index
+- Add support for "custom" configs to override the default logon and reconcile account index.
+  **DO NOT USE, deprecated in 0.1.7**.
 - Add support to retain cookies during login, and use for subsequent API calls for load-balanced PVWAs.
 
 ## [0.1.0] - 2024-01-26
