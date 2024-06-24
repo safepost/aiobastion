@@ -16,6 +16,7 @@ Main functions
 .. autofunction:: get_safe_details
 .. autofunction:: get_permissions
 .. autofunction:: rename
+.. autofunction:: update
 
 Other functions
 ------------------------
@@ -23,4 +24,3 @@ Other functions
 .. autofunction:: search_safe_paginate
 .. autofunction:: list
 .. autofunction:: v1_get_safes
-

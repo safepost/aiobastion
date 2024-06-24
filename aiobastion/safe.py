@@ -497,3 +497,44 @@ class Safe:
         good_safe["safeName"] = new_name
 
         return await self.epv.handle_request("put", url, data=good_safe)
+
+    async def update(self, safe_name: str, description=None, location=None, olac=None, days=None, versions=None,
+                     cpm=None):
+        """
+        Update existing safe
+
+        :param safe_name: The name of the safe to update
+        :param description: The safe description
+        :param location: Safe location (must be an existing location)
+        :param olac: Enable OLAC for the safe (default to False)
+        :param days: Days of retention
+        :param versions: Number of versions
+        :param cpm: The name of the CPM user who will manage the new Safe.
+        :return: A dict of the updated safe details
+        """
+
+        url = f"api/Safes/{safe_name}"
+        data = {
+            "SafeName": safe_name,
+        }
+
+        if description is not None:
+            data["Description"] = description
+        if location is not None:
+            data["location"] = location
+        if olac is not None:
+            data["OLACEnabled"] = olac
+        if days is not None:
+            data["numberOfDaysRetention"] = days
+        if versions is not None:
+            data["NumberOfVersionsRetention"] = versions
+        if cpm is not None:
+            data["ManagingCPM"] = cpm
+
+        # options are mutually exclusive
+        if days is not None and days >= 0:
+            data.pop("NumberOfVersionsRetention", None)
+        else:
+            data.pop("numberOfDaysRetention", None)
+
+        return await self.epv.handle_request("put", url, data=data)
