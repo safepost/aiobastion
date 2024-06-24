@@ -510,7 +510,7 @@ class Safe:
         :param days: Days of retention
         :param versions: Number of versions
         :param cpm: The name of the CPM user who will manage the new Safe.
-        :return: A dict of the safe details
+        :return: A dict of the updated safe details
         """
 
         url = f"api/Safes/{safe_name}"
