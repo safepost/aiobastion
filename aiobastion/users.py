@@ -10,51 +10,15 @@ class User:
     # List of attributes from configuration file and serialization
     _SERIALIZED_FIELDS = []
 
-    def __init__(self, epv):
+    def __init__(self, epv, **kwargs):
         self.epv = epv
+        self.user_list = None
 
+        _section = "user"
+        _config_source = self.epv.config.config_source
 
-    @classmethod
-    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
-        """_init_validate_class_attributes      Initialize and validate the User definition (file configuration and serialized)
-
-        Arguments:
-            serialized {dict}           Definition from configuration file or serialization
-            section {str}               Verified section name
-
-        Keyword Arguments:
-            configfile {str}            Name of the configuration file
-
-        Raises:
-            AiobastionConfigurationException
-
-        Returns:
-            new_serialized {dict}       User defintion
-        """
-        if not configfile:
-            configfile = "serialized"
-
-        new_serialized = {}
-
-        for k in serialized.keys():
-            keyname = k.lower()
-
-            # # Special validation: integer, boolean
-            # if keyname in ["xxx"]:
-            #     new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
-
-            if keyname in User._SERIALIZED_FIELDS:
-                # String definition
-                if serialized[k] is not None:
-                    new_serialized[keyname] = serialized[k]
-            else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
-
-        # Default values if not set
-        # new_serialized.setdefault("xxx", User._USER_DEFAULT_XXX)
-
-        return new_serialized
-
+        for _k in kwargs.keys():
+            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
 
     def to_json(self):
         serialized = {}
@@ -126,10 +90,10 @@ class User:
         :param username: username of the user
         :return: Boolean
         """
-        if self.epv.user_list is None:
+        if self.user_list is None:
             results = await self.epv.handle_request("get", 'API/Users', filter_func=lambda result: result["Users"])
-            self.epv.user_list = [u['username'].lower().strip() for u in results]
-        return username.lower() in self.epv.user_list
+            self.user_list = [u['username'].lower().strip() for u in results]
+        return username.lower() in self.user_list
 
     async def details(self, username: str = "", user_id=None):
         """
@@ -272,49 +236,14 @@ class Group:
     # List of attributes from configuration file and serialization
     _SERIALIZED_FIELDS = []
 
-    def __init__(self, epv):
+    def __init__(self, epv, **kwargs):
         self.epv = epv
 
-    @classmethod
-    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
-        """_init_validate_class_attributes      Initialize and validate the Group definition (file configuration and serialized)
+        _section = "group"
+        _config_source = self.epv.config.config_source
 
-        Arguments:
-            serialized {dict}           Definition from configuration file or serialization
-            section {str}               Verified section name
-
-        Keyword Arguments:
-            configfile {str}            Name of the configuration file
-
-        Raises:
-            AiobastionConfigurationException
-
-        Returns:
-            new_serialized {dict}       Group defintion
-        """
-        if not configfile:
-            configfile = "serialized"
-
-        new_serialized = {}
-
-        for k in serialized.keys():
-            keyname = k.lower()
-
-            # # Special validation: integer, boolean
-            # if keyname in ["xxx"]:
-            #     new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
-
-            if keyname in Group._SERIALIZED_FIELDS:
-                # String definition
-                if serialized[k] is not None:
-                    new_serialized[keyname] = serialized[k]
-            else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
-
-        # Default values if not set
-        # new_serialized.setdefault("xxx", Group._GROUP_DEFAULT_XXX)
-
-        return new_serialized
+        for _k in kwargs.keys():
+            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
 
     def to_json(self):
         serialized = {}

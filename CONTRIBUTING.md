@@ -48,6 +48,9 @@ If you wish to contribute with code the workflow is :
 You need an API user, such as **"admin_bot"**, to run the testing. This account is similar to Administrator for
 permissions, but you can't use "Administrator" itself (you will get "PASWS291E You cannot perform this
 task with an Administrator user. Log on with a different user and try again" error)
+
+The username of the API user you chose must be set in tests/__init__.py (and then just don't commit this file please.)
+
 * In Private Ark Client:
   * Add to "Vault Admins" and "PVWAUsers" groups
   * Give "Add Safes, Audit Users, Add/Update Users, Reset Users' Passwords, Activate Users" authorizations rules.

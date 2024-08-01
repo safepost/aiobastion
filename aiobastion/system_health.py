@@ -6,8 +6,14 @@ class SystemHealth:
     # List of attributes from configuration file and serialization
     _SERIALIZED_FIELDS = []
 
-    def __init__(self, epv):
+    def __init__(self, epv, **kwargs):
         self.epv = epv
+
+        _section = "systemhealth"
+        _config_source = self.epv.config.config_source
+
+        for _k in kwargs.keys():
+            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
 
     async def summary(self):
         url = f"API/ComponentsMonitoringSummary/"

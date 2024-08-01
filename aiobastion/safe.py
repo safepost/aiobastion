@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
 import warnings
 from typing import AsyncIterator, Union
 
 from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile, validate_integer
 from .exceptions import (
-    CyberarkAPIException, CyberarkException, AiobastionException, AiobastionConfigurationException
+    CyberarkAPIException, CyberarkException, AiobastionException, AiobastionConfigurationException,
+    CyberarkNotFoundException
 )
 
 
@@ -15,60 +17,27 @@ class Safe:
     # List of attributes from configuration file and serialization
     _SERIALIZED_FIELDS = ["cpm", "retention"]
 
-    def __init__(self, epv, cpm = None, retention = None):
-        self.epv       = epv
-        self.cpm       = cpm if cpm is not None else Safe._SAFE_DEFAULT_RETENTION
+    def __init__(self, epv, cpm: str = None, retention: int = None, **kwargs):
+        _section = "safe"
+        self.epv = epv
+        self.cpm = cpm if cpm is not None else Safe._SAFE_DEFAULT_CPM
         self.retention = retention if retention is not None else Safe._SAFE_DEFAULT_RETENTION
 
-
-    @classmethod
-    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
-        """_init_validate_class_attributes      Initialize and validate the Safe definition (file configuration and serialized)
-
-        Arguments:
-            serialized {dict}           Definition from configuration file or serialization
-            section {str}               Verified section name
-
-        Keyword Arguments:
-            configfile {str}            Name of the configuration file
-
-        Raises:
-            AiobastionConfigurationException
-
-        Returns:
-            new_serialized {dict}       Safe defintion
-        """
-        if configfile:
+        if not self.epv.config.configfile:
             configfile = "serialized"
+        else:
+            configfile = self.epv.config.configfile
 
-        new_serialized = {
-            "cpm": Safe._SAFE_DEFAULT_CPM,
-            "retention":  Safe._SAFE_DEFAULT_RETENTION
-            }
+        for _k in kwargs.keys():
+            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {configfile}")
 
-        for k in serialized.keys():
-            keyname = k.lower()
+        if type(self.retention) is not int:
+            raise AiobastionConfigurationException(f"Invalid '{_section}/retention' in {configfile}: "
+                                                   f"must be a valid integer, not '{retention}'")
 
-            try:
-                # Special validation: integer, boolean
-                if keyname == "retention":
-                    new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
-                elif keyname in Safe._SERIALIZED_FIELDS:
-                    # String definition
-                    if serialized[k] is not None:
-                        new_serialized[keyname] = serialized[k]
-                else:
-                    raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
-
-            except ValueError:
-                raise(f"Invalid integer definition '{section}/{k}' in {configfile}: {serialized[k]!r}")
-
-
-        new_serialized.setdefault("cpm", Safe._SAFE_DEFAULT_CPM)
-        new_serialized.setdefault("retention", Safe._SAFE_DEFAULT_RETENTION)
-
-        return new_serialized
-
+        if type(self.cpm) is not str:
+            raise AiobastionConfigurationException(f"Invalid '{_section}/cpm' in {configfile}: "
+                                                   f" must be a valid string, not '{cpm}'")
 
     def to_json(self):
         serialized = {}
@@ -80,7 +49,6 @@ class Safe:
                 serialized[attr_name] = v
 
         return serialized
-
 
     # TODO : add membershipExpirationDate permissions isReadOnly
     async def add_member(self, safe: str, username: str, search_in: str = "Vault",
@@ -173,7 +141,10 @@ class Safe:
         if not await self.exists(safe):
             raise AiobastionException(f"Safe : \"{safe}\" was not found")
 
-        return await self.epv.handle_request("post", url, data=data)
+        try:
+            return await self.epv.handle_request("post", url, data=data)
+        except CyberarkNotFoundException:
+            raise CyberarkException(f"Unable to add member : Safe '{safe}' or user '{username}' was not found")
 
     # TODO : Document profiles
     async def add_member_profile(self, safe: str, username: str, profile: Union[str, dict]):
@@ -327,7 +298,6 @@ class Safe:
             if filter_perm not in valid_filter:
                 raise AiobastionException(f"filter_perm {filter_perm} is not one of : {valid_filter} ")
 
-        #url = f"WebServices/PIMServices.svc/Safes/{safe_name}/Members"
         url = f"api/Safes/{safe_name}/Members"
         try:
             members = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
@@ -410,12 +380,11 @@ class Safe:
         params["includeAccounts"] = str(include_accounts)
         params["extendedDetails"] = str(extended_details)
 
-
         params["limit"] = size_of_page
         params["offset"] = (page - 1) * size_of_page
         try:
             search_results = await self.epv.handle_request("get", "API/Safes", params=params,
-                                                   filter_func=lambda x: x)
+                                                           filter_func=lambda x: x)
         except CyberarkAPIException as err:
             if err.err_code == "CAWS00001E":
                 raise AiobastionException("Please don't list safes with a user member of PSMMaster (Cyberark bug)")
@@ -489,7 +458,7 @@ class Safe:
             good_safe = next(_s for _s in found_safes if _s["safeName"].upper() == safename.upper())
         except StopIteration:
             raise AiobastionException(f"Safe {safename} was not found")
-        # print(good_safe)
+
         safe_url_id = good_safe["safeUrlId"]
         url = f"API/Safes/{safe_url_id}/"
 
@@ -514,7 +483,7 @@ class Safe:
         """
 
         url = f"api/Safes/{safe_name}"
-        data = {
+        data: dict = {
             "SafeName": safe_name,
         }
 

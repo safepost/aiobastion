@@ -18,8 +18,14 @@ class Applications:
     # List of attributes from configuration file and serialization
     _SERIALIZED_FIELDS = []
 
-    def __init__(self, epv):
+    def __init__(self, epv, **kwargs):
         self.epv = epv
+
+        _section = "applications"
+        _config_source = self.epv.config.config_source
+
+        for _k in kwargs.keys():
+            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
 
     async def add(self, app_name: str, description: str = "", location: str = "\\", access_from: int = None,
                   access_to: int = None, expiration:str = None, disabled:bool = None,
@@ -73,7 +79,7 @@ class Applications:
 
         if owner_email is not None:
             import re
-            if not re.fullmatch("[^@]+@[^@]+\.[^@]+", owner_email):
+            if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", owner_email):
                 raise AiobastionException(f"owner_email argument must be valid mail, given : {owner_email}")
             data["application"]["BusinessOwnerEmail"] = owner_email
 

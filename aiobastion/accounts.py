@@ -5,7 +5,7 @@ from typing import List, Union, AsyncIterator
 
 import aiohttp
 
-from .config import validate_ip, flatten, validate_integer
+from .config import validate_ip, flatten
 from .exceptions import (
     CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound, AiobastionConfigurationException
 )
@@ -204,58 +204,24 @@ class Account:
     _SERIALIZED_FIELDS = ["logon_account_index",
                           "reconcile_account_index"]
 
-
-    def __init__(self, epv, logon_account_index = None, reconcile_account_index = None):
+    def __init__(self, epv, logon_account_index: int = None, reconcile_account_index: int = None, **kwargs):
         self.epv = epv
         self.logon_account_index = logon_account_index if logon_account_index is not None else Account._ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX
         self.reconcile_account_index = reconcile_account_index if reconcile_account_index else Account._ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX
 
-    @classmethod
-    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
-        """_init_validate_class_attributes      Initialize and validate the Account definition (file configuration and serialized)
+        _section = "account"
+        _config_source = self.epv.config.config_source
 
-        Arguments:
-            serialized {dict}           Definition from configuration file or serialization
-            section {str}               verified section name
-
-        Keyword Arguments:
-            configfile {str}            Name of the configuration file
-
-        Raises:
-            AiobastionConfigurationException
-
-        Returns:
-            new_serialized {dict}                    Account defintion
-        """
-        if not configfile:
-            configfile = "serialized"
-
-        new_serialized = {}
-
-        for k in serialized.keys():
-            keyname = k.lower()
-
-            # Special validation: integer, boolean
-            if keyname in ["logon_account_index", "reconcile_account_index"]:
-                new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
-            elif keyname in Account._SERIALIZED_FIELDS:
-                # String definition (future use)
-                new_serialized[keyname] = serialized[k]
-            else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
-
-        # Default values if not set
-        new_serialized.setdefault("logon_account_index", Account._ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX)
-        new_serialized.setdefault("reconcile_account_index", Account._ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX)
+        for _k in kwargs.keys():
+            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
 
         # Validation
-        for keyname in ["logon_account_index", "reconcile_account_index"]:
-            if new_serialized[keyname] not in [1, 2, 3]:
-                raise AiobastionConfigurationException(f"Invalid value for attribute '{section}/{keyname}' in {configfile}  (expected 1 to 3): {new_serialized[keyname]!r}")
-
-
-        return new_serialized
-
+        if self.logon_account_index not in [1, 2, 3]:
+            raise AiobastionConfigurationException(f"Invalid value for '{_section}/logon_account_index' in "
+                                                   f"{_config_source}  (expected 1 to 3) not {logon_account_index}")
+        if self.reconcile_account_index not in [1, 2, 3]:
+            raise AiobastionConfigurationException(f"Invalid value for '{_section}/reconcile_account_index' in "
+                                                   f"{_config_source}  (expected 1 to 3) not {reconcile_account_index}")
 
     def to_json(self):
         serialized = {}
@@ -873,6 +839,8 @@ class Account:
 
         :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
         """
+        self.epv.logger.debug(f"Going to patch {await self.get_account_id(account)} with {data}")
+
         updated_accounts = await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
@@ -898,7 +866,25 @@ class Account:
         elif fc in SECRET_MANAGEMENT_FILECATEGORY:
             return "/secretmanagement/"
         else:
-            return "/platformaccountproperties/"
+            return "/platformAccountProperties/"
+
+    async def delete_fc(self, account, file_category):
+        """
+        Delete the File Category
+        The path of the file_category is (hopefully) automatically detected
+        You can't delete a mandatory File Category
+
+        :param account: address, list of accounts, account_id, list of accounts id
+        :param file_category: the File Category to delete
+        :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
+        :raises AiobastionException: if the FC was not found in the Vault
+        :raises CyberarkAPIException: if another error occured
+        """
+        data = [{"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": "remove"}]
+        try:
+            return await self.update_using_list(account, data)
+        except CyberarkAPIException as err:
+            raise
 
     async def update_single_fc(self,  account, file_category, new_value, operation="replace"):
         """
@@ -907,15 +893,20 @@ class Account:
 
         :param account: address, list of accounts, account_id, list of accounts id
         :param file_category: the File Category to update
-        :param new_value: The new value of the FC
+        :param new_value: The new value of the FC, or None if you want to delete the FC
         :param operation: Replace, Remove or Add
         :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
         :raises AiobastionException: if the FC was not found in the Vault
         :raises CyberarkAPIException: if another error occured
         """
+
+        if new_value is None:
+            operation = "remove"
+
         # if we "add" and FC exists it will replace it
         data = [{"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": operation, "value": new_value}]
         try:
+            # self.epv.logger.debug(f"Data : {data}")
             return await self.update_using_list(account, data)
         except CyberarkAPIException as err:
             if err.err_code == "PASWS164E" and operation == "replace":
@@ -946,14 +937,25 @@ class Account:
                 assert len(file_category) == len(new_value)
             except AssertionError:
                 raise AiobastionException("You must provide the same list size for file_category and values")
-            for f,n in zip(file_category, new_value):
-                # we trust user and don't check if FC is defined at platform level
-                data.append({"path": f"{self.detect_fc_path(f)}{f}", "op": "add", "value": n})
+
+            for f, n in zip(file_category, new_value):
+                # self.epv.logger.debug(f"Detected path for {f}: {self.detect_fc_path(f)}")
+                if self.detect_fc_path(f) != "/":
+                    found = False
+                    for _u in data:
+                        if _u["path"] == self.detect_fc_path(f):
+                            _u["value"][f] = n
+                            found = True
+                    if not found:
+                        data.append({"path": self.detect_fc_path(f), "op": "replace", "value": {f: n}})
+                else:
+                    # we trust user and don't check if FC is defined at platform level
+                    data.append({"path": f"{self.detect_fc_path(f)}{f}", "op": "add", "value": n})
         else:
             data.append({"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": "add", "value": new_value})
 
+        # self.epv.logger.debug(f"Updating {account.id} with {data}")
         return await self.update_using_list(account, data)
-
 
     async def restore_last_cpm_version(self, account: PrivilegedAccount, cpm):
         """

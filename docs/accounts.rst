@@ -83,6 +83,7 @@ Account management
 .. autofunction:: update_file_category
 .. autofunction:: update_platform
 .. autofunction:: update_single_fc
+.. autofunction:: delete_fc
 .. autofunction:: update_using_list
 .. autofunction:: move
 .. autofunction:: link_account

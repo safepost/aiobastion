@@ -64,6 +64,10 @@ class Config:
 
         if not configfile and not serialized:
             raise AiobastionConfigurationException("Internal error: no configfile and no serialized")
+        elif not serialized:
+            self.config_source = configfile
+        else:
+            self.config_source = "serialized"
 
 
         self.options_modules = {}
@@ -75,7 +79,6 @@ class Config:
         if token is not None:
             self.options_modules["cyberark"]["token"] = token
 
-
         if configfile:
             self._mngt_configfile()
         elif serialized:
@@ -85,7 +88,7 @@ class Config:
     def _mngt_configfile(self):
         """ _mngt_configfile    management of the configuration file
 
-        Cross reference between the configuration file and the Config class attributes (for information)
+        Cross-reference between the configuration file and the Config class attributes (for information)
 
         Yaml Configuration file                         Config class
         --------------------------------------          ------------------------------------------------
@@ -159,7 +162,7 @@ class Config:
         with open(self.configfile, 'r') as config:
             configuration = yaml.safe_load(config)
 
-        # Translate keys of dictionary and sub-directories in lowercase
+        # Translate keys of dictionary and subdirectories in lowercase
         # Do not modified the sub-key dictionary of the 'custom' section.
         configuration = Config._serialized_dict_lowercase_key(configuration, "", self.configfile)
 
@@ -217,7 +220,7 @@ class Config:
                     self.options_modules[keyname] = configuration[keyname]
 
         # --------------------------------------------
-        # Compatilibility and exceptions
+        # Compatibility and exceptions
         # --------------------------------------------
         # Don't allow 'safe' and ('cpm' or 'retention').
         if "cpm" in configuration or "retention" in configuration:
@@ -590,7 +593,7 @@ def validate_integer(configfile: str, section_name: str, val) -> int:
     try:
         v = int(val)
     except (ValueError, TypeError):
-        raise AiobastionConfigurationException(f"Invalid integer value '{section_name}'"
+        raise AiobastionConfigurationException(f"Invalid value '{section_name}'"
                                                 f" in {configfile}: {val!r}")
 
     return v

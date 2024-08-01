@@ -5,12 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2024-08-01
+### Changes
+- Each section can be tuned in the config file in the same fashion as "accounts"
+- Added a update safe function
+
+### Bugfixes
+- Fixed a bug where multiple file category where not all updated in some conditions 
+
 ## [0.1.7] - 2024-04-14
 ### Changes
 - Added new config section "accounts" to configure custom "LOGON_ACCOUNT_INDEX" and "RECONCILE_ACCOUNT_INDEX". This is
   moved from the 'custom' section in release 0.1.1.
-- Moved "cpm" and "retention" definiton from global section to new section "safe".
-- Add "passphrase" in "AIM" section to handle PEM certificat with a password.
+- Moved "cpm" and "retention" definition from global section to new section "safe".
+- Add "passphrase" in "AIM" section to handle PEM certificate with a password.
 - Internal modification for a better management for file configuration and serialization mainly in config.py and cyberark.py.
 
 ## [0.1.6] - 2024-03-14

@@ -12,7 +12,7 @@ class TestSafe(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
-        self.api_user = "bastion_test_usr"
+        self.api_user = tests.API_USER
         self.test_safe = "sample-it-dept"
         self.test_usr = "bastion_std_usr"
 

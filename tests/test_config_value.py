@@ -98,7 +98,7 @@ EPV_ATTRIBUTE_NAME = [
     "logger",
     "request_params",
     "session",
-    "user_list",
+    #"user_list",
 
     # CyberArk modules
     "AIM",
@@ -129,7 +129,7 @@ class TestConfig_epv(unittest.TestCase):
     serialize_dict = None           # serialization dictionary from loaded yaml dict.
     epv_validation_dict = None     # EPV Validation definition (adjust from serialize_dict)
 
-    yaml_filename  = os.path.join(MODULE_DIRNAME, "test_data", "custom_config.yml")
+    yaml_filename = os.path.join(MODULE_DIRNAME, "test_data", "custom_config.yml")
     yaml_temp_name = os.path.join(tempfile.gettempdir(), f"{MODULE_NAME}_{datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')}{os.getppid()}.yml")
 
     @classmethod
@@ -142,7 +142,7 @@ class TestConfig_epv(unittest.TestCase):
                     This YAML file define all possible fields in every section
                         - without any error,
                         - no synonyms and
-                        - keys must be define in lowercases (including "aim").
+                        - keys must be defined in lowercases (including "aim").
                 Usage: Base definiton to recreate YAML file test
 
             2) Create the serialization variable (cls.serialize_dict)
@@ -158,9 +158,11 @@ class TestConfig_epv(unittest.TestCase):
         # Setup logger if needed
         logger = logging.getLogger("aiobastion_test")
 
+        # Moved here instead in the below test, because else "logging_name" is not always defined
+        logging_name = os.path.join(tempfile.gettempdir(),
+                                    f"{MODULE_NAME}_{datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')}_{os.getppid()}.trc")
         # Is logger define ?
         if not logger.hasHandlers():
-            logging_name = os.path.join(tempfile.gettempdir(), f"{MODULE_NAME}_{datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')}_{os.getppid()}.trc")
             print(f"\n\nTrace file:        '{logging_name}'\n")
 
             logger.setLevel(logging.DEBUG)
@@ -1170,7 +1172,7 @@ class TestConfig_epv(unittest.TestCase):
             else:
                 yaml_dict = {attrName: "err"}
 
-            with self.assertRaisesRegex(aiobastion.exceptions.AiobastionConfigurationException, f"^Invalid integer value "):
+            with self.assertRaisesRegex(aiobastion.exceptions.AiobastionConfigurationException, f"^Invalid "):
                 self.call_EPV(f"{fnc_name} - Invalid type {section_name}/{attrName}", yaml_dict=yaml_dict,
                               raise_condition=True)
 
@@ -1257,7 +1259,7 @@ class TestConfig_epv(unittest.TestCase):
 
             with self.subTest(attrName=attrName, type="integer"):
                 with self.assertRaisesRegex(aiobastion.exceptions.AiobastionConfigurationException,
-                                            f"^Invalid integer value "):
+                                            f"^Invalid "):
                     self.call_EPV(f"{fnc_name} - Invalid type {section_name}/{attrName}", serialized=serialize_dict,
                                 raise_condition=True)
 
@@ -1298,13 +1300,13 @@ class TestConfig_epv(unittest.TestCase):
 
             with self.subTest(attrName=attrName,type="ser"):
                 with self.assertRaisesRegex(aiobastion.exceptions.AiobastionConfigurationException,
-                                            f"^Invalid value for attribute 'account/{attrName}' "):
+                                            f"^Invalid value for 'account/{attrName}' "):
                     self.call_EPV(f"{fnc_name} - account/reconcile_account_index (ser)", serialized=serialize_dict,
                                     raise_condition=True)
 
             with self.subTest(attrName=attrName,type="Yaml"):
                 with self.assertRaisesRegex(aiobastion.exceptions.AiobastionConfigurationException,
-                                            f"^Invalid value for attribute 'account/{attrName}' "):
+                                            f"^Invalid value for 'account/{attrName}' "):
                     self.call_EPV(f"{fnc_name} - account /reconcile_account_index (Yaml)", yaml_dict=serialize_dict,
                                     raise_condition=True)
 

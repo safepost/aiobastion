@@ -33,51 +33,17 @@ class AccountGroup:
     # List of attributes from configuration file and serialization
     _SERIALIZED_FIELDS = []
 
-    def __init__(self, epv):
-        """AccountGroup   Account group management
+    def __init__(self, epv, **kwargs):
+        """
+        AccountGroup   Account group management
         """
         self.epv = epv
 
-    @classmethod
-    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
-        """_init_validate_class_attributes      Initialize and validate the AccountGroup definition (file configuration and serialized)
+        _section = "accountgroup"
+        _config_source = self.epv.config.config_source
 
-        Arguments:
-            serialized {dict}           Definition from configuration file or serialization
-            section {str}               Verified section name
-
-        Keyword Arguments:
-            configfile {str}            Name of the configuration file
-
-        Raises:
-            AiobastionConfigurationException
-
-        Returns:
-            new_serialized {dict}       AccountGroup defintion
-        """
-        if not configfile:
-            configfile = "serialized"
-
-        new_serialized = {}
-
-        for k in serialized.keys():
-            keyname = k.lower()
-
-            # # Special validation: integer, boolean
-            # if keyname in ["xxx"]:
-            #     new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
-
-            if keyname in AccountGroup._SERIALIZED_FIELDS:
-                # String definition
-                if serialized[k] is not None:
-                    new_serialized[keyname] = serialized[k]
-            else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
-
-        # Default values if not set
-        # new_serialized.setdefault("xxx", AccountGroup._ACCOUNTGROUP_DEFAULT_XXX)
-
-        return new_serialized
+        for _k in kwargs.keys():
+            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
 
     def to_json(self):
         serialized = {}

@@ -122,7 +122,7 @@ class EPV_AIM:
 
 
     @classmethod
-    def _init_validate_class_attributes(cls, serialized: dict, section: str, epv,  configfile: Optional[str] = None) -> dict:
+    def validate_class_attributes(cls, serialized: dict, section: str, epv,  configfile: Optional[str] = None) -> dict:
         """_init_validate_class_attributes      Initialize and validate the EPV_AIM definition (file configuration and serialized)
 
         Arguments:
