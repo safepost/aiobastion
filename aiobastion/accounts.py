@@ -5,7 +5,7 @@ from typing import List, Union, AsyncIterator
 
 import aiohttp
 
-from .config import validate_ip, flatten
+from .config import validate_ip, flatten, validate_integer
 from .exceptions import (
     CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound, AiobastionConfigurationException
 )
@@ -206,22 +206,27 @@ class Account:
 
     def __init__(self, epv, logon_account_index: int = None, reconcile_account_index: int = None, **kwargs):
         self.epv = epv
-        self.logon_account_index = logon_account_index if logon_account_index is not None else Account._ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX
-        self.reconcile_account_index = reconcile_account_index if reconcile_account_index else Account._ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX
-
         _section = "account"
         _config_source = self.epv.config.config_source
 
-        for _k in kwargs.keys():
-            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
+        # string conversion to int or assign default value
+        self.logon_account_index = validate_integer(_config_source, f"{_section}/{logon_account_index}",
+                                                    logon_account_index, Account._ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX)
+        self.reconcile_account_index = validate_integer(_config_source, f"{_section}/{reconcile_account_index}",
+                                                    reconcile_account_index, Account._ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX)
 
         # Validation
-        if self.logon_account_index not in [1, 2, 3]:
+        if not (1 <= self.logon_account_index <= 3):
             raise AiobastionConfigurationException(f"Invalid value for '{_section}/logon_account_index' in "
-                                                   f"{_config_source}  (expected 1 to 3) not {logon_account_index}")
-        if self.reconcile_account_index not in [1, 2, 3]:
+                                                   f"{_config_source}  (expected 1 to 3): {self.logon_account_index!r}")
+        if not (1 <= self.reconcile_account_index <= 3):
             raise AiobastionConfigurationException(f"Invalid value for '{_section}/reconcile_account_index' in "
-                                                   f"{_config_source}  (expected 1 to 3) not {reconcile_account_index}")
+                                                   f"{_config_source}  (expected 1 to 3): {self.reconcile_account_index!r}")
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
+
 
     def to_json(self):
         serialized = {}

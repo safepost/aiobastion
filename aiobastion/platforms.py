@@ -18,8 +18,10 @@ class Platform:
         _section = "platform"
         _config_source = self.epv.config.config_source
 
-        for _k in kwargs.keys():
-            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
+
 
     def to_json(self):
         serialized = {}

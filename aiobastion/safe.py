@@ -18,26 +18,27 @@ class Safe:
     _SERIALIZED_FIELDS = ["cpm", "retention"]
 
     def __init__(self, epv, cpm: str = None, retention: int = None, **kwargs):
-        _section = "safe"
         self.epv = epv
-        self.cpm = cpm if cpm is not None else Safe._SAFE_DEFAULT_CPM
-        self.retention = retention if retention is not None else Safe._SAFE_DEFAULT_RETENTION
 
-        if not self.epv.config.configfile:
-            configfile = "serialized"
+        _section = "safe"
+        _config_source = self.epv.config.config_source
+
+        # string to int or assign default value
+        self.retention = validate_integer(_config_source, f"{_section}/retention",
+                                          retention, Safe._SAFE_DEFAULT_RETENTION)
+
+        if cpm is None:
+            self.cpm = Safe._SAFE_DEFAULT_CPM
+        elif not isinstance(cpm, str):
+            raise AiobastionConfigurationException(f"Invalid attribute '{_section}/cpm' in {configfile}: "
+                                                   f" must be a string: {cpm!r}")
         else:
-            configfile = self.epv.config.configfile
+            self.cpm = cpm
 
-        for _k in kwargs.keys():
-            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {configfile}")
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
 
-        if type(self.retention) is not int:
-            raise AiobastionConfigurationException(f"Invalid '{_section}/retention' in {configfile}: "
-                                                   f"must be a valid integer, not '{retention}'")
-
-        if type(self.cpm) is not str:
-            raise AiobastionConfigurationException(f"Invalid '{_section}/cpm' in {configfile}: "
-                                                   f" must be a valid string, not '{cpm}'")
 
     def to_json(self):
         serialized = {}
@@ -256,10 +257,10 @@ class Safe:
                 await self.add_member_profile(safe_name, user, profile)
             except CyberarkAPIException as err:
                 if err.http_status == 409:
-                    warnings.warn(err.err_message)
+                    warnings.warn(err.err_message, stacklevel=3)
                     # pass
                 elif err.http_status == 403:
-                    warnings.warn(err.err_message)
+                    warnings.warn(err.err_message, stacklevel=3)
                 else:
                     raise
 
