@@ -42,8 +42,9 @@ class AccountGroup:
         _section = "accountgroup"
         _config_source = self.epv.config.config_source
 
-        for _k in kwargs.keys():
-            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
 
     def to_json(self):
         serialized = {}
@@ -236,7 +237,7 @@ class AccountGroup:
                     moved_accounts = await self.epv.account.move(ag_members, dst_safe)
                 except CyberarkAPIException as err:
                     raise
-                    
+
                 self.epv.logger.debug("Accounts moved !")
 
                 for agm in moved_accounts:

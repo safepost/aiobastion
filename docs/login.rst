@@ -103,7 +103,7 @@ Sometimes you need to ask the username and password in your code.
 
         # Login to the PVWA
         try:
-            await epv_env.login(username, password)
+            await epv_env.login(username=username, password=password)
         except GetTokenException as err:
             print(f"An error occured while login : {err}")
             await epv_env.close_session()
@@ -168,6 +168,11 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
             "retention": 30                             # (optional) Days of retention for objects in safe, default = 10
             }
 
+        # Global api options (if needed)
+        api_options_config = {
+            "deprecated_warning": False                 # (optional) Suppress deprecated warning, default = True (enable warning)
+            }
+
 
         # PVWA serialization definition, you may specify the following information
         global_config = {
@@ -181,6 +186,7 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
             "aim": aim_config,                          # (optional) AIM     customization definition
             "account": account_config,                  # (optional) Account customization definition
             "safe": safe_config                         # (optional) Safe    customization definition
+            "api_options": api_options_config           # (optional) Global api options
             }
 
         epv_env  = aiobastion.EPV(serialized=global_config)
@@ -196,7 +202,7 @@ You can use the `Serialization tools`_ to extract the EPV serialization at any t
             }
 
         try:
-            await epv_env.login(username=username, user_search=search_user)
+            await epv_env.login(username=username, user_search=pvwa_user_search)
 
         except GetTokenException as err:
             # handle failure here
@@ -276,7 +282,7 @@ For demonstration purpose, AIM serialization is not define here. Otherwise refer
                 verify=r"C:\Folder\AIM_Root_CA.pem",
                 # timeout= 30,
                 # max_concurrent_tasks= 10,
-                # auth_type="LDAP",
+                # auth_type="cyberark",
                 username=username,
                 user_search=pvwa_user_search)
         except GetTokenException as err:
@@ -328,7 +334,8 @@ If you need to authenticate with RADIUS challenge / response mode, you need to c
             await epv_env.login(username=username, password=password, auth_type=authtype)
         except ChallengeResponseException:
             passcode = input("Enter passcode: ")
-            await epv_env.login(username, passcode, authtype)
+            await epv_env.login(username=username, password=passcode, auth_type=authtype)
+
         except GetTokenException:
             # handle failure here
             await epv_env.close_session()
@@ -435,6 +442,8 @@ The configuration file contains the following main sections:
 +---------------+-----------------------+----------------------------------------------------------------------------------------------------------------------+
 | aim           | Optional              | Specify the AIM Request management information (EPV.AIM).                                                            +
 +---------------+-----------------------+----------------------------------------------------------------------------------------------------------------------+
+| api_options   | Optional              | Specify API global options.                                                                                          +
++---------------+-----------------------+----------------------------------------------------------------------------------------------------------------------+
 | cpm           | Optional, deprecated  | CPM user name managing the new safe.                                                                                 +
 |               |                       |                                                                                                                      +
 |               |                       | cpm has moved to the 'safe' section                                                                                  +
@@ -513,6 +522,7 @@ PVWA section / field definitions
 |                      |                         | You may need to set to True when a load-balancer is present.                               +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 
+
 AIM section / field definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
@@ -534,7 +544,7 @@ AIM section / field definitions
 +----------------------+-------------------------+ If not define use the *max_concurrent_tasks* from the PVWA section.                        +
 | maxtasks             | Optional, deprecated    +                                                                                            +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
-| passphrase           | Optional                | AIM Filename private key certificate passphrase                                            +
+| passphrase           | Optional                | AIM private key certificate passphrase (password)                                          +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 | timeout              | Optional                | AIM Maximum wait time in seconds before generating a timeout (default 30 seconds).         +
 |                      |                         |                                                                                            +
@@ -550,6 +560,19 @@ AIM section / field definitions
 |                      |                         |   -  <filename>:    (cafile) CA certificates to trust for certificate verification         +
 +----------------------+-------------------------+                                                                                            +
 | ca                   | Optional, deprecated    +                                                                                            +
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+
+
+api_options section / field definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++----------------------+-------------------------+--------------------------------------------------------------------------------------------+
+| Field                | Type                    | Description                                                                                +
++======================+=========================+============================================================================================+
+| deprecated_warning   | Optional                | Enable/disable deprecated warning (Defaut True)                                            +
+|                      |                         |                                                                                            +
+|                      |                         | Possible value:                                                                            +
+|                      |                         |   -  False:         disable deprecated warning                                             +
+|                      |                         |   -  True:          enable deprecated warning                                              +
 +----------------------+-------------------------+--------------------------------------------------------------------------------------------+
 
 
@@ -620,6 +643,9 @@ A complete configuration file definition
     safe:
         cpm: "cpm_user"
         retention:  30
+
+    api_options:
+        deprecated_warning: true
 
     custom:
         custom1: "info 1"

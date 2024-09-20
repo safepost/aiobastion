@@ -12,8 +12,9 @@ class SystemHealth:
         _section = "systemhealth"
         _config_source = self.epv.config.config_source
 
-        for _k in kwargs.keys():
-            raise AiobastionConfigurationException(f"Unknown attribute '{_section}/{_k}' in {_config_source}")
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
 
     async def summary(self):
         url = f"API/ComponentsMonitoringSummary/"
@@ -30,46 +31,6 @@ class SystemHealth:
 
         return await self.epv.handle_request("get", url, filter_func=lambda x: x["ComponentsDetails"])
 
-    @classmethod
-    def _init_validate_class_attributes(cls, serialized: dict, section: str, configfile: str = None) -> dict:
-        """_init_validate_class_attributes      Initialize and validate the SystemHealth definition (file configuration and serialized)
-
-        Arguments:
-            serialized {dict}           SystemHealth defintion
-            section {str}               Verified section name
-
-        Keyword Arguments:
-            configfile {str}            Name of the configuration file
-
-        Raises:
-            AiobastionConfigurationException
-
-        Returns:
-            new_serialized {dict}       SystemHealth defintion
-        """
-        if not configfile:
-            configfile = "serialized"
-
-        new_serialized = {}
-
-        for k in serialized.keys():
-            keyname = k.lower()
-
-            # # Special validation: integer, boolean
-            # if keyname in ["xxx"]:
-            #     new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
-
-            if keyname in SystemHealth._SERIALIZED_FIELDS:
-                # String definition
-                if serialized[k] is not None:
-                    new_serialized[keyname] = serialized[k]
-            else:
-                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
-
-        # Default values if not set
-        #     new_serialized.setdefault("xxx", SystemHealth._SYSTEMHEALTH_DEFAULT_XXX)
-
-        return new_serialized
 
     def to_json(self):
         serialized = {}

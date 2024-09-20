@@ -11,7 +11,7 @@ import aiohttp
 from aiohttp import ContentTypeError
 
 from .exceptions import AiobastionException, CyberarkException, CyberarkAPIException, CyberarkAIMnotFound, AiobastionConfigurationException
-from .config import Config, validate_bool, validate_integer
+from .config import Config, validate_integer
 # from .cyberark import EPV
 
 # AIM section
@@ -27,7 +27,6 @@ class EPV_AIM:
         "appid",
         "cert",
         "host",
-        "keep_cookies",
         "key",
         "max_concurrent_tasks",
         "passphrase",
@@ -40,7 +39,6 @@ class EPV_AIM:
         "appid",
         "cert",
         "host",
-        "keep_cookies",
         "key",
         "max_concurrent_tasks",
         # "passphrase",     # Exclude
@@ -69,7 +67,6 @@ class EPV_AIM:
                  appid: Optional[str] = None,
                  cert: Optional[str] = None,
                  host: Optional[str] = None,
-                 keep_cookies: bool = Config.CYBERARK_DEFAULT_KEEP_COOKIES,
                  key: Optional[str] = None,
                  max_concurrent_tasks: int = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS,
                  passphrase: Optional[str] = None,
@@ -81,7 +78,6 @@ class EPV_AIM:
         self.appid = appid
         self.cert = cert
         self.host = host
-        self.keep_cookies = keep_cookies           # Whether to keep cookies between AIM calls
         self.key = key
         self.max_concurrent_tasks = max_concurrent_tasks
         self.passphrase = passphrase
@@ -102,9 +98,6 @@ class EPV_AIM:
                     raise AiobastionException(f"Unknown serialized AIM field: {k} = {v!r}")
 
         # Optional attributes
-        if self.keep_cookies is None:
-            self.keep_cookies = Config.CYBERARK_DEFAULT_KEEP_COOKIES
-
         if self.timeout is None:
             self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
 
@@ -123,7 +116,7 @@ class EPV_AIM:
 
     @classmethod
     def validate_class_attributes(cls, serialized: dict, section: str, epv,  configfile: Optional[str] = None) -> dict:
-        """_init_validate_class_attributes      Initialize and validate the EPV_AIM definition (file configuration and serialized)
+        """validate_class_attributes      Initialize and validate the EPV_AIM definition (file configuration and serialized)
 
         Arguments:
             serialized {dict}           Definition from configuration file or serialization
@@ -140,7 +133,6 @@ class EPV_AIM:
             "appid":                # Default = Connection (appid)
             "cert":
             "host":                 # Default = PVWA (host)
-            "keep_cookies":         # Default = Config.CYBERARK_DEFAULT_KEEP_COOKIES
             "key":
             "max_concurrent_tasks": # Default = PVWA (max_concurrent_tasks) or Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
             "passphrase":
@@ -150,8 +142,10 @@ class EPV_AIM:
         Returns:
             new_serialized {dict}       AIM defintion
         """
-        if not configfile:
-            configfile = "serialized"
+        if configfile:
+            _config_source = configfile
+        else:
+            _config_source = "serialized"
 
         new_serialized = {}
 
@@ -161,7 +155,7 @@ class EPV_AIM:
             # Special validation: integer, boolean
             if keyname in ["max_concurrent_tasks", "timeout"]:
                 if serialized[k] is not None:
-                    new_serialized[keyname] = validate_integer(configfile, f"{section}/{keyname}", serialized[k])
+                    new_serialized[keyname] = validate_integer(_config_source, f"{section}/{keyname}", serialized[k])
             elif keyname in ["verify"]:
                 if serialized[k] is not None:
                     if isinstance(serialized[k], str) or isinstance(serialized[k], bool):
@@ -169,7 +163,7 @@ class EPV_AIM:
                     else:
                         raise AiobastionConfigurationException(
                             f"Parameter type invalid '{section}/{k}' "
-                            f"in {configfile}: {serialized[k]!r}")
+                            f"in {_config_source}: {serialized[k]!r}")
 
             elif keyname in EPV_AIM._SERIALIZED_FIELDS_IN:
                 # String definition
@@ -177,7 +171,8 @@ class EPV_AIM:
                     new_serialized[keyname] = serialized[k]
             else:
                 # Unknown attribute
-                raise AiobastionConfigurationException(f"Unknown attribute '{section}/{k}' in {configfile}")
+                raise AiobastionConfigurationException(f"Unknown attribute in section '{section}' from {_config_source}: {k} is unknown.")
+
 
 
         # Complete initialization with epv section (file configuration and serialized)
@@ -207,7 +202,6 @@ class EPV_AIM:
             return {}
 
         # Default values if not set
-        new_serialized.setdefault("keep_cookies", Config.CYBERARK_DEFAULT_KEEP_COOKIES)
         new_serialized.setdefault("max_concurrent_tasks", Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS)
         new_serialized.setdefault("timeout", Config.CYBERARK_DEFAULT_TIMEOUT)
         new_serialized.setdefault("verify", Config.CYBERARK_DEFAULT_VERIFY)

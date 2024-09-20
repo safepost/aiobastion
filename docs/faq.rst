@@ -81,12 +81,12 @@ Here's an example of serialization / deserialization:
     # Save your session in json
     epv_json = epv_session.to_json()
 
-    # Pass information to another program the way you want
+    # Pass epv_json information to another program the way you want
 
     # Other program:
     # Utility function to rebuild EPV object from serialized session
-    async def get_session(epv_session):
-        epv = aiobastion.EPV(serialized=epv_session)
+    async def get_session(epv_json):
+        epv = aiobastion.EPV(serialized=epv_json)
         if not await epv.check_token():
             # Ensure that the token is still valid
             raise GetTokenException

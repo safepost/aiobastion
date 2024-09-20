@@ -1,5 +1,5 @@
 /venv/
-/bastion_safepost.egg-info/
+/*.egg-info/
 /build/
 /dist/
 /.pypirc

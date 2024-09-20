@@ -8,11 +8,14 @@ from typing import Tuple, Optional, Union
 
 from aiohttp import ContentTypeError
 import aiohttp
+import warnings
+
 
 from .accountgroup import AccountGroup
 from .accounts import Account
 from .aim import EPV_AIM
 from .applications import Applications
+from .api_options import Api_options
 from .config import Config, validate_integer, validate_bool
 from .exceptions import CyberarkException, GetTokenException, AiobastionException, CyberarkAPIException, \
     ChallengeResponseException, CyberarkAIMnotFound, AiobastionConfigurationException, CyberarkNotFoundException
@@ -23,10 +26,8 @@ from .users import User, Group
 from .utilities import Utilities
 from .session_management import SessionManagement
 
-
 class EPV:
-    """
-    Class that represent the connection, or future connection, to the Vault.
+    """ Class that represent the connection, or future connection, to the Vault.
     """
     # List of EPV attributes for serialization (to_json)
     _SERIALIZED_FIELDS_OUT = [
@@ -44,7 +45,7 @@ class EPV:
         "verify",
     ]
 
-    def __init__(self, configfile: str = None, token: str = None, serialized: dict = None):
+    def __init__(self, configfile: Optional[str] = None, token: Optional[str] = None, serialized: Optional[dict] = None):
         # Logging stuff
         logger: logging.Logger = logging.getLogger("aiobastion")
         self.logger = logger
@@ -64,8 +65,11 @@ class EPV:
         # read configuration file or serialization
         self.config = Config(configfile=configfile, serialized=serialized, token=token)
 
+        #  global API options initialization
+        self.api_options = Api_options(self, **self.config.options_modules["api_options"])
+
         # Validate and define EPV Class attributes
-        self.validate_class_attributes(self.config.options_modules["cyberark"], self.config.configfile)
+        self.validate_class_attributes(self.config.options_modules["cyberark"])
 
         # Execution parameters
         self.request_params = None  # timeout & ssl setup default value
@@ -75,6 +79,7 @@ class EPV:
         self.cookies = None
         self.__sema = None
 
+        # modules initialization
         self.AIM = None  # AIM interface
 
         if self.config.options_modules["aim"]:
@@ -102,12 +107,11 @@ class EPV:
         #   label
         del self.config.options_modules
 
-    def validate_class_attributes(self, serialized: dict, configfile: str):
-        """_init_validate_class_attributes      Initialize, validate and define the EPV attributes
+    def validate_class_attributes(self, serialized: dict):
+        """validate_class_attributes  Initialize, validate and define the EPV attributes
             from configuration file or serialization
 
             :param serialized:      Dictionary of the serialized attributes
-            :param configfile:      Configuration file name
             :raise AiobastionConfigurationException:  Invalid string or boolean value
             :return:                Dictionary of the EPV attributes class to define
 
@@ -132,7 +136,9 @@ class EPV:
 
             return keyname
 
-        if configfile:
+        if self.config.config_source == "serialized":
+            epv_section = {}
+        else:
             # Identify the section name of the keyname in the configuration file
             epv_section = {
                 "api_host": "pvwa",
@@ -148,9 +154,6 @@ class EPV:
                 "user_search": "connection",
                 "verify": "pvwa",
             }
-        else:
-            configfile = "serialized"
-            epv_section = {}
 
         self.api_host = None
         self.authtype = None
@@ -173,27 +176,30 @@ class EPV:
             if k in ["api_host", "host"]:
                 if self.api_host:
                     raise AiobastionConfigurationException(
-                        f"Duplicate parameter '{section_name(k)}' in {configfile}. Specify only one.")
+                        f"Duplicate parameter '{section_name(k)}' in {self.config.config_source}. Specify only one.")
 
                 self.api_host = v
             elif k == "authtype":
                 self.authtype = v
             elif k == "keep_cookies":
-                self.keep_cookies = validate_bool(configfile, section_name(k), v)
+                self.keep_cookies = validate_bool(self.config.config_source, section_name(k), v)
             elif k == "maxtasks" or k == "max_concurrent_tasks":
+                if k == "maxtasks" and self.api_options.deprecated_warning:
+                    warnings.warn(f"aiobastion - Deprecated parameter '{section_name(k)}' use 'max_concurrent_tasks' parameter instead.", DeprecationWarning, stacklevel=3)
+
                 synonym_max_concurrent_tasks += 1
-                self.max_concurrent_tasks = validate_integer(configfile, section_name(k), v)
+                self.max_concurrent_tasks = validate_integer(self.config.config_source, section_name(k), v)
 
                 if synonym_max_concurrent_tasks > 1:
                     raise AiobastionConfigurationException(
                         f"Duplicate synonym parameter '{section_name(k)}': "
-                        f"in {configfile}. Specify only 'max_concurrent_tasks' and remove 'maxtasks'.")
+                        f"in {self.config.config_source}. Specify only 'max_concurrent_tasks' and remove 'maxtasks'.")
 
 
             elif k == "password":
                 self.password = v
             elif k == "timeout":
-                self.timeout = validate_integer(configfile, section_name(k), v)
+                self.timeout = validate_integer(self.config.config_source, section_name(k), v)
             elif k == "token":  # For serialiszation only
                 self.__token = serialized['token']
             elif k == "user_search":
@@ -214,17 +220,21 @@ class EPV:
                 else:
                     raise AiobastionConfigurationException(
                         f"Parameter type invalid '{section_name(k)}' "
-                        f"in {configfile}: {v!r}")
+                        f"in {self.config.config_source}: {v!r}")
+
+
+                if k == "ca" and self.api_options.deprecated_warning:
+                    warnings.warn(f"aiobastion - Deprecated parameter '{section_name(k)}' use 'verify' parameter instead.", DeprecationWarning, stacklevel=3)
 
                 if synonym_verify > 1:
                     raise AiobastionConfigurationException(
                         f"Duplicate synonym parameter '{section_name(k)}': "
-                        f"in {configfile}. Specify only 'verifiy' and remove 'ca'.")
+                        f"in {self.config.config_source}. Specify only 'verifiy' and remove 'ca'.")
 
 
             else:
                 raise AiobastionConfigurationException(
-                    f"Unknown attribute '{k}' in {configfile}: {v!r}")
+                    f"Unknown attribute '{k}' in {self.config.config_source}: {v!r}")
 
         # Default value if not initialized
         if self.authtype is None:
@@ -353,27 +363,29 @@ class EPV:
         #         return False
         #     return True
 
-    async def login_with_aim(self,
-                             aim_host: str = None,
-                             appid: str = None,
-                             username: str = None,
-                             cert_file: str = None,
-                             cert_key: str = None,
-                             root_ca: Optional[Union[bool, str]] = None,
-                             *,  # From this point all parameters are keyword only
-                             timeout: int = None,
-                             max_concurrent_tasks: int = None,
-                             user_search: dict = None,
-                             auth_type=None,
-                             cert_passphrase=None,
-                             verify: Optional[Union[bool, str]] = None):
+    async def login_with_aim(
+        self,
+        aim_host: str = None,
+        appid: str = None,
+        username: str = None,
+        cert_file: str = None,
+        cert_key: str = None,
+        root_ca: Optional[Union[bool, str]] = None,        # Deprecated use 'verify' instead
+        *,  # From this point all parameters are keyword only
+        auth_type=None,
+        cert_passphrase=None,
+        max_concurrent_tasks: int = None,
+        timeout: int = None,
+        user_search: dict = None,
+        verify: Optional[Union[bool, str]] = None):
         """ Authenticate the PVWA user using AIM interface to get password (secret) in CyberArk.
 
         We only support client certificate authentication to the AIM.
 
 
         | ℹ️ The following parameters are optional. If a parameter is not set, it will be obtained
-            from *EPV* initialization (configuration file or serialization).
+            from *EPV* initialization (configuration file or serialization).  For future compatibility,
+            it is recommended to set all parameters in the form key=value.
 
         | ⚠️ Any specified parameter from the *login_with_aim* function will override the *EPV_AIM*
             definition.
@@ -397,7 +409,7 @@ class EPV:
         :param max_concurrent_tasks: *AIM* Maximum number of parallel task (default 10)
         :param timeout: *AIM* Maximum wait time in seconds before generating a timeout (default 30 seconds)
         :param username: *PVWA* Name of the user who is logging in to the Vault (PVWA username)
-        :param verify: *AIM* Directory or filename of the ROOT certificate authority (CA)
+        :param verify: *AIM* ROOT certificate authority (CA) verification: True, False, Directory or filename
         :type user_search: Dictionary
         :param user_search: *PVWA* Search parameters to uniquely identify the PVWA user (optional).
 
@@ -415,6 +427,10 @@ class EPV:
             raise AiobastionException("You can't specify both parameters: 'verify' and 'root_ca'.")
 
         if root_ca is not None:
+            if self.api_options.deprecated_warning:
+                warnings.warn(
+                    "aiobastion - Deprecated parameter 'root_ca' in login_with_aim function use 'verify' parameter instead.", DeprecationWarning, stacklevel=2)
+
             verify = root_ca
             root_ca = None
 
@@ -476,7 +492,6 @@ class EPV:
                 else:
                     verify = Config.CYBERARK_DEFAULT_VERIFY
 
-            # keep_cockies is not handled
             self.AIM = EPV_AIM(appid=appid, cert=cert_file, host=aim_host, key=cert_key,
                                max_concurrent_tasks=max_concurrent_tasks,
                                passphrase=cert_passphrase, timeout=timeout, verify=verify)
@@ -665,49 +680,54 @@ class EPV:
             else:
                 serialized[attr_name] = getattr(self, attr_name, None)
 
+        # Global API options
+        d = self.api_options.to_json()
+        if d:
+            serialized["api_options"] = d
+
         # options modules
         if self.AIM:
             serialized["AIM"] = self.AIM.to_json()
 
         d = self.account.to_json()
         if d:
-            serialized["account"] = self.account.to_json()
+            serialized["account"] = d
 
         d = self.accountgroup.to_json()
         if d:
-            serialized["accountgroup"] = self.accountgroup.to_json()
+            serialized["accountgroup"] = d
 
         d = self.application.to_json()
         if d:
-            serialized["application"] = self.application.to_json()
+            serialized["application"] = d
 
         d = self.group.to_json()
         if d:
-            serialized["group"] = self.group.to_json()
+            serialized["group"] = d
 
         d = self.platform.to_json()
         if d:
-            serialized["platform"] = self.platform.to_json()
+            serialized["platform"] = d
 
         d = self.safe.to_json()
         if d:
-            serialized["safe"] = self.safe.to_json()
+            serialized["safe"] = d
 
         d = self.session_management.to_json()
         if d:
-            serialized["session_management"] = self.session_management.to_json()
+            serialized["session_management"] = d
 
         d = self.system_health.to_json()
         if d:
-            serialized["system_health"] = self.system_health.to_json()
+            serialized["system_health"] = d
 
         d = self.user.to_json()
         if d:
-            serialized["user"] = self.user.to_json()
+            serialized["user"] = d
 
         d = self.utils.to_json()
         if d:
-            serialized["utils"] = self.utils.to_json()
+            serialized["utils"] = d
 
         return serialized
 

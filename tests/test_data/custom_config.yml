@@ -30,7 +30,6 @@ aim:
   host: AIMhost2
   cert: "CertFile.crt"
   key:  "KeyFile.pem"
-  keep_cookies: false
   passphrase: passPhrase1
   timeout: 35
   max_concurrent_tasks: 15
@@ -43,6 +42,9 @@ account:
 safe:
   cpm:  "userAdm"
   retention: 15
+
+api_options:
+  deprecated_warning: True
 
 # Customer information only
 custom:
