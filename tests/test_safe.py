@@ -118,6 +118,19 @@ class TestSafe(IsolatedAsyncioTestCase):
     async def test_delete(self):
         self.skipTest("Test covered by test_create_safe")
 
+    async def test_safe_members_paginate(self):
+        self.skipTest("Test covered by test_safe_members_iterator")
+
+    async def test_safe_members_iterator(self):
+        async for _m in self.vault.safe.safe_members_iterator(self.test_safe):
+            self.assertIn("safeName", _m.keys())
+
+        async for _m in self.vault.safe.safe_members_iterator(self.test_safe, member_type="group", include_predefined_users=True):
+            self.assertEqual(_m["memberType"], "Group")
+
+        async for _m in self.vault.safe.safe_members_iterator(self.test_safe, include_predefined_users=True, search="Master"):
+            self.assertEqual(_m["memberName"], "Master")
+
     async def test_get(self):
         safe = await self.vault.safe.get_safe_details(self.test_safe)
         self.assertEqual(self.test_safe, safe['safeName'])
@@ -139,6 +152,7 @@ class TestSafe(IsolatedAsyncioTestCase):
 
     async def test_get_members(self):
         members = await self.vault.safe.list_members(self.test_safe)
+        print(await self.vault.safe.list_members(self.test_safe, raw=True))
         self.assertIn(self.api_user, members)
 
     async def test_is_member_of(self):
@@ -179,12 +193,12 @@ class TestSafe(IsolatedAsyncioTestCase):
         self.assertIn(safe_to_rename, [s["safeName"] for s in await self.vault.safe.search(safe_to_rename)])
 
 if __name__ == '__main__':
-    if sys.platform == 'win32':
-        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
-        #     Can't support more than 512 sockets
-        #     Can't use pipe
-        #     Can't use subprocesses
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    # if sys.platform == 'win32':
+    #     # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+    #     #     Can't support more than 512 sockets
+    #     #     Can't use pipe
+    #     #     Can't use subprocesses
+    #     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     unittest.main()
 

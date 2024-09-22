@@ -231,6 +231,28 @@ class User:
         return await self.epv.handle_request("delete", f"API/Users/{user_id}/")
 
 
+    # TODO : Document me
+    async def safes(self, username: str, user_id=None, details=False):
+        """
+        Returns the safes of a specific user
+
+        :param username: the username
+        :param user_id: the user_id if the username is not provided
+        :return: user's safes list
+        """
+        if user_id is None:
+            if username == "":
+                raise AiobastionException("You must provide username or user_id")
+            user_id = await self.get_id(username)
+        url = f"api/Users/{user_id}/safes"
+        if details:
+            return await self.epv.handle_request("get", url, filter_func=lambda x: x["Safes"])
+        else:
+            safes = await self.epv.handle_request("get", url, filter_func=lambda x: x["Safes"])
+            return [s["SafeName"] for s in safes]
+
+
+
 class Group:
     # _GROUP_DEFAULT_XXX = <value>
 

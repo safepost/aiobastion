@@ -10,9 +10,8 @@ from aiohttp import ContentTypeError
 import aiohttp
 import warnings
 
-
 from .accountgroup import AccountGroup
-from .accounts import Account
+from .accounts import Account, PrivilegedAccount
 from .aim import EPV_AIM
 from .applications import Applications
 from .api_options import Api_options
@@ -100,12 +99,11 @@ class EPV:
         self.user = User(self, **self.config.options_modules["user"])
         self.utils = Utilities(self, **self.config.options_modules["utilities"])
 
-        # Cleanup usager interface, remove "options_modules" from self.config.
-        # This will leave:
-        #   configfile
-        #   custom
-        #   label
+        self.PrivilegedAccount = PrivilegedAccount
+
         del self.config.options_modules
+
+
 
     def validate_class_attributes(self, serialized: dict):
         """validate_class_attributes  Initialize, validate and define the EPV attributes
@@ -613,9 +611,9 @@ class EPV:
         #     raise
         except CyberarkException as err:
             raise GetTokenException(str(err)) from err
-        finally:
-            # update or clean the session
-            await self.close_session()
+        # finally:
+        #     # update or clean the session
+        #     await self.close_session()
 
     def get_session(self):
         self.logger.debug(f"Getting aiobastion session ({self.session})")

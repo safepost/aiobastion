@@ -89,6 +89,10 @@ class TestUsers(IsolatedAsyncioTestCase):
         with self.assertRaises(AiobastionException):
             await self.vault.user.delete("thisuserdoesnotexists")
 
+    async def test_safes(self):
+        req = await self.vault.user.safes(self.api_user)
+        self.assertIsInstance(req, list)
+
 # Group Part
 
     async def test_groups(self):

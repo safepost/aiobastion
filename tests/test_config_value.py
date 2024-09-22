@@ -92,7 +92,8 @@ EPV_OPTIONS_MODULES_LIST = [
     "session_management",
     "system_health",
     "user",
-    "utils"]
+    "utils",
+    "PrivilegedAccount"]
 
 
 EPV_ATTRIBUTE_NAME = [
@@ -622,7 +623,7 @@ class TestConfig_epv(unittest.TestCase):
 
 
     def test_02_epv_complete_yml(self):
-        """ test_02_epv_complete_yml  - Test complete yaml yaml file
+        """ test_02_epv_complete_yml  - Test complete yaml file
             Check all fields in EPV instance class returned.
         """
         fnc_name = inspect.currentframe().f_code.co_name

@@ -7,6 +7,7 @@ import asyncio
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import tests
+# from . import CONFIG
 from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
 from aiobastion.accountgroup import PrivilegedAccountGroup
 

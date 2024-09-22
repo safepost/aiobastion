@@ -30,7 +30,7 @@ class Safe:
         if cpm is None:
             self.cpm = Safe._SAFE_DEFAULT_CPM
         elif not isinstance(cpm, str):
-            raise AiobastionConfigurationException(f"Invalid attribute '{_section}/cpm' in {configfile}: "
+            raise AiobastionConfigurationException(f"Invalid attribute '{_section}/cpm' in {_config_source}: "
                                                    f" must be a string: {cpm!r}")
         else:
             self.cpm = cpm
@@ -274,6 +274,88 @@ class Safe:
         url = f"api/Safes/{safe_name}"
         return await self.epv.handle_request("delete", url)
 
+    # TODO : document me
+    async def safe_members_iterator(self, safe_name, member_type: str = None, membership_expired: bool = None, include_predefined_users = None, search:str = None) -> AsyncIterator:
+        """
+        This function allow to search using one or more parameters and return list of address id
+
+        :param safe_name: Name of the safe
+        :param member_type: user or group
+        :param membership_expired: include expired memberships
+        :param include_predefined_users: include predefined users
+        :param search: free search
+        """
+
+        page = 1
+        has_next_page = True
+
+        while has_next_page:
+            safe_members = await self.safe_members_paginate(page=page, safe_name=safe_name, member_type=member_type,
+                                                       membership_expired=membership_expired,
+                                                        include_predefined_users=include_predefined_users,search=
+                                                        search)
+            has_next_page = safe_members["has_next_page"]
+            page += 1
+            for a in safe_members["members"]:
+                yield a
+
+    async def safe_members_paginate(self, page: int = 1, size_of_page: int = 100, safe_name: str = None, member_type: str = None,
+                                   membership_expired: bool = None, include_predefined_users = None, search:str = None):
+        """
+        Search safes in a paginated way
+
+        :param page: number of page
+        :param size_of_page: size of pages
+        :param safe_name: Name of the safe
+        :param member_type: user or group
+        :param membership_expired: include expired memberships
+        :param include_predefined_users: include predefined users
+        :param search: free search
+
+        :return:
+
+        """
+        if member_type not in [None, "user", "group"]:
+            raise AiobastionException(f"Invalid member_type : {member_type}")
+
+        params = {}
+        safe_members_filter = []
+        if member_type is not None:
+            safe_members_filter.append(f"MemberType eq {member_type}")
+        if membership_expired is not None:
+            safe_members_filter.append(f"MembershipExpired eq {membership_expired}")
+        if include_predefined_users is not None:
+            safe_members_filter.append(f"IncludePredefinedUsers eq {include_predefined_users}")
+
+        if len(safe_members_filter) > 0:
+            params["filter"] = " AND ".join(safe_members_filter)
+
+        if search is not None:
+            params["search"] = f"{search}"
+
+        if search is not None:
+            params["search"] = f"{search}"
+
+        params["limit"] = size_of_page
+        params["offset"] = (page - 1) * size_of_page
+        url = f"api/Safes/{safe_name}/Members"
+
+        self.epv.logger.debug(f"safe_members_paginate computed params : {params}")
+        try:
+            search_results = await self.epv.handle_request("get", url, params=params,
+                                                           filter_func=lambda x: x)
+        except CyberarkAPIException as err:
+                raise
+        safe_members = search_results['value']
+
+        has_next_page = "nextLink" in search_results
+        return {
+            "members": safe_members,
+            "has_next_page": has_next_page
+        }
+
+
+    # TODO : use the safe_members_iterator instead of direct call
     async def list_members(self, safe_name: str, filter_perm=None, details=False, raw=False):
         """
         List members of a safe, optionally those with specific perm
@@ -285,11 +367,6 @@ class Safe:
         :return: list of all users, or list of users with specific perm
         """
         if filter_perm is not None:
-            # valid_filter = ['Add', 'AddRenameFolder', 'BackupSafe', 'Delete', 'DeleteFolder', 'ListContent',
-            #                 'ManageSafe', 'ManageSafeMembers', 'MoveFilesAndFolders', 'Rename',
-            #                 'RestrictedRetrieve', 'Retrieve', 'Unlock', 'Update', 'UpdateMetadata',
-            #                 'ValidateSafeContent', 'ViewAudit', 'ViewMembers']
-            # v2 API
             valid_filter = ['useAccounts', 'retrieveAccounts', 'listAccounts', 'addAccounts', 'updateAccountContent',
                             'updateAccountProperties', 'initiateCPMAccountManagementOperations',
                             'specifyNextAccountContent', 'renameAccounts', 'deleteAccounts', 'unlockAccounts',
