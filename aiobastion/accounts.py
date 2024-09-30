@@ -1320,25 +1320,29 @@ class Account:
         :param new_safe: New safe to move the account(s) into
         :return: Boolean that indicates if the operation was successful
         """
-        async def _move(acc):
-            self.epv.logger.debug(f"Now trying to move {acc} to {new_safe}")
-            old_id = acc.id
-            acc.safeName = new_safe
-            try:
-                acc.secret = await self.get_password(acc)
-            except CyberarkAPIException as err:
-                raise CyberarkException(f"Unable to recover {acc.name} password : {str(err)}")
-            try:
-                new_account_id = await self.add_account_to_safe(acc)
-            except CyberarkAPIException as err:
-                raise CyberarkException(f"Unable to create {acc.name} new address : {str(err)}")
-            try:
-                await self.delete(old_id)
-            except CyberarkAPIException as err:
-                raise CyberarkException(f"Unable to delete {acc.name} old address : {str(err)}")
-            return new_account_id
+        async def _move(acc, new_safe, semaphore):
+            async with semaphore:
+                self.epv.logger.debug(f"Now trying to move {acc} to {new_safe}")
+                old_id = acc.id
+                acc.safeName = new_safe
+                try:
+                    acc.secret = await self.get_password(acc)
+                except CyberarkAPIException as err:
+                    raise CyberarkException(f"Unable to recover {acc.name} password : {str(err)}")
+                try:
+                    new_account_id = await self.add_account_to_safe(acc)
+                except CyberarkAPIException as err:
+                    raise CyberarkException(f"Unable to create {acc.name} new address : {str(err)}")
+                try:
+                    await self.delete(old_id)
+                except CyberarkAPIException as err:
+                    raise CyberarkException(f"Unable to delete {acc.name} old address : {str(err)}")
+                return new_account_id
 
-        return await self._handle_acc_list(_move, account)
+        # Packets of 50 to avoid many duplicates
+        # Without Semaphore we create all account before deleting all accounts
+        sem = asyncio.Semaphore(50)
+        return await self._handle_acc_list(_move, account, new_safe, sem)
 
     # AIM get secret function
     async def get_secret_aim(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], reason: str = None):
