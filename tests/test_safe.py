@@ -140,6 +140,11 @@ class TestSafe(IsolatedAsyncioTestCase):
     async def test_list_members(self):
         members = await self.vault.safe.list_members(self.test_safe)
         self.assertIn(self.api_user, members)
+        print(members)
+
+        members = await self.vault.safe.list_members(self.test_safe, raw=True)
+        self.assertIsInstance(members, list)
+        print(members)
 
         with self.assertRaises(AiobastionException):
             members = await self.vault.safe.list_members(self.test_safe, filter_perm="tutu")

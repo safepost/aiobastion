@@ -37,8 +37,8 @@ class Safe:
 
         # Check for unknown attributes
         if kwargs:
-            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
-
+            raise AiobastionConfigurationException(
+                f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
 
     def to_json(self):
         serialized = {}
@@ -274,8 +274,8 @@ class Safe:
         url = f"api/Safes/{safe_name}"
         return await self.epv.handle_request("delete", url)
 
-    # TODO : document me
-    async def safe_members_iterator(self, safe_name, member_type: str = None, membership_expired: bool = None, include_predefined_users = None, search:str = None) -> AsyncIterator:
+    async def safe_members_iterator(self, safe_name, member_type: str = None, membership_expired: bool = None,
+                                    include_predefined_users=None, search: str = None) -> AsyncIterator:
         """
         This function allow to search using one or more parameters and return list of address id
 
@@ -291,16 +291,17 @@ class Safe:
 
         while has_next_page:
             safe_members = await self.safe_members_paginate(page=page, safe_name=safe_name, member_type=member_type,
-                                                       membership_expired=membership_expired,
-                                                        include_predefined_users=include_predefined_users,search=
-                                                        search)
+                                                            membership_expired=membership_expired,
+                                                            include_predefined_users=include_predefined_users, search=
+                                                            search)
             has_next_page = safe_members["has_next_page"]
             page += 1
             for a in safe_members["members"]:
                 yield a
 
-    async def safe_members_paginate(self, page: int = 1, size_of_page: int = 100, safe_name: str = None, member_type: str = None,
-                                   membership_expired: bool = None, include_predefined_users = None, search:str = None):
+    async def safe_members_paginate(self, page: int = 1, size_of_page: int = 100, safe_name: str = None,
+                                    member_type: str = None,
+                                    membership_expired: bool = None, include_predefined_users=None, search: str = None):
         """
         Search safes in a paginated way
 
@@ -345,7 +346,8 @@ class Safe:
             search_results = await self.epv.handle_request("get", url, params=params,
                                                            filter_func=lambda x: x)
         except CyberarkAPIException as err:
-                raise
+            raise CyberarkAPIException(404, "ERR_404", f"Safe {safe_name} doesn't exist")
+
         safe_members = search_results['value']
 
         has_next_page = "nextLink" in search_results
@@ -354,8 +356,6 @@ class Safe:
             "has_next_page": has_next_page
         }
 
-
-    # TODO : use the safe_members_iterator instead of direct call
     async def list_members(self, safe_name: str, filter_perm=None, details=False, raw=False):
         """
         List members of a safe, optionally those with specific perm
@@ -376,11 +376,7 @@ class Safe:
             if filter_perm not in valid_filter:
                 raise AiobastionException(f"filter_perm {filter_perm} is not one of : {valid_filter} ")
 
-        url = f"api/Safes/{safe_name}/Members"
-        try:
-            members = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
-        except CyberarkException as err:
-            raise CyberarkAPIException(404, "ERR_404", f"Safe {safe_name} doesn't exist")
+        members = [_m async for _m in self.safe_members_iterator(safe_name=safe_name)]
 
         if raw:
             return members

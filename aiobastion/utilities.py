@@ -282,14 +282,35 @@ class Utilities:
                         if cc_name in con_comp:
                             con_comp[cc_name].append(pf['PlatformID'])
                         else:
-                            print(f"Warning for {cc_name} in {pf['PlatformID']} => {_c}")
+                            self.epv.logger.info(f"Warning for {cc_name} in {pf['PlatformID']} => {_c} "
+                                                 f"(Unknown Component)")
                             con_comp[cc_name] = [pf['PlatformID']]
 
             result = []
             for conn, pfs in con_comp.items():
-                result.append(f"{conn},{len(pfs)},{','.join(pfs)}")
+                result.append({"Component": conn,
+                               "PlatformCount": len(pfs),
+                               "PlatformList": pfs})
 
             return result
+
+        async def connection_components_by_platform(self):
+            """
+            Return a dict with connection components by platform (key = platform name,
+            value = Connection component list)
+            """
+            cc_usage = await self.connection_component_usage()
+            platform_dict = {}
+
+            for cc in cc_usage:
+                for _p in cc["PlatformList"]:
+                    if _p not in platform_dict:
+                        platform_dict[_p] = [cc["Component"]]
+                    else:
+                        platform_dict[_p].append(cc["Component"])
+
+            return platform_dict
+
 
         async def migrate_platform(self, old_platform: str, new_platform: str, address_filter: list = None):
             """

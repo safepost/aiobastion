@@ -22,5 +22,7 @@ Other functions
 ------------------------
 .. autofunction:: search_safe_iterator
 .. autofunction:: search_safe_paginate
+.. autofunction:: safe_members_iterator
+.. autofunction:: safe_members_paginate
 .. autofunction:: list
 .. autofunction:: v1_get_safes
