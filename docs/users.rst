@@ -9,6 +9,7 @@ Users
 .. autofunction:: exists
 .. autofunction:: details
 .. autofunction:: groups
+.. autofunction:: safes
 .. autofunction:: add_ssh_key
 .. autofunction:: get_ssh_keys
 .. autofunction:: del_ssh_key

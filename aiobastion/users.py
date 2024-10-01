@@ -231,7 +231,6 @@ class User:
         return await self.epv.handle_request("delete", f"API/Users/{user_id}/")
 
 
-    # TODO : Document me
     async def safes(self, username: str, user_id=None, details=False):
         """
         Returns the safes of a specific user
