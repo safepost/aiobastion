@@ -1037,7 +1037,7 @@ class Account:
             "post",
             lambda account_id: f"API/Accounts/{account_id}/Password/Retrieve",
             await self.get_account_id(account),
-            data = data
+            data=data
         )
 
 
@@ -1320,11 +1320,11 @@ class Account:
         :param new_safe: New safe to move the account(s) into
         :return: Boolean that indicates if the operation was successful
         """
-        async def _move(acc, new_safe, semaphore):
+        async def _move(acc, _new_safe, semaphore):
             async with semaphore:
-                self.epv.logger.debug(f"Now trying to move {acc} to {new_safe}")
+                self.epv.logger.debug(f"Now trying to move {acc} to {_new_safe}")
                 old_id = acc.id
-                acc.safeName = new_safe
+                acc.safeName = _new_safe
                 try:
                     acc.secret = await self.get_password(acc)
                 except CyberarkAPIException as err:
@@ -1340,7 +1340,7 @@ class Account:
                 return new_account_id
 
         # Packets of 50 to avoid many duplicates
-        # Without Semaphore we create all account before deleting all accounts
+        # Without Semaphore we create all accounts before deleting all accounts
         sem = asyncio.Semaphore(50)
         return await self._handle_acc_list(_move, account, new_safe, sem)
 
