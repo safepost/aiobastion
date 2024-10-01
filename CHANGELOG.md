@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2024-10-01
+### Changes
+- Added a function to get user's safes
+- Added list members linked function
+- Added the connection_component_by_platform function in utilities
+- Changed the return of connection_component_usage from string to list of dict
+- Adding PrivilegedAccount object directly in epv class to allow user to import it
+
+### Bugfixes
+- Added a semaphore in the move function to avoid mass creation before mass deletion (we ensure that max 50 accounts are created before the old accounts are deleted)
+
 ## [0.1.7] - 2024-08-01
 ### Changes
 Configutation file changes:
