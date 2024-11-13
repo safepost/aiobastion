@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import logging
 import os.path
@@ -38,9 +39,9 @@ class TestAccount(IsolatedAsyncioTestCase):
         await asyncio.sleep(0)
         # await self.vault.logoff()
 
-    async def get_random_account(self, n=1) -> Union[PrivilegedAccount,List[PrivilegedAccount]]:
+    async def get_random_account(self, n=1, **kwargs) -> Union[PrivilegedAccount,List[PrivilegedAccount]]:
         accounts = await self.vault.account.search_account_by(
-            safe=self.test_safe
+            safe=self.test_safe, **kwargs
         )
         self.assertGreaterEqual(len(accounts), 1)
         if n == 1:
@@ -48,7 +49,7 @@ class TestAccount(IsolatedAsyncioTestCase):
         else:
             return random.choices(accounts, k=n)
 
-    async def get_random_unix_account(self, n=1):
+    async def get_random_unix_account(self, n=1) -> Union[PrivilegedAccount,List[PrivilegedAccount]]:
         accounts = await self.vault.account.search_account_by(
             safe=self.test_safe,
             platform="UnixSSH"
@@ -173,7 +174,7 @@ class TestAccount(IsolatedAsyncioTestCase):
         self.assertTrue(undo)
 
     async def test_link_account_by_address(self):
-
+        # Add accounts to the safe if they don't exist
         for acc in (admin, recon):
             try:
                 await self.vault.account.add_account_to_safe(acc)
@@ -188,23 +189,29 @@ class TestAccount(IsolatedAsyncioTestCase):
 
     async def test_change_password(self):
         # Only unix accounts are mapped to a dummy platform
-        account = await self.get_random_unix_account()
+        account : PrivilegedAccount = await self.get_random_unix_account()
+        while account.cpm_status() == "Deactivated":
+            account = await self.get_random_unix_account()
+
         changed = await self.vault.account.change_password(account)
         self.assertTrue(changed)
 
     async def test_reconcile(self):
         # Only unix accounts are mapped to a dummy platform
-        accounts = await self.get_random_unix_account(2)
+        rec_account = await self.get_random_unix_account()
+        account : PrivilegedAccount = await self.get_random_unix_account()
+        while account.cpm_status() == "Deactivated":
+            account = await self.get_random_unix_account()
         # link reconcile address to an address
-        ret = await self.vault.account.link_reconciliation_account(accounts[0], accounts[1])
+        ret = await self.vault.account.link_reconciliation_account(account, rec_account)
         self.assertTrue(ret)
 
         # reconcile the address
-        ret = await self.vault.account.reconcile(accounts[0])
+        ret = await self.vault.account.reconcile(account)
         self.assertTrue(ret)
 
         # remove the reconcile address from the address
-        undo = await self.vault.account.remove_reconcile_account(accounts[0])
+        undo = await self.vault.account.remove_reconcile_account(account)
         self.assertTrue(undo)
 
     async def test_search_account_by_ip_addr(self):
@@ -442,18 +449,29 @@ class TestAccount(IsolatedAsyncioTestCase):
         updated = await self.vault.account.update_single_fc(account, "userName", account.userName)
         self.assertEqual(updated.userName, account.userName)
 
+    async def test_update_platform_account_properties_fc(self):
+        account = await self.get_random_account(platform="WinDesktopLocal")
+
+        updated = await self.vault.account.update_single_fc(account, "Location", "Berlin")
+        self.assertEqual(updated.platformAccountProperties["Location"], "Berlin")
+
+        updated = await self.vault.account.update_single_fc(account, "Location", None)
+        self.assertNotIn("Location",updated.platformAccountProperties)
+
     async def test_update_file_category(self):
         account = await self.get_random_account()
         new_username = "tutu"
         new_address = "221.112.152.100"
+        new_location = "Berlin"
+        new_ownername = "Otto Von Bismarck"
         updated = await self.vault.account.update_file_category(account,
-                                                                ["userName", "address"],
-                                                                [new_username, new_address])
+                                                                ["userName", "address", "Location", "OwnerName"],
+                                                                [new_username, new_address, new_location, new_ownername ])
         self.assertEqual(updated.userName, new_username)
         self.assertEqual(updated.address, new_address)
         updated = await self.vault.account.update_file_category(account,
-                                                                ["userName", "address"],
-                                                                [account.userName, account.address])
+                                                                ["userName", "address", "Location", "OwnerName"],
+                                                                [account.userName, account.address, None, None])
         self.assertEqual(updated.userName, account.userName)
         self.assertEqual(updated.address, account.address)
 
@@ -534,4 +552,11 @@ class TestAccount(IsolatedAsyncioTestCase):
 
 
 if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     unittest.main()

@@ -3,7 +3,7 @@ Component compatibility
 
 PVWA
 -------
-Versions known to be compatible today are 12.2.x and 12.6.x.
+Versions known to be compatible today are 12.2.x and 12.6.x and 14.x.
 
 If you have an older version, some functions won't work and you'll raise a CyberarkException "Your PVWA version does not support this function".
 

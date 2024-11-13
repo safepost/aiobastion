@@ -2,7 +2,7 @@ import asyncio
 import copy
 
 from .accounts import PrivilegedAccount
-from .exceptions import AiobastionException, CyberarkAPIException
+from .exceptions import AiobastionException, CyberarkAPIException, AiobastionConfigurationException
 
 
 def clone_privileged_account(account: PrivilegedAccount, replace: dict, update_name=True) -> PrivilegedAccount:
@@ -25,9 +25,33 @@ def case_insensitive_getattr(obj, attr):
 
 
 class Utilities:
-    def __init__(self, epv):
+    # _UTILITIES_DEFAULT_XXX = <value>
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = []
+
+    def __init__(self, epv, **kwargs):
         self.epv = epv
+
+        _section = "utilities"
+        _config_source = self.epv.config.config_source
+
         self.platform = self.Platform(epv)
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Utilities._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
 
     async def cpm_change_failed_accounts(self, address, username_filter: list = None):
         """
@@ -258,14 +282,35 @@ class Utilities:
                         if cc_name in con_comp:
                             con_comp[cc_name].append(pf['PlatformID'])
                         else:
-                            print(f"Warning for {cc_name} in {pf['PlatformID']} => {_c}")
+                            self.epv.logger.info(f"Warning for {cc_name} in {pf['PlatformID']} => {_c} "
+                                                 f"(Unknown Component)")
                             con_comp[cc_name] = [pf['PlatformID']]
 
             result = []
             for conn, pfs in con_comp.items():
-                result.append(f"{conn},{len(pfs)},{','.join(pfs)}")
+                result.append({"Component": conn,
+                               "PlatformCount": len(pfs),
+                               "PlatformList": pfs})
 
             return result
+
+        async def connection_components_by_platform(self):
+            """
+            Return a dict with connection components by platform (key = platform name,
+            value = Connection component list)
+            """
+            cc_usage = await self.connection_component_usage()
+            platform_dict = {}
+
+            for cc in cc_usage:
+                for _p in cc["PlatformList"]:
+                    if _p not in platform_dict:
+                        platform_dict[_p] = [cc["Component"]]
+                    else:
+                        platform_dict[_p].append(cc["Component"])
+
+            return platform_dict
+
 
         async def migrate_platform(self, old_platform: str, new_platform: str, address_filter: list = None):
             """

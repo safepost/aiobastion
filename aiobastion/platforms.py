@@ -3,13 +3,36 @@ import asyncio
 import base64
 
 import aiohttp
-from .exceptions import CyberarkException, CyberarkAPIException
+from .exceptions import CyberarkException, CyberarkAPIException, AiobastionConfigurationException
 
 
 class Platform:
-    def __init__(self, epv):
+    # _PLATFORM_DEFAULT_XXX = <value>
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = []
+
+    def __init__(self, epv, **kwargs):
         self.epv = epv
-        # self.session = self.epv.session
+
+        _section = "platform"
+        _config_source = self.epv.config.config_source
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
+
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Platform._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
 
     async def get_target_platforms(self, active: bool = None, systemType: str = None, periodicVerify: bool = None,
                                    manualVerify: bool = None, periodicChange: bool = None, manualChange: bool = None,
@@ -125,10 +148,10 @@ class Platform:
     async def export_platform(self, pfid: str, outdir: str):
         """
         Export platform files to outdir (existing directory)
-        
-        :param pfid: 
-        :param outdir: 
-        :return: 
+
+        :param pfid:
+        :param outdir:
+        :return:
         """
         url, head = self.epv.get_url(f"API/Platforms/{str(pfid)}/Export")
 

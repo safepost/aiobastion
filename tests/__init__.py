@@ -1,7 +1,9 @@
 import logging
+import os
 
-CONFIG = '../../confs/config_tests.yml'
-AIM_CONFIG = '../../confs/config_aim_hp.yml'
+CONFIG = os.path.join("..", "..", "confs", "config_tests.yml")
+AIM_CONFIG = os.path.join("..", "..", "confs", "config_aim_hp.yml")
+API_USER = "admin_test_restapi"
 
 logging.basicConfig(
     level=logging.DEBUG,

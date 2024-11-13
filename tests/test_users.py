@@ -1,5 +1,8 @@
-import secrets
+import sys
+import asyncio
+import unittest
 from unittest import IsolatedAsyncioTestCase
+import secrets
 import aiobastion
 import random
 import tests
@@ -10,7 +13,7 @@ class TestUsers(IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.vault = aiobastion.EPV(tests.CONFIG)
         await self.vault.login()
-        self.api_user = "bastion_test_usr"
+        self.api_user = tests.API_USER
         self.test_safe = "sample-it-dept"
         self.test_usr = "bastion_std_usr"
 
@@ -85,6 +88,10 @@ class TestUsers(IsolatedAsyncioTestCase):
 
         with self.assertRaises(AiobastionException):
             await self.vault.user.delete("thisuserdoesnotexists")
+
+    async def test_safes(self):
+        req = await self.vault.user.safes(self.api_user)
+        self.assertIsInstance(req, list)
 
 # Group Part
 
@@ -172,5 +179,12 @@ class TestUsers(IsolatedAsyncioTestCase):
         req = await self.vault.group.list()
         self.assertNotIn(new_group_name, req)
 
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-
+    unittest.main()

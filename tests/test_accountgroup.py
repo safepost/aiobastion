@@ -1,9 +1,13 @@
+import sys
 import logging
 import random
 import time
+import unittest
+import asyncio
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
 import tests
+# from . import CONFIG
 from aiobastion.exceptions import CyberarkAPIException, CyberarkException, AiobastionException
 from aiobastion.accountgroup import PrivilegedAccountGroup
 
@@ -303,3 +307,12 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
             except:
                 pass
 
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    unittest.main()

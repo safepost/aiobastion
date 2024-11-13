@@ -1,9 +1,8 @@
-import logging
 import re
-import warnings
+from typing import Union, List
 
 from .accounts import PrivilegedAccount
-from .exceptions import AiobastionException, CyberarkAPIException
+from aiobastion.exceptions import AiobastionException, CyberarkAPIException, AiobastionConfigurationException, CyberarkNotFoundException
 
 
 class PrivilegedAccountGroup:
@@ -14,7 +13,7 @@ class PrivilegedAccountGroup:
         self.safe = Safe
 
     # ready to add json representation
-    def to_json(self):
+    def to_json(self) -> dict:
         json_object = {
             "GroupName": self.name,
             "GroupPlatformID": self.group_platform,
@@ -22,46 +21,60 @@ class PrivilegedAccountGroup:
         }
         return json_object
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"id : {self.id}, name: {self.name}, group_platform: {self.group_platform}, safe: {self.safe}"
 
 
 
 class AccountGroup:
-    def __init__(self, epv):
+    _SERIALIZED_FIELDS = []
+
+    def __init__(self, epv, **kwargs):
+        """
+        AccountGroup   Account group management
+        """
         self.epv = epv
+        _section = "accountgroup"
+        _config_source = self.epv.config.config_source
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(
+                f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}"
+            )
+
+    def to_json(self) -> dict:
+        return {attr_name: getattr(self, attr_name) for attr_name in AccountGroup._SERIALIZED_FIELDS if getattr(self, attr_name, None) is not None}
+
 
     # Account groups
-    async def list_by_safe(self, safe_name: str):
+    async def list_by_safe(self, safe_name: str) -> List[PrivilegedAccountGroup]:
         """
         List all groups for a given safe
 
         :param safe_name: name of the safe
         :return: a list of PrivilegedAccountGroups
         """
-        params = {
-            "Safe": safe_name
-        }
+        params = {"Safe": safe_name}
         groups = await self.epv.handle_request("get", "api/AccountGroups", params=params)
         return [PrivilegedAccountGroup(**g) for g in groups]
 
-    async def get_privileged_account_group_id(self, account_group: PrivilegedAccountGroup):
+    async def get_privileged_account_group_id(self, account_group: PrivilegedAccountGroup) -> str:
         """
         Internal function to get the group ID in functions
 
         :param account_group: PrivilegedAccountGroup object
         :return: group ID
         """
-        if account_group.id == "":
+        if not account_group.id:
             acc = await self.list_by_safe(account_group.safe)
             for a in acc:
                 if a.name == account_group.name:
                     return a.id
             raise AiobastionException(f"No ID found for group {account_group.name}")
-        else:
-            return account_group.id
+        return account_group.id
 
-    async def get_account_group_id(self, group_name: str, safe: str):
+    async def get_account_group_id(self, group_name: str, safe: str) -> str:
         """
         Get account_group_id with the group_name and the safe
 
@@ -73,25 +86,22 @@ class AccountGroup:
         for _a in ais:
             if _a.name.lower() == group_name.lower():
                 return _a.id
-
         raise AiobastionException(f"Group {group_name} not found in {safe}")
 
-    async def get_group_id(self, account_group):
+    async def get_group_id(self, account_group) -> str:
         """
         Internal function to get group_id from object or from group_id
 
         :param account_group: PrivilegedAccountGroup object or group_id
         :return: group_id
         """
-        if type(account_group) is str:
-            if re.match(r'\d+_\d+', account_group) is not None:
+        if isinstance(account_group, str):
+            if re.match(r'\d+_\d+', account_group):
                 return account_group
-            else:
-                raise AiobastionException("The account_group_id provided is not correct")
+            raise AiobastionException("The account_group_id provided is not correct")
         if isinstance(account_group, PrivilegedAccountGroup):
             return await self.get_privileged_account_group_id(account_group)
-        else:
-            raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
+        raise AiobastionException("You must provide a valid PrivilegedAccount to function get_account_id")
 
     async def members(self, group):
         """
@@ -132,10 +142,13 @@ class AccountGroup:
         """
         if not await self.epv.safe.exists(account_group.safe):
             raise AiobastionException(f"Safe {account_group.safe} does not exists")
-        return await self.epv.handle_request("post", "api/AccountGroups", data=account_group.to_json(),
+        try:
+            await self.epv.handle_request("post", "api/AccountGroups", data=account_group.to_json(),
                                              filter_func=lambda x: x['GroupID'])
+        except CyberarkNotFoundException as err:
+            raise CyberarkNotFoundException(f"Privileged Account group's platform \"{account_group.group_platform}\" not found")
 
-    async def add_member(self, account: (PrivilegedAccount, str), group: (PrivilegedAccountGroup, str)):
+    async def add_member(self, account: Union[PrivilegedAccount, str], group: Union[PrivilegedAccountGroup, str]):
         """
         Add accounts to a group (specified by PrivilegedAccountGroup object or group_id)
 
@@ -151,7 +164,7 @@ class AccountGroup:
         }
         return await self.epv.handle_request("post", f"api/AccountGroups/{group_id}/Members", data=data)
 
-    async def delete_member(self, account: (PrivilegedAccount, str), group: (PrivilegedAccountGroup, str)):
+    async def delete_member(self, account: Union[PrivilegedAccount, str], group: Union[PrivilegedAccountGroup, str]):
         """
         Delete the member of an account group
 
@@ -189,9 +202,9 @@ class AccountGroup:
             if account_group.name.lower() == account_group_name.lower():
 
                 try:
-                    logging.debug(f"Creating {account_group} to {dst_safe}")
+                    self.epv.logger.debug(f"Creating {account_group} to {dst_safe}")
                     new_group_id = await self.add(account_group.name, account_group.group_platform, dst_safe)
-                    logging.debug(f"Newly created group ID : {new_group_id}")
+                    self.epv.logger.debug(f"Newly created group ID : {new_group_id}")
 
                 except CyberarkAPIException as err:
                     if "EPVPA012E" in err.err_message:
@@ -200,23 +213,20 @@ class AccountGroup:
                         self.epv.logger.debug(f"Warning : AG already exists and detected with ID : {new_group_id}")
                     else:
                         raise
-                except Exception as err:
-                    # Unhandled exception
-                    raise
 
                 ag_members = await self.epv.accountgroup.members(account_group)
-
                 # Moving accounts
                 try:
                     moved_accounts = await self.epv.account.move(ag_members, dst_safe)
                 except CyberarkAPIException as err:
                     raise
-                logging.debug("Accounts moved !")
+
+                self.epv.logger.debug("Accounts moved !")
 
                 for agm in moved_accounts:
                     try:
                         await self.add_member(agm, new_group_id)
-                        logging.debug(f"Moved {agm} into {new_group_id}")
+                        self.epv.logger.debug(f"Moved {agm} into {new_group_id}")
                     except:
                         # Account are moved with their account group
                         pass
@@ -241,9 +251,9 @@ class AccountGroup:
 
         account_groups = await self.list_by_safe(src_safe)
         for ag in account_groups:
-            logging.debug(f"Current AG is {ag}")
+            self.epv.logger.debug(f"Current AG is {ag}")
             ag_members = (await self.members(ag))
-            logging.debug(ag_members)
+            self.epv.logger.debug(ag_members)
             if account_filter is not None:
                 filtered = False
                 for a in ag_members:
@@ -256,7 +266,7 @@ class AccountGroup:
                             raise AiobastionException(f"Your filter doesn't exist on account {a} "
                                                       f"(bad file category ? {filter_file_category})")
                 if filtered:
-                    logging.debug("Account group skipped ....")
+                    self.epv.logger.debug("Account group skipped ....")
                     continue
 
             try:

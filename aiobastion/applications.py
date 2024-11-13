@@ -1,6 +1,6 @@
 # import aiobastion.exceptions
-from .exceptions import AiobastionException
-
+from .exceptions import AiobastionException, AiobastionConfigurationException
+from typing import Union
 
 # class AamObject:
 #     def __init__(self, appid: str, params: dict, cert_file: str = None, cert_key: str = None):
@@ -13,8 +13,20 @@ from .exceptions import AiobastionException
 
 
 class Applications:
-    def __init__(self, epv):
+    # _APPLICATIONS_DEFAULT_XXX = <value>
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = []
+
+    def __init__(self, epv, **kwargs):
         self.epv = epv
+
+        _section = "applications"
+        _config_source = self.epv.config.config_source
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
 
     async def add(self, app_name: str, description: str = "", location: str = "\\", access_from: int = None,
                   access_to: int = None, expiration:str = None, disabled:bool = None,
@@ -68,11 +80,24 @@ class Applications:
 
         if owner_email is not None:
             import re
-            if not re.fullmatch("[^@]+@[^@]+\.[^@]+", owner_email):
+            if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", owner_email):
                 raise AiobastionException(f"owner_email argument must be valid mail, given : {owner_email}")
             data["application"]["BusinessOwnerEmail"] = owner_email
 
         return await self.epv.handle_request("post", url, data=data)
+
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Applications._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
+
 
     async def delete(self, app_name:str):
         """
@@ -226,7 +251,7 @@ class Applications:
         else:
             return False
 
-    async def get_authentication(self, app_name: str) -> list or bool:
+    async def get_authentication(self, app_name: str) -> Union[list, bool]:
         """
         Get authenticated methods for an application
 
@@ -238,7 +263,7 @@ class Applications:
             f'WebServices/PIMServices.svc/Applications/{app_name}/Authentications',
             filter_func=lambda x: x['authentication'])
 
-    async def del_authentication(self, app_name: str, auth_id: str) -> list or bool:
+    async def del_authentication(self, app_name: str, auth_id: str) -> Union[list, bool]:
         """
         Delete authentication method identified by auth_id for the application
 

@@ -1,3 +1,6 @@
+import sys
+import unittest
+import asyncio
 from unittest import IsolatedAsyncioTestCase
 import aiobastion
 from aiobastion.exceptions import AiobastionException
@@ -152,3 +155,13 @@ class TestApplication(IsolatedAsyncioTestCase):
         # delete
         updated = await self.vault.application.del_authentication(self.app_name, auths[0]['authID'])
         self.assertTrue(updated)
+
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        # Turned out, using WindowsSelectorEventLoop has functionality issues such as:
+        #     Can't support more than 512 sockets
+        #     Can't use pipe
+        #     Can't use subprocesses
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    unittest.main()

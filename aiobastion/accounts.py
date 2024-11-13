@@ -5,9 +5,9 @@ from typing import List, Union, AsyncIterator
 
 import aiohttp
 
-from .config import validate_ip, flatten
+from .config import validate_ip, flatten, validate_integer
 from .exceptions import (
-    CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound
+    CyberarkAPIException, CyberarkException, AiobastionException, CyberarkAIMnotFound, AiobastionConfigurationException
 )
 
 BASE_FILECATEGORY = ("platformId", "userName", "address", "name")
@@ -197,8 +197,47 @@ class Account:
     """
     Utility class to handle account manipulation
     """
-    def __init__(self, epv):
+    _ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX = 2
+    _ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX = 3
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = ["logon_account_index",
+                          "reconcile_account_index"]
+
+    def __init__(self, epv, logon_account_index: int = None, reconcile_account_index: int = None, **kwargs):
         self.epv = epv
+        _section = "account"
+        _config_source = self.epv.config.config_source
+
+        # string conversion to int or assign default value
+        self.logon_account_index = validate_integer(_config_source, f"{_section}/{logon_account_index}",
+                                                    logon_account_index, Account._ACCOUNT_DEFAULT_LOGON_ACCOUNT_INDEX)
+        self.reconcile_account_index = validate_integer(_config_source, f"{_section}/{reconcile_account_index}",
+                                                    reconcile_account_index, Account._ACCOUNT_DEFAULT_RECONCILE_ACCOUNT_INDEX)
+
+        # Validation
+        if not (1 <= self.logon_account_index <= 3):
+            raise AiobastionConfigurationException(f"Invalid value for '{_section}/logon_account_index' in "
+                                                   f"{_config_source}  (expected 1 to 3): {self.logon_account_index!r}")
+        if not (1 <= self.reconcile_account_index <= 3):
+            raise AiobastionConfigurationException(f"Invalid value for '{_section}/reconcile_account_index' in "
+                                                   f"{_config_source}  (expected 1 to 3): {self.reconcile_account_index!r}")
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
+
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Account._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
 
     async def _handle_acc_list(self, api_call, account, *args, **kwargs):
         """
@@ -361,7 +400,7 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed
         """
-        return await self.link_account(account, logon_account, self.epv.LOGON_ACCOUNT_INDEX)
+        return await self.link_account(account, logon_account, self.logon_account_index)
 
     async def link_reconcile_account_by_address(self, acc_username, rec_acc_username, address):
         """ This function links the account with the given username and address to the reconciliation account with
@@ -397,7 +436,7 @@ class Account:
         """
         | This function unlinks the reconciliation account of the given account (or the list of accounts)
         | ⚠️ The "reconcile" Account is supposed to have an index of 3
-        | You can change it by setting custom:RECONCILE_ACCOUNT_INDEX in your config file
+        | You can change it by setting "account" section field "reconcile_account_index" in your config file
 
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
@@ -405,20 +444,20 @@ class Account:
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed:
         """
-        return await self.unlink_account(account, self.epv.RECONCILE_ACCOUNT_INDEX)
+        return await self.unlink_account(account, self.reconcile_account_index)
 
     async def remove_logon_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]]):
         """
         | This function unlinks the logon account of the given account (or the list of accounts)
         | ⚠️ The "logon" Account index is default to 2 but can be set differently on the platform
-        | You can change it by setting custom:LOGON_ACCOUNT_INDEX in your config file
+        | You can change it by setting "account" section field "logon_account_index" in your config file
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
         :return: A boolean that indicates if the operation was successful.
         :raises CyberarkException: If link failed:
         """
-        return await self.unlink_account(account, self.epv.LOGON_ACCOUNT_INDEX)
+        return await self.unlink_account(account, self.logon_account_index)
 
     async def unlink_account(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]],
                              extra_password_index: int):
@@ -805,6 +844,8 @@ class Account:
 
         :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
         """
+        self.epv.logger.debug(f"Going to patch {await self.get_account_id(account)} with {data}")
+
         updated_accounts = await self._handle_acc_id_list(
             "patch",
             lambda account_id: f"API/Accounts/{account_id}",
@@ -830,7 +871,25 @@ class Account:
         elif fc in SECRET_MANAGEMENT_FILECATEGORY:
             return "/secretmanagement/"
         else:
-            return "/platformaccountproperties/"
+            return "/platformAccountProperties/"
+
+    async def delete_fc(self, account, file_category):
+        """
+        Delete the File Category
+        The path of the file_category is (hopefully) automatically detected
+        You can't delete a mandatory File Category
+
+        :param account: address, list of accounts, account_id, list of accounts id
+        :param file_category: the File Category to delete
+        :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
+        :raises AiobastionException: if the FC was not found in the Vault
+        :raises CyberarkAPIException: if another error occured
+        """
+        data = [{"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": "remove"}]
+        try:
+            return await self.update_using_list(account, data)
+        except CyberarkAPIException as err:
+            raise
 
     async def update_single_fc(self,  account, file_category, new_value, operation="replace"):
         """
@@ -839,15 +898,20 @@ class Account:
 
         :param account: address, list of accounts, account_id, list of accounts id
         :param file_category: the File Category to update
-        :param new_value: The new value of the FC
+        :param new_value: The new value of the FC, or None if you want to delete the FC
         :param operation: Replace, Remove or Add
         :return: The updated PrivilegedAccount or the list of updated PrivilegedAccount
         :raises AiobastionException: if the FC was not found in the Vault
         :raises CyberarkAPIException: if another error occured
         """
+
+        if new_value is None:
+            operation = "remove"
+
         # if we "add" and FC exists it will replace it
         data = [{"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": operation, "value": new_value}]
         try:
+            # self.epv.logger.debug(f"Data : {data}")
             return await self.update_using_list(account, data)
         except CyberarkAPIException as err:
             if err.err_code == "PASWS164E" and operation == "replace":
@@ -878,14 +942,25 @@ class Account:
                 assert len(file_category) == len(new_value)
             except AssertionError:
                 raise AiobastionException("You must provide the same list size for file_category and values")
-            for f,n in zip(file_category, new_value):
-                # we trust user and don't check if FC is defined at platform level
-                data.append({"path": f"{self.detect_fc_path(f)}{f}", "op": "add", "value": n})
+
+            for f, n in zip(file_category, new_value):
+                # self.epv.logger.debug(f"Detected path for {f}: {self.detect_fc_path(f)}")
+                if self.detect_fc_path(f) != "/":
+                    found = False
+                    for _u in data:
+                        if _u["path"] == self.detect_fc_path(f):
+                            _u["value"][f] = n
+                            found = True
+                    if not found:
+                        data.append({"path": self.detect_fc_path(f), "op": "replace", "value": {f: n}})
+                else:
+                    # we trust user and don't check if FC is defined at platform level
+                    data.append({"path": f"{self.detect_fc_path(f)}{f}", "op": "add", "value": n})
         else:
             data.append({"path": f"{self.detect_fc_path(file_category)}{file_category}", "op": "add", "value": new_value})
 
+        # self.epv.logger.debug(f"Updating {account.id} with {data}")
         return await self.update_using_list(account, data)
-
 
     async def restore_last_cpm_version(self, account: PrivilegedAccount, cpm):
         """
@@ -962,7 +1037,7 @@ class Account:
             "post",
             lambda account_id: f"API/Accounts/{account_id}/Password/Retrieve",
             await self.get_account_id(account),
-            data = data
+            data=data
         )
 
 
@@ -1245,25 +1320,29 @@ class Account:
         :param new_safe: New safe to move the account(s) into
         :return: Boolean that indicates if the operation was successful
         """
-        async def _move(acc):
-            self.epv.logger.debug(f"Now trying to move {acc} to {new_safe}")
-            old_id = acc.id
-            acc.safeName = new_safe
-            try:
-                acc.secret = await self.get_password(acc)
-            except CyberarkAPIException as err:
-                raise CyberarkException(f"Unable to recover {acc.name} password : {str(err)}")
-            try:
-                new_account_id = await self.add_account_to_safe(acc)
-            except CyberarkAPIException as err:
-                raise CyberarkException(f"Unable to create {acc.name} new address : {str(err)}")
-            try:
-                await self.delete(old_id)
-            except CyberarkAPIException as err:
-                raise CyberarkException(f"Unable to delete {acc.name} old address : {str(err)}")
-            return new_account_id
+        async def _move(acc, _new_safe, semaphore):
+            async with semaphore:
+                self.epv.logger.debug(f"Now trying to move {acc} to {_new_safe}")
+                old_id = acc.id
+                acc.safeName = _new_safe
+                try:
+                    acc.secret = await self.get_password(acc)
+                except CyberarkAPIException as err:
+                    raise CyberarkException(f"Unable to recover {acc.name} password : {str(err)}")
+                try:
+                    new_account_id = await self.add_account_to_safe(acc)
+                except CyberarkAPIException as err:
+                    raise CyberarkException(f"Unable to create {acc.name} new address : {str(err)}")
+                try:
+                    await self.delete(old_id)
+                except CyberarkAPIException as err:
+                    raise CyberarkException(f"Unable to delete {acc.name} old address : {str(err)}")
+                return new_account_id
 
-        return await self._handle_acc_list(_move, account)
+        # Packets of 50 to avoid many duplicates
+        # Without Semaphore we create all accounts before deleting all accounts
+        sem = asyncio.Semaphore(50)
+        return await self._handle_acc_list(_move, account, new_safe, sem)
 
     # AIM get secret function
     async def get_secret_aim(self, account: Union[PrivilegedAccount, List[PrivilegedAccount]], reason: str = None):
@@ -1317,8 +1396,8 @@ class Account:
         | Retrieve secret password from the Central Credential Provider (**AIM**) GetPassword
           Web Service information.
 
-        ℹ️ The following parameters are optional searchable keys, see CyberArk documentation in
-           Developer/Central Credential Provider/Call the Central Credential Provider Web Service .../REST
+        | ℹ️ The following parameters are optional searchable keys. Refer to
+            `CyberArk Central Credential Provider - REST web service`.
 
         :param username: User account name
         :param safe: Safe where the account is stored.

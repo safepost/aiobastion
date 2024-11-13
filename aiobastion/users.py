@@ -1,12 +1,37 @@
 import asyncio
-from .exceptions import AiobastionException
+from .exceptions import AiobastionException, AiobastionConfigurationException
 
 from typing import List
 
 
 class User:
-    def __init__(self, epv):
+    # _USER_DEFAULT_XXX = <value>
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = []
+
+    def __init__(self, epv, **kwargs):
         self.epv = epv
+        self.user_list = None
+
+        _section = "user"
+        _config_source = self.epv.config.config_source
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in User._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
+
 
     async def get_logged_on_user_details(self):
         """
@@ -66,10 +91,10 @@ class User:
         :param username: username of the user
         :return: Boolean
         """
-        if self.epv.user_list is None:
+        if self.user_list is None:
             results = await self.epv.handle_request("get", 'API/Users', filter_func=lambda result: result["Users"])
-            self.epv.user_list = [u['username'].lower().strip() for u in results]
-        return username.lower() in self.epv.user_list
+            self.user_list = [u['username'].lower().strip() for u in results]
+        return username.lower() in self.user_list
 
     async def details(self, username: str = "", user_id=None):
         """
@@ -206,9 +231,54 @@ class User:
         return await self.epv.handle_request("delete", f"API/Users/{user_id}/")
 
 
+    async def safes(self, username: str, user_id=None, details=False):
+        """
+        Returns the safes of a specific user
+
+        :param username: the username
+        :param user_id: the user_id if the username is not provided
+        :return: user's safes list
+        """
+        if user_id is None:
+            if username == "":
+                raise AiobastionException("You must provide username or user_id")
+            user_id = await self.get_id(username)
+        url = f"api/Users/{user_id}/safes"
+        if details:
+            return await self.epv.handle_request("get", url, filter_func=lambda x: x["Safes"])
+        else:
+            safes = await self.epv.handle_request("get", url, filter_func=lambda x: x["Safes"])
+            return [s["SafeName"] for s in safes]
+
+
+
 class Group:
-    def __init__(self, epv):
+    # _GROUP_DEFAULT_XXX = <value>
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = []
+
+    def __init__(self, epv, **kwargs):
         self.epv = epv
+
+        _section = "group"
+        _config_source = self.epv.config.config_source
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
+
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Group._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
 
     async def list(self, pattern: str = None, group_type: str = None, details: bool = False,
                    include_members: bool = False):

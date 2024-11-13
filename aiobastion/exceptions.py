@@ -2,10 +2,16 @@
 
 class CyberarkException(Exception):
     """
-    This Exception is often raised on 404
+    This Exception is raised on unhandled Cyberark error
     """
     pass
 
+
+class CyberarkNotFoundException(CyberarkException):
+    """
+    This exception is raised on 404
+    """
+    pass
 
 class GetTokenException(Exception):
     """

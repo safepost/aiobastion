@@ -1,16 +1,55 @@
 # -*- coding: utf-8 -*-
+import logging
 import warnings
-from typing import AsyncIterator
+from typing import AsyncIterator, Union
 
-from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile
+from .config import permissions, DEFAULT_PERMISSIONS, get_v2_profile, validate_integer
 from .exceptions import (
-    CyberarkAPIException, CyberarkException, AiobastionException
+    CyberarkAPIException, CyberarkException, AiobastionException, AiobastionConfigurationException,
+    CyberarkNotFoundException
 )
 
 
 class Safe:
-    def __init__(self, epv):
+    _SAFE_DEFAULT_CPM = ""
+    _SAFE_DEFAULT_RETENTION = 10
+
+    # List of attributes from configuration file and serialization
+    _SERIALIZED_FIELDS = ["cpm", "retention"]
+
+    def __init__(self, epv, cpm: str = None, retention: int = None, **kwargs):
         self.epv = epv
+
+        _section = "safe"
+        _config_source = self.epv.config.config_source
+
+        # string to int or assign default value
+        self.retention = validate_integer(_config_source, f"{_section}/retention",
+                                          retention, Safe._SAFE_DEFAULT_RETENTION)
+
+        if cpm is None:
+            self.cpm = Safe._SAFE_DEFAULT_CPM
+        elif not isinstance(cpm, str):
+            raise AiobastionConfigurationException(f"Invalid attribute '{_section}/cpm' in {_config_source}: "
+                                                   f" must be a string: {cpm!r}")
+        else:
+            self.cpm = cpm
+
+        # Check for unknown attributes
+        if kwargs:
+            raise AiobastionConfigurationException(
+                f"Unknown attribute in section '{_section}' from {_config_source}: {', '.join(kwargs.keys())}")
+
+    def to_json(self):
+        serialized = {}
+
+        for attr_name in Safe._SERIALIZED_FIELDS:
+            v = getattr(self, attr_name, None)
+
+            if v is not None:
+                serialized[attr_name] = v
+
+        return serialized
 
     # TODO : add membershipExpirationDate permissions isReadOnly
     async def add_member(self, safe: str, username: str, search_in: str = "Vault",
@@ -103,10 +142,13 @@ class Safe:
         if not await self.exists(safe):
             raise AiobastionException(f"Safe : \"{safe}\" was not found")
 
-        return await self.epv.handle_request("post", url, data=data)
+        try:
+            return await self.epv.handle_request("post", url, data=data)
+        except CyberarkNotFoundException:
+            raise CyberarkException(f"Unable to add member : Safe '{safe}' or user '{username}' was not found")
 
     # TODO : Document profiles
-    async def add_member_profile(self, safe: str, username: str, profile: (str, dict)):
+    async def add_member_profile(self, safe: str, username: str, profile: Union[str, dict]):
         """
         This functions adds the "username" user (or group) to the given safe with a relevant profile
 
@@ -182,8 +224,8 @@ class Safe:
             "SafeName": safe_name,
             "Description": description,
             "OLACEnabled": olac,
-            "ManagingCPM": self.epv.cpm if cpm is None else cpm,
-            "NumberOfVersionsRetention": self.epv.retention if versions is None else versions,
+            "ManagingCPM": self.cpm if cpm is None else cpm,
+            "NumberOfVersionsRetention": self.retention if versions is None else versions,
             "numberOfDaysRetention": days,
             "AutoPurgeEnabled": auto_purge,
             "location": location
@@ -215,10 +257,10 @@ class Safe:
                 await self.add_member_profile(safe_name, user, profile)
             except CyberarkAPIException as err:
                 if err.http_status == 409:
-                    warnings.warn(err.err_message)
+                    warnings.warn(err.err_message, stacklevel=3)
                     # pass
                 elif err.http_status == 403:
-                    warnings.warn(err.err_message)
+                    warnings.warn(err.err_message, stacklevel=3)
                 else:
                     raise
 
@@ -232,6 +274,88 @@ class Safe:
         url = f"api/Safes/{safe_name}"
         return await self.epv.handle_request("delete", url)
 
+    async def safe_members_iterator(self, safe_name, member_type: str = None, membership_expired: bool = None,
+                                    include_predefined_users=None, search: str = None) -> AsyncIterator:
+        """
+        This function allow to search using one or more parameters and return list of address id
+
+        :param safe_name: Name of the safe
+        :param member_type: user or group
+        :param membership_expired: include expired memberships
+        :param include_predefined_users: include predefined users
+        :param search: free search
+        """
+
+        page = 1
+        has_next_page = True
+
+        while has_next_page:
+            safe_members = await self.safe_members_paginate(page=page, safe_name=safe_name, member_type=member_type,
+                                                            membership_expired=membership_expired,
+                                                            include_predefined_users=include_predefined_users, search=
+                                                            search)
+            has_next_page = safe_members["has_next_page"]
+            page += 1
+            for a in safe_members["members"]:
+                yield a
+
+    async def safe_members_paginate(self, page: int = 1, size_of_page: int = 100, safe_name: str = None,
+                                    member_type: str = None,
+                                    membership_expired: bool = None, include_predefined_users=None, search: str = None):
+        """
+        Search safes in a paginated way
+
+        :param page: number of page
+        :param size_of_page: size of pages
+        :param safe_name: Name of the safe
+        :param member_type: user or group
+        :param membership_expired: include expired memberships
+        :param include_predefined_users: include predefined users
+        :param search: free search
+
+        :return:
+
+        """
+        if member_type not in [None, "user", "group"]:
+            raise AiobastionException(f"Invalid member_type : {member_type}")
+
+        params = {}
+        safe_members_filter = []
+        if member_type is not None:
+            safe_members_filter.append(f"MemberType eq {member_type}")
+        if membership_expired is not None:
+            safe_members_filter.append(f"MembershipExpired eq {membership_expired}")
+        if include_predefined_users is not None:
+            safe_members_filter.append(f"IncludePredefinedUsers eq {include_predefined_users}")
+
+        if len(safe_members_filter) > 0:
+            params["filter"] = " AND ".join(safe_members_filter)
+
+        if search is not None:
+            params["search"] = f"{search}"
+
+        if search is not None:
+            params["search"] = f"{search}"
+
+        params["limit"] = size_of_page
+        params["offset"] = (page - 1) * size_of_page
+        url = f"api/Safes/{safe_name}/Members"
+
+        self.epv.logger.debug(f"safe_members_paginate computed params : {params}")
+        try:
+            search_results = await self.epv.handle_request("get", url, params=params,
+                                                           filter_func=lambda x: x)
+        except CyberarkAPIException as err:
+            raise CyberarkAPIException(404, "ERR_404", f"Safe {safe_name} doesn't exist")
+
+        safe_members = search_results['value']
+
+        has_next_page = "nextLink" in search_results
+        return {
+            "members": safe_members,
+            "has_next_page": has_next_page
+        }
+
     async def list_members(self, safe_name: str, filter_perm=None, details=False, raw=False):
         """
         List members of a safe, optionally those with specific perm
@@ -243,11 +367,6 @@ class Safe:
         :return: list of all users, or list of users with specific perm
         """
         if filter_perm is not None:
-            # valid_filter = ['Add', 'AddRenameFolder', 'BackupSafe', 'Delete', 'DeleteFolder', 'ListContent',
-            #                 'ManageSafe', 'ManageSafeMembers', 'MoveFilesAndFolders', 'Rename',
-            #                 'RestrictedRetrieve', 'Retrieve', 'Unlock', 'Update', 'UpdateMetadata',
-            #                 'ValidateSafeContent', 'ViewAudit', 'ViewMembers']
-            # v2 API
             valid_filter = ['useAccounts', 'retrieveAccounts', 'listAccounts', 'addAccounts', 'updateAccountContent',
                             'updateAccountProperties', 'initiateCPMAccountManagementOperations',
                             'specifyNextAccountContent', 'renameAccounts', 'deleteAccounts', 'unlockAccounts',
@@ -257,13 +376,8 @@ class Safe:
             if filter_perm not in valid_filter:
                 raise AiobastionException(f"filter_perm {filter_perm} is not one of : {valid_filter} ")
 
-        #url = f"WebServices/PIMServices.svc/Safes/{safe_name}/Members"
-        url = f"api/Safes/{safe_name}/Members"
-        try:
-            members = await self.epv.handle_request("get", url, filter_func=lambda x: x["value"])
-        except CyberarkException as err:
-            raise CyberarkAPIException(404, "ERR_404", f"Safe {safe_name} doesn't exist")
-            
+        members = [_m async for _m in self.safe_members_iterator(safe_name=safe_name)]
+
         if raw:
             return members
 
@@ -340,12 +454,11 @@ class Safe:
         params["includeAccounts"] = str(include_accounts)
         params["extendedDetails"] = str(extended_details)
 
-
         params["limit"] = size_of_page
         params["offset"] = (page - 1) * size_of_page
         try:
             search_results = await self.epv.handle_request("get", "API/Safes", params=params,
-                                                   filter_func=lambda x: x)
+                                                           filter_func=lambda x: x)
         except CyberarkAPIException as err:
             if err.err_code == "CAWS00001E":
                 raise AiobastionException("Please don't list safes with a user member of PSMMaster (Cyberark bug)")
@@ -419,7 +532,7 @@ class Safe:
             good_safe = next(_s for _s in found_safes if _s["safeName"].upper() == safename.upper())
         except StopIteration:
             raise AiobastionException(f"Safe {safename} was not found")
-        # print(good_safe)
+
         safe_url_id = good_safe["safeUrlId"]
         url = f"API/Safes/{safe_url_id}/"
 
@@ -427,3 +540,44 @@ class Safe:
         good_safe["safeName"] = new_name
 
         return await self.epv.handle_request("put", url, data=good_safe)
+
+    async def update(self, safe_name: str, description=None, location=None, olac=None, days=None, versions=None,
+                     cpm=None):
+        """
+        Update existing safe
+
+        :param safe_name: The name of the safe to update
+        :param description: The safe description
+        :param location: Safe location (must be an existing location)
+        :param olac: Enable OLAC for the safe (default to False)
+        :param days: Days of retention
+        :param versions: Number of versions
+        :param cpm: The name of the CPM user who will manage the new Safe.
+        :return: A dict of the updated safe details
+        """
+
+        url = f"api/Safes/{safe_name}"
+        data: dict = {
+            "SafeName": safe_name,
+        }
+
+        if description is not None:
+            data["Description"] = description
+        if location is not None:
+            data["location"] = location
+        if olac is not None:
+            data["OLACEnabled"] = olac
+        if days is not None:
+            data["numberOfDaysRetention"] = days
+        if versions is not None:
+            data["NumberOfVersionsRetention"] = versions
+        if cpm is not None:
+            data["ManagingCPM"] = cpm
+
+        # options are mutually exclusive
+        if days is not None and days >= 0:
+            data.pop("NumberOfVersionsRetention", None)
+        else:
+            data.pop("numberOfDaysRetention", None)
+
+        return await self.epv.handle_request("put", url, data=data)

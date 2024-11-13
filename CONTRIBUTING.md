@@ -33,7 +33,7 @@ If you wish to contribute with code the workflow is :
 ## Test
 
 - In order to test you need a working Vault and a PVWA.
-- Then, generate some accounts with mockaroo and the following schemas : https://www.mockaroo.com/b41fedb0. See "Troubleshoot"
+- Then, generate some accounts with mockaroo and the following schemas : https://www.mockaroo.com/1e429890. See "Troubleshoot"
   section of some cleanup to avoid issues.
 - Create the associated safes : sample-it-dept,sample-iaadmins,sample-coolteam
 - Create safe "RENAME_ME", and grant user "admin_bot" (see below) to the "Safe Management" permissions (for safe
@@ -48,6 +48,9 @@ If you wish to contribute with code the workflow is :
 You need an API user, such as **"admin_bot"**, to run the testing. This account is similar to Administrator for
 permissions, but you can't use "Administrator" itself (you will get "PASWS291E You cannot perform this
 task with an Administrator user. Log on with a different user and try again" error)
+
+The username of the API user you chose must be set in tests/__init__.py (and then just don't commit this file please.)
+
 * In Private Ark Client:
   * Add to "Vault Admins" and "PVWAUsers" groups
   * Give "Add Safes, Audit Users, Add/Update Users, Reset Users' Passwords, Activate Users" authorizations rules.
@@ -94,7 +97,6 @@ backend my_backend
 * `The number of concurrent dynamic sessions for user admin_bot has reached its limit (300)`: Make sure the tearDown
   logs off.
 * `PASWS032E Platform [Oracle] is not active`: The Oracle platform is not activated.
-
 
 ## Update documentation
 
