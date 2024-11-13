@@ -477,7 +477,7 @@ class Config:
                 raise AiobastionConfigurationException(f"Duplicate key '{section_name}/{keyname}'"
                                                         f" in {self.config_source}")
 
-            if isinstance(v, dict) and not (first_level and  keyname == "custom"):
+            if isinstance(v, dict) and not (first_level and keyname == "custom"):
                 rt[keyname] = self._serialized_dict_lowercase_key(v, f"{section_name}/{keyname}", first_level=False)
             else:
                 rt[keyname] = v
@@ -640,7 +640,7 @@ def validate_integer(config_source: str, section_name: str, val, default_value =
 
     return v
 
-def validate_bool(config_source: str, section_name: str, val,  default_value = None) -> bool:
+def validate_bool(config_source: str, section_name: str, val, default_value = None) -> bool:
     if default_value and (val is None or (isinstance(val, str) and len(val.strip()) == 0)):
         return default_value
 

@@ -115,7 +115,7 @@ class EPV_AIM:
 
 
     @classmethod
-    def validate_class_attributes(cls, serialized: dict, section: str, epv,  configfile: Optional[str] = None) -> dict:
+    def validate_class_attributes(cls, serialized: dict, section: str, epv, configfile: Optional[str] = None) -> dict:
         """validate_class_attributes      Initialize and validate the EPV_AIM definition (file configuration and serialized)
 
         Arguments:
@@ -178,7 +178,7 @@ class EPV_AIM:
         # Complete initialization with epv section (file configuration and serialized)
         if epv:
             if "host" not in new_serialized and epv.api_host:
-                new_serialized["host"]  = epv.api_host
+                new_serialized["host"] = epv.api_host
 
             # Should not be None or the default value
             if "timeout" not in new_serialized and epv.timeout and \
@@ -187,9 +187,9 @@ class EPV_AIM:
 
             # Should not be None or the default value
             if "max_concurrent_tasks" not in new_serialized and \
-                epv.max_concurrent_tasks is not None  and \
+                epv.max_concurrent_tasks is not None and \
                 epv.max_concurrent_tasks != Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS:
-                new_serialized["max_concurrent_tasks"] =  epv.max_concurrent_tasks
+                new_serialized["max_concurrent_tasks"] = epv.max_concurrent_tasks
 
             # Should not be None or the default value
             if "verify" not in new_serialized and \

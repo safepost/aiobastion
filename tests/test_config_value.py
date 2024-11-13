@@ -333,7 +333,7 @@ class TestConfigEpv(unittest.TestCase):
         """obtenir_username - Get username from environment"""
 
         if sys.platform == "win32":
-            username     = getpass.getuser()
+            username = getpass.getuser()
         else:
             import pwd
             username, uid, gid, gid_name, home = pwd.getpwuid(os.getuid())
@@ -1296,7 +1296,7 @@ class TestConfigEpv(unittest.TestCase):
             ("pvwa", "timeout"),
             ("pvwa", "max_concurrent_tasks"),
             ("pvwa", "maxtasks"),
-            ("",     "retention"),
+            ("", "retention"),
             ("AIM", "timeout"),
             ("AIM", "max_concurrent_tasks"),
             ("custom", "LOGON_ACCOUNT_INDEX"),
@@ -1495,7 +1495,7 @@ class TestConfigEpv(unittest.TestCase):
         epv_env = self.call_EPV(fnc_name, serialized=TestConfigEpv.serialize_dict, expected_value=None,
                                 trace_input=True, trace_epv=True, trace_check = False)
 
-        json_dict =  epv_env.to_json()
+        json_dict = epv_env.to_json()
 
         self.write_pprint(f" {fnc_name} - to_json return ",json_dict)
 
