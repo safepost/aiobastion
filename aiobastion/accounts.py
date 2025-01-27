@@ -13,7 +13,7 @@ from .exceptions import (
 BASE_FILECATEGORY = ("platformId", "userName", "address", "name")
 SECRET_MANAGEMENT_FILECATEGORY = ("automaticManagementEnabled", "manualManagementReason", "lastModifiedTime",
                                   "lastReconciledTime", "lastVerifiedTime", "status")
-
+REMOTE_MACHINES_ACCESS_FILECATEGORY = ("remoteMachines","accessRestrictedToRemoteMachines")
 
 class PrivilegedAccount:
     """Base class to be used with accounts fonctions"""
@@ -870,6 +870,8 @@ class Account:
             return "/"
         elif fc in SECRET_MANAGEMENT_FILECATEGORY:
             return "/secretmanagement/"
+        elif fc in REMOTE_MACHINES_ACCESS_FILECATEGORY:
+            return "/remoteMachinesAccess/"
         else:
             return "/platformAccountProperties/"
 

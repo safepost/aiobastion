@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2025-27-01
+### Changes
+- added include_accounts option to get_safe_details
+- Add support the File Category: remoteMachinesAccess (credits BKFlister)
+
 ## [0.1.8] - 2024-10-01
 ### Changes
 - Added a function to get user's safes
@@ -18,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.7] - 2024-08-01
 ### Changes
-Configutation file changes:
+Configuration file changes:
   - Existing section
       - "AIM" section
           - Added "passphrase" field in "AIM" section to handle AIM PEM encrypted certificate.
