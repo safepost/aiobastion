@@ -494,7 +494,7 @@ class Safe:
         else:
             return [r["safeName"] for r in await self.search()]
 
-    async def get_safe_details(self, safename: str):
+    async def get_safe_details(self, safename: str, include_accounts=True):
         """
         Get details of a given safe. We do a direct query instead of a search for efficiency.
 
@@ -502,7 +502,8 @@ class Safe:
         """
         if not safename:
             raise AiobastionException("A safe name must be provided")
-        return await self.epv.handle_request("get", f"API/Safes/{safename}", params={"extendedDetails": "True"})
+        return await self.epv.handle_request("get", f"API/Safes/{safename}",
+                                             params={"includeAccounts": include_accounts})
 
     async def v1_get_safes(self):
         """
