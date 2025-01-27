@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.9] - 2025-27-01
 ### Changes
 - added include_accounts option to get_safe_details
-- 
+- Add support the File Category: remoteMachinesAccess (credits BKFlister)
 
 ## [0.1.8] - 2024-10-01
 ### Changes
