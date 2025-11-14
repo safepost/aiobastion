@@ -1044,19 +1044,22 @@ class Account:
 
 
     # Test me
-    async def get_ssh_key(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]]):
+    async def get_ssh_key(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]], reason: str = None):
         """
         Retrieve the SSH Key of an account
 
         :param account: a PrivilegedAccount object or a list of PrivilegedAccount objects
         :type account: PrivilegedAccount, list
+        :param reason: The reason that is required to retrieve the password
         :return: SSH key value, or a list of ssh key values
         """
-
+        data = {}
+        if reason: data = {"Reason": reason}
         return await self._handle_acc_id_list(
             "post",
             lambda account_id: f"API/Accounts/{account_id}/Secret/Retrieve",
-            await self.get_account_id(account)
+            await self.get_account_id(account),
+            data=data
         )
 
     async def get_secret_versions(self, account: Union[PrivilegedAccount, str, List[PrivilegedAccount], List[str]], reason: str = None):
