@@ -219,6 +219,7 @@ class TestAccount(IsolatedAsyncioTestCase):
         s = await self.vault.account.search_account_by_ip_addr(account.address)
         self.assertGreaterEqual(len(s), 1)
 
+
     async def test_search_account_by(self):
         account = await self.get_random_account()
         acc = account.to_json()

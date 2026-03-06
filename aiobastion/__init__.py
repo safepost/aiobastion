@@ -2,6 +2,7 @@
 
 from .cyberark import EPV
 from .exceptions import *
+from .http_session import HttpSession
 
 all = [
     'accounts',
@@ -9,5 +10,6 @@ all = [
     'exceptions',
     'cyberark',
     'utilities',
-    'aim'
+    'aim',
+    'http_session',
 ]

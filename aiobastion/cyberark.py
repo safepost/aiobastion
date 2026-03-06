@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import os.path
-import asyncio
 import json
-import ssl
 from typing import Tuple, Optional, Union
 
 from aiohttp import ContentTypeError
@@ -18,6 +16,7 @@ from .api_options import Api_options
 from .config import Config, validate_integer, validate_bool
 from .exceptions import CyberarkException, GetTokenException, AiobastionException, CyberarkAPIException, \
     ChallengeResponseException, CyberarkAIMnotFound, AiobastionConfigurationException, CyberarkNotFoundException
+from .http_session import HttpSession
 from .platforms import Platform
 from .safe import Safe
 from .system_health import SystemHealth
@@ -70,13 +69,17 @@ class EPV:
         # Validate and define EPV Class attributes
         self.validate_class_attributes(self.config.options_modules["cyberark"])
 
-        # Execution parameters
+        # Execution parameters (conservé pour rétrocompatibilité, délégué à _http)
         self.request_params = None  # timeout & ssl setup default value
 
-        # Session management
-        self.session = None
+        # Session HTTP dédiée au PVWA (indépendante de la session AIM)
+        self._http: HttpSession = HttpSession(
+            max_concurrent_tasks=self.max_concurrent_tasks,
+            timeout=self.timeout,
+        )
+        # Alias publics conservés pour rétrocompatibilité
         self.cookies = None
-        self.__sema = None
+        self.__sema = None  # kept as None; sema lives inside _http
 
         # modules initialization
         self.AIM = None  # AIM interface
@@ -103,154 +106,155 @@ class EPV:
 
         del self.config.options_modules
 
-
-
     def validate_class_attributes(self, serialized: dict):
-        """validate_class_attributes  Initialize, validate and define the EPV attributes
-            from configuration file or serialization
-
-            :param serialized:      Dictionary of the serialized attributes
-            :raise AiobastionConfigurationException:  Invalid string or boolean value
-            :return:                Dictionary of the EPV attributes class to define
-
-
-            Synomyms for configuration file:
-                api_host, host
-                max_concurrent_tasks, masktasks
-                verify, ca
-
-            All keys are already in lowercase.
+        """
+        Initialise, valide et définit les attributs EPV depuis un fichier de configuration ou une sérialisation
         """
 
-        def section_name(keyname: str) -> str:
-            """section_name  Identify the section name of the keyname in the configuration file
-            return:
-                {str}   "<section>/<keyname>" or "<keyname>"
-            """
-            section = epv_section.get(keyname, None)
+        # Configuration des sections selon la source
+        epv_section = self._get_epv_sections() if self.config.config_source != "serialized" else {}
 
-            if section:
-                return f"{section}/{keyname}"
+        # Initialisation des attributs
+        self._initialize_attributes()
 
-            return keyname
+        # Compteurs pour gérer les synonymes
+        synonym_counters = {"max_concurrent_tasks": 0, "verify": 0}
 
-        if self.config.config_source == "serialized":
-            epv_section = {}
+        # Traitement de chaque paramètre
+        for key, value in serialized.items():
+            self._process_parameter(key, value, synonym_counters, epv_section)
+
+        # Application des valeurs par défaut
+        self._set_default_values()
+
+        # Validation finale
+        self._validate_final_state()
+
+    def _get_epv_sections(self):
+        """Retourne le mapping des sections pour les clés de configuration"""
+        return {
+            "api_host": "pvwa", "host": "pvwa", "ca": "pvwa", "verify": "pvwa",
+            "keep_cookies": "pvwa", "masktasks": "pvwa", "max_concurrent_tasks": "pvwa",
+            "timeout": "pvwa", "token": "pvwa",
+            "authtype": "connection", "password": "connection", "user_search": "connection"
+        }
+
+    def _initialize_attributes(self):
+        """Initialise tous les attributs à None"""
+        attributes = ["api_host", "authtype", "keep_cookies", "max_concurrent_tasks",
+                      "password", "timeout", "user_search", "username", "verify"]
+        for attr in attributes:
+            setattr(self, attr, None)
+
+    def _process_parameter(self, key, value, synonym_counters, epv_section):
+        """Traite un paramètre individuel"""
+
+        # Gestion des synonymes d'API host
+        if key in ["api_host", "host"]:
+            self._handle_api_host(key, value, epv_section)
+
+        # Gestion des tâches concurrentes
+        elif key in ["maxtasks", "max_concurrent_tasks"]:
+            self._handle_concurrent_tasks(key, value, synonym_counters, epv_section)
+
+        # Gestion de la vérification SSL
+        elif key in ["verify", "ca"]:
+            self._handle_ssl_verification(key, value, synonym_counters, epv_section)
+
+        # Paramètres simples
+        elif key == "authtype":
+            self.authtype = value
+        elif key == "keep_cookies":
+            self.keep_cookies = validate_bool(self.config.config_source, self._section_name(key, epv_section), value)
+        elif key == "password":
+            self.password = value
+        elif key == "timeout":
+            self.timeout = validate_integer(self.config.config_source, self._section_name(key, epv_section), value)
+        elif key == "token":
+            self.__token = value
+        elif key == "user_search":
+            self._handle_user_search(key, value, epv_section)
+        elif key == "username":
+            self.username = value
         else:
-            # Identify the section name of the keyname in the configuration file
-            epv_section = {
-                "api_host": "pvwa",
-                "authtype": "connection",
-                "ca": "pvwa",  # Synonym
-                "host": "pvwa",  # Synonym
-                "keep_cookies": "pvwa",
-                "masktasks": "pvwa",  # Synonym
-                "max_concurrent_tasks": "pvwa",
-                "password": "connection",
-                "timeout": "pvwa",
-                "token": "pvwa",  # changed to __token
-                "user_search": "connection",
-                "verify": "pvwa",
-            }
+            raise AiobastionConfigurationException(
+                f"Unknown attribute '{key}' in {self.config.config_source}: {value!r}")
 
-        self.api_host = None
-        self.authtype = None
-        self.keep_cookies = None
-        self.max_concurrent_tasks = None
-        self.password = None
-        self.timeout = None
-        self.user_search = None
-        self.username = None
-        self.verify = None
+    def _handle_api_host(self, key, value, epv_section):
+        """Gère les paramètres api_host/host"""
+        if self.api_host:
+            raise AiobastionConfigurationException(
+                f"Duplicate parameter '{self._section_name(key, epv_section)}' in {self.config.config_source}. Specify only one.")
+        self.api_host = value
 
-        # self.__token =  None
+    def _handle_concurrent_tasks(self, key, value, synonym_counters, epv_section):
+        """Gère les paramètres de tâches concurrentes"""
+        if key == "maxtasks" and self.api_options.deprecated_warning:
+            warnings.warn(
+                f"aiobastion - Deprecated parameter '{self._section_name(key, epv_section)}' use 'max_concurrent_tasks' instead.",
+                DeprecationWarning, stacklevel=3)
 
-        synonym_max_concurrent_tasks = 0
-        synonym_verify = 0
+        synonym_counters["max_concurrent_tasks"] += 1
+        if synonym_counters["max_concurrent_tasks"] > 1:
+            raise AiobastionConfigurationException(
+                f"Duplicate synonym parameter '{self._section_name(key, epv_section)}': "
+                f"in {self.config.config_source}. Specify only 'max_concurrent_tasks' and remove 'maxtasks'.")
 
-        for k, v in serialized.items():
-            synonym_max_concurrent_tasks = 0
+        self.max_concurrent_tasks = validate_integer(self.config.config_source, self._section_name(key, epv_section),
+                                                     value)
 
-            if k in ["api_host", "host"]:
-                if self.api_host:
-                    raise AiobastionConfigurationException(
-                        f"Duplicate parameter '{section_name(k)}' in {self.config.config_source}. Specify only one.")
+    def _handle_ssl_verification(self, key, value, synonym_counters, epv_section):
+        """Gère les paramètres de vérification SSL"""
+        if not isinstance(value, (str, bool)):
+            raise AiobastionConfigurationException(
+                f"Parameter type invalid '{self._section_name(key, epv_section)}' in {self.config.config_source}: {value!r}")
 
-                self.api_host = v
-            elif k == "authtype":
-                self.authtype = v
-            elif k == "keep_cookies":
-                self.keep_cookies = validate_bool(self.config.config_source, section_name(k), v)
-            elif k == "maxtasks" or k == "max_concurrent_tasks":
-                if k == "maxtasks" and self.api_options.deprecated_warning:
-                    warnings.warn(f"aiobastion - Deprecated parameter '{section_name(k)}' use 'max_concurrent_tasks' parameter instead.", DeprecationWarning, stacklevel=3)
+        if key == "ca" and self.api_options.deprecated_warning:
+            warnings.warn(
+                f"aiobastion - Deprecated parameter '{self._section_name(key, epv_section)}' use 'verify' instead.",
+                DeprecationWarning, stacklevel=3)
 
-                synonym_max_concurrent_tasks += 1
-                self.max_concurrent_tasks = validate_integer(self.config.config_source, section_name(k), v)
+        synonym_counters["verify"] += 1
+        if synonym_counters["verify"] > 1:
+            raise AiobastionConfigurationException(
+                f"Duplicate synonym parameter '{self._section_name(key, epv_section)}': "
+                f"in {self.config.config_source}. Specify only 'verify' and remove 'ca'.")
 
-                if synonym_max_concurrent_tasks > 1:
-                    raise AiobastionConfigurationException(
-                        f"Duplicate synonym parameter '{section_name(k)}': "
-                        f"in {self.config.config_source}. Specify only 'max_concurrent_tasks' and remove 'maxtasks'.")
+        self.verify = value
 
+    def _handle_user_search(self, key, value, epv_section):
+        """Gère le paramètre user_search"""
+        self.user_search = value
+        err = EPV_AIM.valid_secret_params(value)
+        if err:
+            raise AiobastionConfigurationException(
+                f"invalid parameter in '{self._section_name(key, epv_section)}': {err}")
 
-            elif k == "password":
-                self.password = v
-            elif k == "timeout":
-                self.timeout = validate_integer(self.config.config_source, section_name(k), v)
-            elif k == "token":  # For serialiszation only
-                self.__token = serialized['token']
-            elif k == "user_search":
-                self.user_search = v
+    def _section_name(self, keyname: str, epv_section: dict) -> str:
+        """Identifie le nom de section de la clé dans le fichier de configuration"""
+        section = epv_section.get(keyname)
+        return f"{section}/{keyname}" if section else keyname
 
-                err = EPV_AIM.valid_secret_params(v)
+    def _set_default_values(self):
+        """Applique les valeurs par défaut pour les attributs non initialisés"""
+        defaults = {
+            "authtype": "cyberark",
+            "keep_cookies": Config.CYBERARK_DEFAULT_KEEP_COOKIES,
+            "max_concurrent_tasks": Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS,
+            "timeout": Config.CYBERARK_DEFAULT_TIMEOUT,
+            "verify": Config.CYBERARK_DEFAULT_VERIFY
+        }
 
-                if err:
-                    raise AiobastionConfigurationException(f"invalid parameter in '{section_name(k)}': {err}")
+        for attr, default_value in defaults.items():
+            if getattr(self, attr) is None:
+                setattr(self, attr, default_value)
 
-            elif k == "username":
-                self.username = v
-            elif k in ["verify", "ca"]:
-                synonym_verify += 1
+    def _validate_final_state(self):
+        """Validation finale de l'état des attributs"""
+        if isinstance(self.verify, str) and not os.path.exists(self.verify):
+            raise AiobastionConfigurationException(
+                f"CA certificate File not found {self.verify!r} (Parameter 'verify' in PVWA).")
 
-                if isinstance(v, str) or isinstance(v, bool):
-                    self.verify = v
-                else:
-                    raise AiobastionConfigurationException(
-                        f"Parameter type invalid '{section_name(k)}' "
-                        f"in {self.config.config_source}: {v!r}")
-
-
-                if k == "ca" and self.api_options.deprecated_warning:
-                    warnings.warn(f"aiobastion - Deprecated parameter '{section_name(k)}' use 'verify' parameter instead.", DeprecationWarning, stacklevel=3)
-
-                if synonym_verify > 1:
-                    raise AiobastionConfigurationException(
-                        f"Duplicate synonym parameter '{section_name(k)}': "
-                        f"in {self.config.config_source}. Specify only 'verifiy' and remove 'ca'.")
-
-
-            else:
-                raise AiobastionConfigurationException(
-                    f"Unknown attribute '{k}' in {self.config.config_source}: {v!r}")
-
-        # Default value if not initialized
-        if self.authtype is None:
-            self.authtype = "cyberark"
-
-        if self.keep_cookies is None:
-            self.keep_cookies = Config.CYBERARK_DEFAULT_KEEP_COOKIES
-        if self.max_concurrent_tasks is None:
-            self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
-        if self.timeout is None:
-            self.timeout = Config.CYBERARK_DEFAULT_TIMEOUT
-        if self.verify is None:
-            self.verify = Config.CYBERARK_DEFAULT_VERIFY
-
-        if isinstance(self.verify, str):
-            if not os.path.exists(self.verify):
-                raise AiobastionConfigurationException(
-                    f"CA certificat File not found {self.verify!r} (Parameter 'verify' in PVWA).")
 
     def validate_and_setup_ssl(self):
         if self.verify is None:
@@ -265,17 +269,13 @@ class EPV:
                 raise AiobastionException(
                     f"CA certificat File not found {self.verify!r} (Parameter 'verify' in PVWA).")
 
-            if os.path.isdir(self.verify):
-                self.request_params = {"timeout": self.timeout,
-                                       "ssl": ssl.create_default_context(capath=self.verify)}
-            else:
-                self.request_params = {"timeout": self.timeout,
-                                       "ssl": ssl.create_default_context(cafile=self.verify)}
-        elif self.verify:  # True
-            self.request_params = {"timeout": self.timeout,
-                                   "ssl": ssl.create_default_context()}
-        else:  # False
-            self.request_params = {"timeout": self.timeout, "ssl": False}
+        # Mise à jour des paramètres du gestionnaire HttpSession PVWA
+        self._http.max_concurrent_tasks = self.max_concurrent_tasks
+        self._http.timeout = self.timeout
+        self._http.setup_ssl(self.verify)
+
+        # Alias rétrocompatible
+        self.request_params = self._http.request_params
 
     # Context manager
     async def __aenter__(self):
@@ -292,7 +292,7 @@ class EPV:
         url, head = self.get_url("API/Auth/" + auth_type + "/Logon")
         request_data = {"username": username, "password": password, "concurrentSession": True}
         try:
-            session = self.get_session()
+            session = self._http.get_session()
             async with session.post(url, json=request_data, **self.request_params) as req:
                 if req.status != 200:
                     try:
@@ -313,14 +313,14 @@ class EPV:
                 tok = await req.text()
                 # Copy the cookies to insert into later sessions
                 if self.keep_cookies:
-                    self.cookies = session.cookie_jar.filter_cookies(f"https://{self.api_host}")  # type: ignore
+                    self.cookies = self._http._session.cookie_jar.filter_cookies(f"https://{self.api_host}")  # type: ignore
                     for cookie in self.cookies:
                         self.cookies[cookie]['domain'] = self.api_host
                 # Closing session because now we are connected and we need to update headers which can be done
                 # only by recreating a new session (or passing the headers on each request). However, since the session
                 # token is only recognized by the PVWA instance that issued the token, load-balancers need to enable session
                 # stickiness which is often done with cookies.
-                await session.close()
+                await self._http.close()
                 return tok.replace('"', '')
 
         except ChallengeResponseException:
@@ -352,14 +352,6 @@ class EPV:
             return True
         except CyberarkException:
             return False
-        # url, head = self.get_url("api/LoginsInfo")
-        # session = self.get_session()
-        # # async with aiohttp.ClientSession() as session:
-        # async with session.get(url, headers=head, **self.request_params) as req:
-        #     if req.status != 200:
-        #         self.__token = None
-        #         return False
-        #     return True
 
     async def login_with_aim(
         self,
@@ -616,45 +608,38 @@ class EPV:
         #     await self.close_session()
 
     def get_session(self):
-        self.logger.debug(f"Getting aiobastion session ({self.session})")
-        if self.__token is None and self.session is None:
-            head = {"Content-type": "application/json", "Authorization": "None"}
-            self.session = aiohttp.ClientSession(headers=head)
-            self.logger.debug(f"Building session ID : {self.session}")
-        elif self.__token is None and self.session is not None:
-            # This should never happen
-            return self.session
-        elif self.session is None:
-            head = {'Content-type': 'application/json',
-                    'Authorization': self.__token}
-            self.session = aiohttp.ClientSession(headers=head, cookies=self.cookies)
-            self.logger.debug(f"Building session ID (token is known) : {self.session}")
+        """Retourne la session HTTP PVWA active (en la créant si nécessaire).
 
-        elif self.session.closed:
-            # This should never happen, but it's a security in case of unhandled exceptions
-            self.logger.debug("Never happens scenario happened (Session closed but not None)")
-            head = {'Content-type': 'application/json',
-                    'Authorization': self.__token}
-            self.session = aiohttp.ClientSession(headers=head, cookies=self.cookies)
+        Délègue la création à :class:`~aiobastion.http_session.HttpSession`.
+        La session AIM est gérée séparément dans :class:`~aiobastion.aim.EPV_AIM`.
+        """
+        session = self._http.get_session(token=self.__token, cookies=self.cookies)
+        self.logger.debug(f"Getting aiobastion EPV session ({session})")
 
-        if self.__sema is None:
-            self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
+        # Mise à jour de l'alias public rétrocompatible
+        self.session = session
 
-            if self.AIM:
-                self.AIM.set_semaphore(self.__sema, self.session)
+        # Propagation du sémaphore vers AIM uniquement si AIM n'a pas encore son propre sémaphore
+        if self.AIM and self.AIM._http._sema is None:
+            self.AIM._http._sema = self._http.semaphore
 
-        return self.session
+        return session
 
     async def close_session(self):
-        self.logger.debug("Closing session")
+        """Ferme la session HTTP PVWA.
+
+        La session AIM (propre à :class:`~aiobastion.aim.EPV_AIM`) est fermée séparément.
+        """
+        self.logger.debug("Closing EPV session")
         try:
-            if self.AIM:  # This is used, at least, when login is perform
+            if self.AIM:
                 await self.AIM.close_aim_session()
 
-            if self.session:
-                await self.session.close()
+            await self._http.close()
         except (CyberarkException, AttributeError):
             pass
+
+        # Mise à jour de l'alias public rétrocompatible
         self.session = None
         self.__sema = None
 
@@ -755,7 +740,7 @@ class EPV:
 
         session = self.get_session()
 
-        async with self.__sema:
+        async with self._http.semaphore:
             async with session.request(method, url, json=data, headers=head, params=params,
                                        **self.request_params) as req:
                 if req.status in (200, 201, 204):

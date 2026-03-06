@@ -114,6 +114,7 @@ class TestAccountGroup(IsolatedAsyncioTestCase):
         g = [x.name for x in groups]
         self.assertIn("AccountGroupTest", g)
 
+
     async def test_add_privileged_account_group(self):
         account_group = PrivilegedAccountGroup("AccountGroupTest", "sample_group", self.test_safe)
         bad_account_group = PrivilegedAccountGroup("bad", "non-existent-group", "non-existent-safe")

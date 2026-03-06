@@ -1,8 +1,6 @@
-import asyncio
 import copy
 import json
 import os
-import ssl
 from collections import namedtuple
 from http import HTTPStatus
 from typing import Union, Tuple, Optional
@@ -12,6 +10,7 @@ from aiohttp import ContentTypeError
 
 from .exceptions import AiobastionException, CyberarkException, CyberarkAPIException, CyberarkAIMnotFound, AiobastionConfigurationException
 from .config import Config, validate_integer
+from .http_session import HttpSession
 # from .cyberark import EPV
 
 # AIM section
@@ -84,9 +83,13 @@ class EPV_AIM:
         self.timeout = timeout
         self.verify = verify if verify is not None else Config.CYBERARK_DEFAULT_VERIFY
 
-        # Session management
-        self.__sema = None
-        self.session = None
+        # Gestionnaire de session HTTP dédié à l'endpoint AIM (indépendant de la session PVWA)
+        self._http: HttpSession = HttpSession(
+            max_concurrent_tasks=self.max_concurrent_tasks,
+            timeout=self.timeout,
+        )
+
+        # Alias publics conservés pour rétrocompatibilité
         self.request_params = None
 
         if serialized:
@@ -104,6 +107,10 @@ class EPV_AIM:
         if self.max_concurrent_tasks is None:
             self.max_concurrent_tasks = Config.CYBERARK_DEFAULT_MAX_CONCURRENT_TASKS
 
+        # Resynchronisation des paramètres dans _http après éventuelles corrections
+        self._http.max_concurrent_tasks = self.max_concurrent_tasks
+        self._http.timeout = self.timeout
+
         if self.verify is not None and not (isinstance(self.verify, str) or isinstance(self.verify, bool)):
             raise AiobastionException(
                 f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
@@ -112,6 +119,19 @@ class EPV_AIM:
             if not os.path.exists(self.verify):
                 raise AiobastionConfigurationException(
                     f"CA certificat File not found {self.verify!r} (Parameter 'verify' in AIM).")
+
+    # ------------------------------------------------------------------
+    # Propriété de session (rétrocompatibilité)
+    # ------------------------------------------------------------------
+    @property
+    def session(self):
+        """Alias rétrocompatible vers la session interne de HttpSession."""
+        return self._http._session
+
+    @session.setter
+    def session(self, value):
+        """Permet à l'ancien code de mettre session = None pour fermer."""
+        self._http._session = value
 
 
     @classmethod
@@ -215,55 +235,35 @@ class EPV_AIM:
         return new_serialized
 
     def validate_and_setup_aim_ssl(self):
-        if self.session:
+        """Configure la session SSL/TLS de l'endpoint AIM.
+
+        Délègue la construction du contexte SSL à :class:`~aiobastion.http_session.HttpSession`
+        via :meth:`~aiobastion.http_session.HttpSession.setup_ssl_with_client_cert`.
+        La session AIM est entièrement indépendante de la session PVWA.
+        """
+        if self._http.is_open:
             return
 
-        # Check mandatory attributes
-        if self.host is None or \
-           self.appid is None or \
-           self.cert is None:
-            raise AiobastionException(f"Missing AIM mandatory parameters. "
-                                       "Required parameters are: host, appid, cert.")
-
-        if not os.path.exists(self.cert):
-            raise AiobastionException(f"Parameter 'cert' in AIM: Public certificate file not found: {self.cert!r}")
-
-        if self.key and not os.path.exists(self.key):
-            raise AiobastionException(f"Parameter 'key' in AIM: Private key certificat file not found: {self.key!r}")
-
-        # Set verify if it is not set
-        if self.verify is None:
-            self.verify = Config.CYBERARK_DEFAULT_VERIFY
-
-        if not (isinstance(self.verify, str) or isinstance(self.verify, bool)):
+        # Vérification des attributs obligatoires
+        if self.host is None or self.appid is None or self.cert is None:
             raise AiobastionException(
-                f"Invalid type for parameter 'verify' in AIM: {type(self.verify)} value: {self.verify!r}")
+                "Missing AIM mandatory parameters. Required parameters are: host, appid, cert."
+            )
 
-        if (isinstance(self.verify, str) and not os.path.exists(self.verify)):
-            raise AiobastionException(f"Parameter 'verify' in AIM: file not found {self.verify!r}")
+        # Mise à jour des paramètres du gestionnaire HttpSession AIM
+        self._http.max_concurrent_tasks = self.max_concurrent_tasks
+        self._http.timeout = self.timeout
 
-        if isinstance(self.verify, str):
-            if not os.path.exists(self.verify):
-                raise AiobastionException(f"Parameter 'verify' in AIM: file not found {self.verify!r}")
+        # Délégation de la configuration SSL au gestionnaire de session
+        self._http.setup_ssl_with_client_cert(
+            verify=self.verify,
+            cert=self.cert,
+            key=self.key,
+            passphrase=self.passphrase,
+        )
 
-            if os.path.isdir(self.verify):
-                ssl_context = ssl.create_default_context(capath=self.verify)
-            else:
-                ssl_context = ssl.create_default_context(cafile=self.verify)
-        else:  # True or False
-            ssl_context = ssl.create_default_context()
-
-            if not self.verify:  # False
-                ssl_context.check_hostname = False
-
-        # if self.key is None:
-        #     ssl_context.load_cert_chain(self.cert, keyfile=self.key, password=self.passphrase)
-        # else:
-        ssl_context.load_cert_chain(self.cert, keyfile=self.key, password=self.passphrase)
-
-        self.request_params = \
-            {"timeout": self.timeout,
-             "ssl": ssl_context}
+        # Alias rétrocompatible
+        self.request_params = self._http.request_params
 
     @staticmethod
     def valid_secret_params(params: dict = None) -> str:
@@ -286,17 +286,33 @@ class EPV_AIM:
         return error_str
 
     def set_semaphore(self, sema, session):
-        """ Initialize the semaphore of the AIM interface,
-            so that EPV and EPV_AIM could share the same semaphore.
+        """Initialise le sémaphore de l'interface AIM.
+
+        .. note::
+            Depuis la séparation des sessions EPV / AIM, EPV et EPV_AIM possèdent
+            chacun leur propre sémaphore et leur propre session.
+            Ce paramètre ``session`` (session PVWA) est **ignoré** : AIM crée
+            toujours sa propre session via son :class:`~aiobastion.http_session.HttpSession`.
+            Le sémaphore peut néanmoins être partagé si l'appelant le souhaite.
         """
-        if not self.__sema:
-            self.__sema = sema
+        if self._http._sema is None:
+            self._http._sema = sema
+        # La session passée en paramètre est ignorée : AIM a sa propre session.
 
-        if not self.session:
-            if self.request_params is None:
-                self.validate_and_setup_aim_ssl()
+    def get_aim_session(self):
+        """Retourne la session HTTP AIM active (en la créant si nécessaire).
 
-            self.session = session
+        La session est entièrement indépendante de la session PVWA.
+        """
+        if self._http.request_params is None:
+            self.validate_and_setup_aim_ssl()
+
+        session = self._http.get_anonymous_session()
+        return session
+
+    async def close_aim_session(self):
+        """Ferme la session HTTP AIM de façon indépendante."""
+        await self._http.close()
 
     def to_json(self):
         serialized = {}
@@ -321,32 +337,6 @@ class EPV_AIM:
     async def __aexit__(self, exc_type, exc, tb):
         await self.close_aim_session()
 
-    def get_aim_session(self):
-        if self.session is None:
-            if self.request_params is None:
-                self.validate_and_setup_aim_ssl()
-                # Previously we tried to use aiohttp session,
-                # but now we are always doing our own session for AIM
-                # TODO: test this with aiohttp.ClientSession(cookies = self.cookies)
-            self.session = aiohttp.ClientSession()
-
-        if self.__sema is None:
-            self.__sema = asyncio.Semaphore(self.max_concurrent_tasks)
-
-        return self.session
-
-    async def close_aim_session(self):
-        try:
-            if self.session:
-                # Are we using the epv.session, if so don't close it
-                # if self.epv is None or self.epv.session is None or \
-                #         (self.epv.session and self.epv.session != self.session):
-                await self.session.close()
-        except (CyberarkException, AttributeError):
-            pass
-
-        self.session = None
-        self.__sema = None
 
     async def get_secret(self, **kwargs):
         """
@@ -441,7 +431,7 @@ class EPV_AIM:
         else:
             params_new = params
 
-        async with self.__sema:
+        async with self._http.semaphore:
             try:
                 async with session.request(method, url, headers=head, params=params_new, **self.request_params) as req:
                     # if req.status == 404:

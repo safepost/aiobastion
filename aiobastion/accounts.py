@@ -26,8 +26,8 @@ class PrivilegedAccount:
                  **other):
         self.secret = secret
         if remoteMachinesAccess is not None:
-            if not all([k in ["remoteMachines", "accessRestrictedToRemoteMachines"]
-                        for k in remoteMachinesAccess.keys()]):
+            if not all(k in ["remoteMachines", "accessRestrictedToRemoteMachines"]
+                        for k in remoteMachinesAccess.keys()):
                 raise AiobastionException("remoteMachinesAccess is not a valid dictionary")
         if secretManagement is None:
             secretManagement = {"automaticManagementEnabled": True, "manualManagementReason": ""}
@@ -106,8 +106,6 @@ class PrivilegedAccount:
         else:
             return (self.safeName == other.safeName) and (self.name == other.name)
 
-        # return self.to_dict() == other.to_dict()
-
     def __ne__(self, other):
         # Check by ID is the best way
         if self.id != "" and other.id != "":
@@ -167,7 +165,7 @@ def _filter_account(account: dict, filters: dict):
     """
     This function helps to ensure that search accounts match with requested accounts
 
-    :param account: one json CyberArk repr of a privileged address
+    :param account: one JSON CyberArk repr of a privileged address
     :param filters: one dict like username: admin
     :return: check if content of privileged FC is exactly the content of the filter
     """
@@ -643,8 +641,15 @@ class Account:
 
         """
 
-        return [account async for account in
-                self.search_account_iterator(keywords, username, address, safe, platform, **kwargs)]
+        accounts = []
+        async for account in self.search_account_iterator(keywords, username, address, safe, platform, **kwargs):
+            accounts.append(account)
+
+        return accounts
+
+        # return [account
+        #         async for account in
+        #         self.search_account_iterator(keywords, username, address, safe, platform, **kwargs)]
 
     async def search_account_iterator(self, keywords=None, username=None, address=None, safe=None,
                                       platform=None, **kwargs) -> AsyncIterator[PrivilegedAccount]:
@@ -708,8 +713,8 @@ class Account:
         if safe is not None:
             params["filter"] = "safeName eq " + safe
 
-        params["limit"] = size_of_page
-        params["offset"] = (page - 1) * size_of_page
+        params["limit"] = str(size_of_page)
+        params["offset"] = str((page - 1) * size_of_page)
         search_results = await self.epv.handle_request("get", "API/Accounts", params=params,
                                                        filter_func=lambda x: x)
         account_list = search_results['value']
@@ -1215,10 +1220,9 @@ class Account:
             :return: The last CPM error if any
             """
             for a in activity:
-                if "CPM" in a["Activity"]:
-                    if "Failure" in a["Reason"]:
-                        reason = a["Reason"].split("Error:")
-                        return reason[1]
+                if "CPM" in a["Activity"] and "Failure" in a["Reason"]:
+                    reason = a["Reason"].split("Error:")
+                    return reason[1]
 
         # List of list
         if any(isinstance(el, list) for el in activities):
