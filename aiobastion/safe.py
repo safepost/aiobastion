@@ -503,7 +503,7 @@ class Safe:
         if not safename:
             raise AiobastionException("A safe name must be provided")
         return await self.epv.handle_request("get", f"API/Safes/{safename}",
-                                             params={"includeAccounts": include_accounts})
+                                             params={"includeAccounts": str(include_accounts)})
 
     async def v1_get_safes(self):
         """
